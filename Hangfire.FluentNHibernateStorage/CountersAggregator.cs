@@ -13,6 +13,16 @@ namespace Hangfire.FluentNHibernateStorage
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
+
+        private static readonly string UpdateAggregateCounterSql = string.Format(
+            "update {0} set {1}={1}+:{4}, {3}=:exp where {2}=:{5}",
+            nameof(_AggregatedCounter), nameof(_AggregatedCounter.Value), nameof(_AggregatedCounter.Id),
+            nameof(_AggregatedCounter.ExpireAt), Helper.ValueParameterName, Helper.IdParameterName);
+
+        private static readonly string DeleteCounterByIdsSql = string.Format("delete from {0} where {1} in (:ids)",
+            nameof(_Counter),
+            nameof(_Counter.Id));
+
         private readonly TimeSpan _interval;
 
         private readonly FluentNHibernateStorage _storage;
@@ -31,25 +41,21 @@ namespace Hangfire.FluentNHibernateStorage
 
             do
             {
-                _storage.UseConnection(connection =>
+                _storage.UseStatelessSession(connection =>
                 {
                     using (var i = connection.BeginTransaction())
                     {
-                        var upd = string.Format("update {0} set {1}={1}+:value, {3}=:exp where {2}=:id",
-                            nameof(_AggregatedCounter), nameof(_AggregatedCounter.Value), nameof(_AggregatedCounter.Id),
-                            nameof(_AggregatedCounter.ExpireAt));
-                        var del = string.Format("delete from {0} where {1} in (:ids)", nameof(_Counter),
-                            nameof(_Counter.Id));
                         var m = connection.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
                         var c = m.GroupBy(iz => iz.Key).Select(iz =>
                             new {iz.Key, v = iz.Sum(im => im.Value), c = iz.Max(k => k.ExpireAt)}).ToList();
-                        var q = connection.CreateQuery(upd);
+                        var q = connection.CreateQuery(UpdateAggregateCounterSql);
                         foreach (var item in c)
                         {
-                            if (q.SetParameter("value", item.v).SetParameter("exp", item.c).SetParameter("id", item.Key)
+                            if (q.SetParameter(Helper.ValueParameterName, item.v).SetParameter("exp", item.c)
+                                    .SetParameter(Helper.IdParameterName, item.Key)
                                     .ExecuteUpdate() == 0)
                             {
-                                connection.Save(new _AggregatedCounter
+                                connection.Insert(new _AggregatedCounter
                                 {
                                     Key = item.Key,
                                     Value = item.v,
@@ -58,12 +64,13 @@ namespace Hangfire.FluentNHibernateStorage
                             }
                             ;
                         }
-                        removedCount = connection.CreateQuery(del).SetParameterList("ids", m.Select(iz => iz.Id))
-                            .ExecuteUpdate();
-                        connection.Flush();
+                        removedCount = m.Any()
+                            ? connection.CreateQuery(DeleteCounterByIdsSql)
+                                .SetParameterList("ids", m.Select(iz => iz.Id))
+                                .ExecuteUpdate()
+                            : 0;
                         i.Commit();
                     }
-                   
                 });
 
                 if (removedCount >= NumberOfRecordsInSinglePass)
@@ -80,7 +87,5 @@ namespace Hangfire.FluentNHibernateStorage
         {
             return GetType().ToString();
         }
-
-        
     }
 }

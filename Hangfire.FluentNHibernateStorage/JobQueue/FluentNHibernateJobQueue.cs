@@ -4,7 +4,6 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
-using MySql.Data.MySqlClient;
 using NHibernate;
 using NHibernate.Linq;
 
@@ -13,17 +12,20 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     internal class FluentNHibernateJobQueue : IPersistentJobQueue
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobQueue));
+
+        private static readonly string DequeueSql = string.Format("update {0} set {1} = :current, {2} = :token " +
+                                                                  "where ({1} is null or {1} < :next ) " +
+                                                                  "   and {3} in (:queues)", nameof(_JobQueue),
+            nameof(_JobQueue.FetchedAt), nameof(_JobQueue.FetchToken), nameof(_JobQueue.Queue));
+
         private readonly FluentNHibernateStorageOptions _options;
 
         private readonly FluentNHibernateStorage _storage;
 
         public FluentNHibernateJobQueue(FluentNHibernateStorage storage, FluentNHibernateStorageOptions options)
         {
-            if (storage == null) throw new ArgumentNullException("storage");
-            if (options == null) throw new ArgumentNullException("options");
-
-            _storage = storage;
-            _options = options;
+            _storage = storage ?? throw new ArgumentNullException("storage");
+            _options = options ?? throw new ArgumentNullException("options");
         }
 
         public IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken)
@@ -32,51 +34,49 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
 
             FetchedJob fetchedJob = null;
-            ISession connection = null;
+            ISession connection;
 
             do
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                connection = _storage.CreateAndOpenSession();
+                connection = _storage.GetStatefulSession();
 
                 try
                 {
                     using (new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)))
                     {
                         var token = Guid.NewGuid().ToString();
+                        int updateCount=0;
+                        if (queues.Any())
+                        {
+                            var query = connection.CreateQuery(DequeueSql).SetParameter("current", DateTime.UtcNow)
+                                .SetParameter("next",
+                                    DateTime.UtcNow.AddSeconds(_options.InvisibilityTimeout.Negate().TotalSeconds))
+                                .SetParameter("token", token).SetParameterList("queues", queues);
 
-                        int nUpdated = connection.Execute(
-                            "update JobQueue set FetchedAt = UTC_TIMESTAMP(), FetchToken = @fetchToken " +
-                            "where (FetchedAt is null or FetchedAt < DATE_ADD(UTC_TIMESTAMP(), INTERVAL @timeout SECOND)) " +
-                            "   and Queue in @queues " +
-                            "LIMIT 1;",
-                            new
-                            {
-                                queues,
-                                timeout = _options.InvisibilityTimeout.Negate().TotalSeconds,
-                                fetchToken = token
-                            });
+                            updateCount = query.ExecuteUpdate();
+                        }
 
-                        if (nUpdated != 0)
+                        if (updateCount != 0)
                         {
                             fetchedJob =
                                 connection
-                                    .Query<_JobQueue>().Where(i=>i.FetchToken == token).Select(i=>
-                                    new FetchedJob() { Id=i.Id,JobId = i.Job.Id,Queue=i.Queue}
+                                    .Query<_JobQueue>().Where(i => i.FetchToken == token).Select(i =>
+                                        new FetchedJob {Id = i.Id, JobId = i.Job.Id, Queue = i.Queue}
                                     ).SingleOrDefault();
                         }
                     }
                 }
-                catch (MySqlException ex)
+                catch (Exception ex)
                 {
                     Logger.ErrorException(ex.Message, ex);
-                    _storage.ReleaseConnection(connection);
+                    _storage.ReleaseSession(connection);
                     throw;
                 }
 
                 if (fetchedJob == null)
                 {
-                    _storage.ReleaseConnection(connection);
+                    _storage.ReleaseSession(connection);
 
                     cancellationToken.WaitHandle.WaitOne(_options.QueuePollInterval);
                     cancellationToken.ThrowIfCancellationRequested();
@@ -89,7 +89,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public void Enqueue(ISession connection, string queue, string jobId)
         {
             Logger.TraceFormat("Enqueue JobId={0} Queue={1}", jobId, queue);
-            connection.Save(new _JobQueue(){Job=new _Job{Id = int.Parse(jobId)}, Queue = queue} );
+            connection.Save(new _JobQueue {Job = new _Job {Id = int.Parse(jobId)}, Queue = queue});
             connection.Flush();
         }
     }

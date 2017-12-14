@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage", "Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj", "{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.Tests", "Hangfire.FluentNHibernateStorage.Tests\Hangfire.FluentNHibernateStorage.Tests.csproj", "{6DFFA275-C483-4501-823A-741AC9EC0846}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.SqliteExample", "Example\SqliteExample\Hangfire.FluentNHibernateStorage.SqliteExample.csproj", "{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +23,15 @@ Global
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B0B4B006-794F-4C77-9593-33815CC2FE0D}
 	EndGlobalSection
 EndGlobal

@@ -40,7 +40,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 var enqueuedJobIds = tuple.Monitoring.GetEnqueuedJobIds(tuple.Queue, 0, 5);
                 var counters = tuple.Monitoring.GetEnqueuedAndFetchedCount(tuple.Queue);
 
-                var firstJobs = UseConnection(connection => EnqueuedJobs(connection, enqueuedJobIds));
+                var firstJobs = UseStatefulTransaction(connection => EnqueuedJobs(connection, enqueuedJobIds));
 
                 result.Add(new QueueWithTopEnqueuedJobsDto
                 {
@@ -56,16 +56,16 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public IList<ServerDto> Servers()
         {
-            return UseConnection<IList<ServerDto>>(connection =>
+            return UseStatefulTransaction<IList<ServerDto>>(connection =>
             {
                 var result = new List<ServerDto>();
 
-                foreach (var server in connection.Query<Entities._Server>())
+                foreach (var server in connection.Query<_Server>())
                 {
                     var data = JobHelper.FromJson<ServerData>(server.Data);
                     result.Add(new ServerDto
                     {
-                        Name = server.Id.ToString(),
+                        Name = server.Id,
                         Heartbeat = server.LastHeartbeat,
                         Queues = data.Queues,
                         StartedAt = data.StartedAt.HasValue ? data.StartedAt.Value : DateTime.MinValue,
@@ -79,21 +79,21 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobDetailsDto JobDetails(string jobId)
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
             {
                 var job = connection.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
                 if (job == null) return null;
 
                 var parameters = job.Parameters.ToDictionary(x => x.Name, x => x.Value);
                 var history =
-                    job.SqlStates.OrderByDescending(i => i.Id)
-                        .Select(x => new StateHistoryDto
+                    job.History.OrderByDescending(i => i.Id)
+                        .Select(jobState => new StateHistoryDto
                         {
-                            StateName = x.Name,
-                            CreatedAt = x.CreatedAt,
-                            Reason = x.Reason,
+                            StateName = jobState.Name,
+                            CreatedAt = jobState.CreatedAt,
+                            Reason = jobState.Reason,
                             Data = new Dictionary<string, string>(
-                                JobHelper.FromJson<Dictionary<string, string>>(x.Data),
+                                JobHelper.FromJson<Dictionary<string, string>>(jobState.Data),
                                 StringComparer.OrdinalIgnoreCase)
                         })
                         .ToList();
@@ -112,16 +112,16 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         public StatisticsDto GetStatistics()
         {
             var statistics =
-                UseConnection(connection =>
+                UseStatefulTransaction(connection =>
                     {
-                        var a = connection.Query<_Job>().GroupBy(i => i.StateName)
+                        var statesDictionary = connection.Query<_Job>().Where(i=>i.CurrentState!=null).GroupBy(i => i.CurrentState.Name)
                             .Select(i => new {i.Key, c = i.Count()}).ToDictionary(i => i.Key, j => j.c);
 
                         int GetJobStatusCount(string b)
                         {
-                            if (a.ContainsKey(b))
+                            if (statesDictionary.ContainsKey(b))
                             {
-                                return a[b];
+                                return statesDictionary[b];
                             }
                             return 0;
                         }
@@ -138,7 +138,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             Failed = GetJobStatusCount("Failed"),
                             Processing = GetJobStatusCount("Processing"),
                             Scheduled = GetJobStatusCount("Scheduled"),
-                            Servers = connection.Query<Entities._Server>().Count(),
+                            Servers = connection.Query<_Server>().Count(),
                             Succeeded = CountStats("stats:succeeded"),
                             Deleted = CountStats("stats:deleted"),
                             Recurring = connection.Query<_Set>().Count(i => i.Key == "recurring-jobs'")
@@ -158,7 +158,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var queueApi = GetQueueApi(queue);
             var enqueuedJobIds = queueApi.GetEnqueuedJobIds(queue, from, perPage);
 
-            return UseConnection(connection => EnqueuedJobs(connection, enqueuedJobIds));
+            return UseStatefulTransaction(connection => EnqueuedJobs(connection, enqueuedJobIds));
         }
 
         public JobList<FetchedJobDto> FetchedJobs(string queue, int from, int perPage)
@@ -166,12 +166,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var queueApi = GetQueueApi(queue);
             var fetchedJobIds = queueApi.GetFetchedJobIds(queue, from, perPage);
 
-            return UseConnection(connection => FetchedJobs(connection, fetchedJobIds));
+            return UseStatefulTransaction(connection => FetchedJobs(connection, fetchedJobIds));
         }
 
         public JobList<ProcessingJobDto> ProcessingJobs(int from, int count)
         {
-            return UseConnection(connection => GetJobs(
+            return UseStatefulTransaction(connection => GetJobs(
                 connection,
                 from, count,
                 ProcessingState.StateName,
@@ -185,7 +185,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<ScheduledJobDto> ScheduledJobs(int from, int count)
         {
-            return UseConnection(connection => GetJobs(
+            return UseStatefulTransaction(connection => GetJobs(
                 connection,
                 from, count,
                 ScheduledState.StateName,
@@ -199,7 +199,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<SucceededJobDto> SucceededJobs(int from, int count)
         {
-            return UseConnection(connection => GetJobs(
+            return UseStatefulTransaction(connection => GetJobs(
                 connection,
                 from,
                 count,
@@ -218,7 +218,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<FailedJobDto> FailedJobs(int from, int count)
         {
-            return UseConnection(connection => GetJobs(
+            return UseStatefulTransaction(connection => GetJobs(
                 connection,
                 from,
                 count,
@@ -226,7 +226,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 (sqlJob, job, stateData) => new FailedJobDto
                 {
                     Job = job,
-                    Reason = sqlJob.StateReason,
+                    Reason = sqlJob.CurrentState?.Reason,
                     ExceptionDetails = stateData["ExceptionDetails"],
                     ExceptionMessage = stateData["ExceptionMessage"],
                     ExceptionType = stateData["ExceptionType"],
@@ -236,7 +236,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<DeletedJobDto> DeletedJobs(int from, int count)
         {
-            return UseConnection(connection => GetJobs(
+            return UseStatefulTransaction(connection => GetJobs(
                 connection,
                 from,
                 count,
@@ -250,7 +250,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public long ScheduledCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetNumberOfJobsByStateName(connection, ScheduledState.StateName));
         }
 
@@ -272,60 +272,60 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public long FailedCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetNumberOfJobsByStateName(connection, FailedState.StateName));
         }
 
         public long ProcessingCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetNumberOfJobsByStateName(connection, ProcessingState.StateName));
         }
 
         public long SucceededListCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetNumberOfJobsByStateName(connection, SucceededState.StateName));
         }
 
         public long DeletedListCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetNumberOfJobsByStateName(connection, DeletedState.StateName));
         }
 
         public IDictionary<DateTime, long> SucceededByDatesCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetTimelineStats(connection, "succeeded"));
         }
 
         public IDictionary<DateTime, long> FailedByDatesCount()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetTimelineStats(connection, "failed"));
         }
 
         public IDictionary<DateTime, long> HourlySucceededJobs()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetHourlyTimelineStats(connection, "succeeded"));
         }
 
         public IDictionary<DateTime, long> HourlyFailedJobs()
         {
-            return UseConnection(connection =>
+            return UseStatefulTransaction(connection =>
                 GetHourlyTimelineStats(connection, "failed"));
         }
 
-        private T UseConnection<T>(Func<ISession, T> action)
+        private T UseStatefulTransaction<T>(Func<ISession, T> action)
         {
-            return _storage.UseTransaction(action, IsolationLevel.ReadUncommitted);
+            return _storage.UseStatefulTransaction(action, IsolationLevel.ReadUncommitted);
         }
 
         private long GetNumberOfJobsByStateName(ISession connection, string stateName)
         {
-            var count = connection.Query<_Job>().Count(i => i.StateName == stateName);
+            var count = connection.Query<_Job>().Count(i => i.CurrentState != null && i.CurrentState.Name == stateName);
             if (_jobListLimit.HasValue)
             {
                 return Math.Max(count, _jobListLimit.Value);
@@ -348,23 +348,10 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             string stateName,
             Func<_Job, Job, Dictionary<string, string>, TDto> selector)
         {
-            var jobsSql =
-                @"select * from (
-  select j.*, s.Reason as StateReason, s.Data as StateData, @rownum := @rownum + 1 AS rank
-  from Job j
-    cross join (SELECT @rownum := 0) r
-  left join State s on j.StateId = s.Id
-  where j.StateName = @stateName
-  order by j.Id desc
-) as j where j.rank between @start and @end ";
+            var a = connection.Query<_Job>().OrderBy(i => i.Id).Where(i => i.CurrentState.Name == stateName).Skip(from)
+                .Take(count).ToList();
 
-            var jobs =
-                connection.Query<_Job>(
-                        jobsSql,
-                        new {stateName, start = from + 1, end = from + count})
-                    .ToList();
-
-            return DeserializeJobs(jobs, selector);
+            return DeserializeJobs(a, selector);
         }
 
         private static JobList<TDto> DeserializeJobs<TDto>(
@@ -375,7 +362,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
             foreach (var job in jobs)
             {
-                var deserializedData = JobHelper.FromJson<Dictionary<string, string>>(job.StateData);
+                var deserializedData = JobHelper.FromJson<Dictionary<string, string>>(job.CurrentState.Data);
                 var stateData = deserializedData != null
                     ? new Dictionary<string, string>(deserializedData, StringComparer.OrdinalIgnoreCase)
                     : null;
@@ -447,12 +434,6 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             ISession connection,
             IEnumerable<int> jobIds)
         {
-            var enqueuedJobsSql =
-                @"select j.*, s.Reason as StateReason, s.Data as StateData 
-from Job j
-left join State s on s.Id = j.StateId
-where j.Id in @jobIds";
-
             var jobs = connection.Query<_Job>().Where(i => jobIds.Contains(i.Id)).ToList();
 
             return DeserializeJobs(
@@ -460,8 +441,8 @@ where j.Id in @jobIds";
                 (sqlJob, job, stateData) => new EnqueuedJobDto
                 {
                     Job = job,
-                    State = sqlJob.StateName,
-                    EnqueuedAt = sqlJob.StateName == EnqueuedState.StateName
+                    State = sqlJob.CurrentState?.Name,
+                    EnqueuedAt = sqlJob.CurrentState?.Name == EnqueuedState.StateName
                         ? JobHelper.DeserializeNullableDateTime(stateData["EnqueuedAt"])
                         : null
                 });
@@ -480,7 +461,7 @@ where j.Id in @jobIds";
                     new FetchedJobDto
                     {
                         Job = DeserializeJob(job.InvocationData, job.Arguments),
-                        State = job.StateName
+                        State = job.CurrentState?.Name
                     }));
             }
 

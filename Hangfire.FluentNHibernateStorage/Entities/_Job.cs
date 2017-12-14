@@ -22,21 +22,18 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public _Job()
         {
             Parameters = new List<_JobParameter>();
-            SqlStates = new List<_JobState>();
+            History = new List<_JobState>();
         }
 
-        public virtual _JobState State { get; set; }
+        public virtual _JobState CurrentState { get; set; }
         public virtual string InvocationData { get; set; }
         public virtual string Arguments { get; set; }
         public virtual DateTime CreatedAt { get; set; }
 
         public virtual DateTime? FetchedAt { get; set; }
-
-        public virtual string StateName { get; set; }
-        public virtual string StateReason { get; set; }
-        public virtual string StateData { get; set; }
+        
         public virtual IList<_JobParameter> Parameters { get; set; }
-        public virtual IList<_JobState> SqlStates { get; set; }
+        public virtual IList<_JobState> History { get; set; }
 
         public virtual int Id { get; set; }
         public virtual DateTime? ExpireAt { get; set; }

@@ -64,7 +64,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj">
       <Project>{a4d8007c-a2e5-4bd9-a707-87ba00eb6b7a}</Project>
-      <Name>Hangfire.MySql</Name>
+      <Name>Hangfire.FluentNHibernateStorage</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

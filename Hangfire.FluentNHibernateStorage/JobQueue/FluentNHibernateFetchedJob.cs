@@ -11,14 +11,14 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
-        private static readonly string deleteJobQueueSql = string.Format("delete from {0} where {1}=:id",
+        private static readonly string DeleteJobQueueSql = string.Format("delete from {0} where {1}=:{2}",
             nameof(_JobQueue),
-            nameof(_JobQueue.Id));
+            nameof(_JobQueue.Id), Helper.IdParameterName);
 
-        private static readonly string updateJobQueueSql =
-            Helper.singlefieldupdate(nameof(_JobQueue), nameof(_JobQueue.FetchedAt), nameof(_JobQueue.Id));
+        private static readonly string UpdateJobQueueSql =
+            Helper.GetSingleFieldUpdateSql(nameof(_JobQueue), nameof(_JobQueue.FetchedAt), nameof(_JobQueue.Id));
 
-        private readonly ISession _connection;
+        private readonly ISession _session;
         private readonly int _id;
 
         private readonly FluentNHibernateStorage _storage;
@@ -31,13 +31,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             ISession connection,
             FetchedJob fetchedJob)
         {
-            if (storage == null) throw new ArgumentNullException("storage");
-            if (connection == null) throw new ArgumentNullException("connection");
-            if (fetchedJob == null) throw new ArgumentNullException("fetchedJob");
-
-            _storage = storage;
-            _connection = connection;
-            _id = fetchedJob.Id;
+            _storage = storage ?? throw new ArgumentNullException("storage");
+            _session = connection ?? throw new ArgumentNullException("connection");
+            _id = fetchedJob?.Id ?? throw new ArgumentNullException("fetchedJob");
             JobId = fetchedJob.JobId.ToString(CultureInfo.InvariantCulture);
             Queue = fetchedJob.Queue;
         }
@@ -53,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 Requeue();
             }
 
-            _storage.ReleaseConnection(_connection);
+            _storage.ReleaseSession(_session);
 
             _disposed = true;
         }
@@ -63,7 +59,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
 
             //todo: unit test
-            _connection.CreateQuery(deleteJobQueueSql).SetParameter("id", _id).ExecuteUpdate();
+            _session.CreateQuery(DeleteJobQueueSql).SetParameter(Helper.IdParameterName, _id).ExecuteUpdate();
 
             _removedFromQueue = true;
         }
@@ -73,7 +69,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("Requeue JobId={0}", JobId);
 
             //todo: unit test
-            _connection.CreateQuery(updateJobQueueSql).SetParameter("value", null).SetParameter("id", _id)
+            _session.CreateQuery(UpdateJobQueueSql).SetParameter(Helper.ValueParameterName, null).SetParameter(Helper.IdParameterName, _id)
                 .ExecuteUpdate();
             _requeued = true;
         }

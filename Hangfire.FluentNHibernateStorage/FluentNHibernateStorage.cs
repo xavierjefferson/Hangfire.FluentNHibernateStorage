@@ -21,7 +21,6 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateStorage));
 
 
-        private readonly ISession _existingSession;
         private readonly FluentNHibernateStorageOptions _options;
 
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
@@ -30,8 +29,6 @@ namespace Hangfire.FluentNHibernateStorage
         protected IPersistenceConfigurer _configurer;
 
         private bool _testBuild;
-
-        public Action<MappingConfiguration> GetMappings;
 
 
         public FluentNHibernateStorage(IPersistenceConfigurer pcf)
@@ -49,13 +46,6 @@ namespace Hangfire.FluentNHibernateStorage
             InitializeQueueProviders();
         }
 
-        internal FluentNHibernateStorage(ISession existingSession)
-        {
-            _existingSession = existingSession ?? throw new ArgumentNullException("existingSession");
-            _options = new FluentNHibernateStorageOptions();
-
-            InitializeQueueProviders();
-        }
 
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
@@ -88,7 +78,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IMonitoringApi GetMonitoringApi()
         {
-            return new NHMonitoringApi(this, _options.DashboardJobListLimit);
+            return new FluentNHibernateMonitoringApi(this, _options.DashboardJobListLimit);
         }
 
         public override IStorageConnection GetConnection()
@@ -96,22 +86,42 @@ namespace Hangfire.FluentNHibernateStorage
             return new FluentNHibernateStorageConnection(this);
         }
 
-
-        internal void UseTransaction([InstantHandle] Action<ISession> action)
+        internal void UseTransactionStateless([InstantHandle] Action<IStatelessSession> action)
         {
-            UseTransaction(session =>
+            UseTransactionStateless(session =>
             {
                 action(session);
                 return true;
             }, null);
         }
 
-        internal T UseTransaction<T>(
+        internal T UseTransactionStateless<T>(
+            [InstantHandle] Func<IStatelessSession, T> func, IsolationLevel? isolationLevel)
+        {
+            using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
+            {
+                var result = UseStatelessSession(func);
+                transaction.Complete();
+
+                return result;
+            }
+        }
+
+        internal void UseStatefulTransaction([InstantHandle] Action<ISession> action)
+        {
+            UseStatefulTransaction(session =>
+            {
+                action(session);
+                return true;
+            }, null);
+        }
+
+        internal T UseStatefulTransaction<T>(
             [InstantHandle] Func<ISession, T> func, IsolationLevel? isolationLevel)
         {
             using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
             {
-                var result = UseConnection(func);
+                var result = UseSession(func);
                 transaction.Complete();
 
                 return result;
@@ -130,73 +140,49 @@ namespace Hangfire.FluentNHibernateStorage
                 : new TransactionScope();
         }
 
-        internal void UseConnection([InstantHandle] Action<ISession> action)
+        internal void UseStatelessSession([InstantHandle] Action<IStatelessSession> action)
         {
-            UseConnection(session =>
+            using (var session = GetStatelessSession())
             {
                 action(session);
-                return true;
-            });
+            }
         }
 
-        internal T UseConnection<T>([InstantHandle] Func<ISession, T> func)
+        internal T UseStatelessSession<T>([InstantHandle] Func<IStatelessSession, T> func)
         {
-            ISession session = null;
-
-            try
+            using (var session = GetStatelessSession())
             {
-                session = CreateAndOpenSession();
                 return func(session);
             }
-            finally
+        }
+
+        internal void UseSession([InstantHandle] Action<ISession> action)
+        {
+            using (var session = GetStatefulSession())
             {
-                ReleaseConnection(session);
+                action(session);
             }
         }
 
-        internal ISession CreateAndOpenSession()
+        internal T UseSession<T>([InstantHandle] Func<ISession, T> func)
         {
-            if (_existingSession != null)
+            using (var session = GetStatefulSession())
             {
-                return _existingSession;
+                return func(session);
             }
-
-            var connection = GetSession();
-
-            return connection;
         }
 
-        internal void ReleaseConnection(ISession session)
+        internal void ReleaseSession(ISession session)
         {
-            if (session != null && !ReferenceEquals(session, _existingSession))
+            if (session != null)
             {
                 session.Dispose();
             }
         }
 
-        public void BuildSchemaIfNeeded(IPersistenceConfigurer configurer)
+        internal void ReleaseSession(IStatelessSession session)
         {
-            var mappings = GetMappings;
-            var fluentConfiguration = Fluently.Configure()
-                .Database(configurer)
-                .Mappings(GetMappings)
-                .ExposeConfiguration(cfg =>
-                {
-                    var a = new SchemaUpdate(cfg);
-                    using (var stringWriter = new StringWriter())
-                    {
-                        try
-                        {
-                            a.Execute(i => stringWriter.WriteLine(i), true);
-                        }
-                        catch (Exception ex)
-                        {
-                            throw;
-                        }
-                        var d = stringWriter.ToString();
-                    }
-                })
-                .BuildConfiguration();
+            session?.Dispose();
         }
 
 
@@ -226,10 +212,16 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 
-        public ISession GetSession()
+        internal ISession GetStatefulSession()
         {
             DoTestBuild();
             return GetSessionFactory(GetConfigurer()).OpenSession();
+        }
+
+        private IStatelessSession GetStatelessSession()
+        {
+            DoTestBuild();
+            return GetSessionFactory(GetConfigurer()).OpenStatelessSession();
         }
 
         private void DoTestBuild()
@@ -238,9 +230,33 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 if (!_testBuild)
                 {
-                  Logger.Info("Start installing Hangfire SQL objects...");
-                    BuildSchemaIfNeeded(GetConfigurer());
-                    _testBuild = true; Logger.Info("Hangfire SQL objects installed.");
+                    Logger.Info("Start installing Hangfire SQL objects...");
+                    Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>())
+                        .Database(GetConfigurer())
+                        .ExposeConfiguration(cfg =>
+                        {
+                            var a = new SchemaUpdate(cfg);
+                            using (var stringWriter = new StringWriter())
+                            {
+                                string _last = null;
+                                try
+                                {
+                                    a.Execute(i =>
+                                    {
+                                        _last = i;
+                                        stringWriter.WriteLine(i);
+                                    }, true);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.ErrorException(string.Format("Can't do schema update '{0}'", _last), ex);
+                                    throw;
+                                }
+                            }
+                        })
+                        .BuildConfiguration();
+                    _testBuild = true;
+                    Logger.Info("Hangfire SQL objects installed.");
                 }
             }
         }

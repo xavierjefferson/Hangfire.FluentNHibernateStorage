@@ -10,53 +10,54 @@ namespace Hangfire.FluentNHibernateStorage
 {
     internal static class Helper2
     {
-        private static readonly Dictionary<Type, string> dz = new Dictionary<Type, string>();
+        private static readonly Dictionary<Type, string> DeleteCommands = new Dictionary<Type, string>();
         private static readonly object mutex = new object();
 
         public static void DeleteById<T>(this ISession session, int id) where T : IExpireWithId
         {
-            var sql = GetDelByIds<T>();
-            session.CreateQuery(sql).SetParameterList("id", new[] {id});
+            DeleteById<T>(session, new[] {id});
         }
 
-        public static void UpdateByExpression<T>(this ISession session, Expression<Func<T, bool>> expr, Action<T> ac)
+        public static long DeleteById<T>(this ISession session, ICollection<int> id) where T : IExpireWithId
+        {
+            if (!id.Any())
+            {
+                return 0;
+            }
+            string queryString;
+            lock (mutex)
+            {
+                if (DeleteCommands.ContainsKey(typeof(T)))
+                {
+                    queryString = DeleteCommands[typeof(T)];
+                }
+                else
+                {
+                    queryString = string.Format("delete from {0} where {1} in (:{2})", nameof(T),
+                        nameof(IExpireWithId.Id), Helper.IdParameterName);
+                    DeleteCommands[typeof(T)] = queryString;
+                }
+            }
+            return session.CreateQuery(queryString).SetParameterList(Helper.IdParameterName, id).ExecuteUpdate();
+        }
+
+        public static void DoActionByExpression<T>(this ISession session, Expression<Func<T, bool>> expr,
+            Action<T> action)
             where T : IExpireWithId
         {
-            var z = session.Query<T>().Where(expr);
-            foreach (var x in z)
+            var entities = session.Query<T>().Where(expr);
+            foreach (var entity in entities)
             {
-                ac(x);
+                action(entity);
             }
         }
 
         public static void DeleteByExpression<T>(this ISession session, int id, Expression<Func<T, bool>> expr)
             where T : IExpireWithId
         {
-            var z = session.Query<T>().Where(expr).Select(i => i.Id).ToList();
-            if (z.Any())
-            {
-                var sql = GetDelByIds<T>();
+            var idList = session.Query<T>().Where(expr).Select(i => i.Id).ToList();
 
-                session.CreateQuery(sql).SetParameterList("id", z);
-            }
-        }
-
-        private static string GetDelByIds<T>() where T : IExpireWithId
-        {
-            string sql;
-            lock (mutex)
-            {
-                if (dz.ContainsKey(typeof(T)))
-                {
-                    sql = dz[typeof(T)];
-                }
-                else
-                {
-                    sql = string.Format("delete from {0} where {1} in (:id)", nameof(T), nameof(IExpireWithId.Id));
-                    dz[typeof(T)] = sql;
-                }
-            }
-            return sql;
+            DeleteById<T>(session, idList);
         }
     }
 }

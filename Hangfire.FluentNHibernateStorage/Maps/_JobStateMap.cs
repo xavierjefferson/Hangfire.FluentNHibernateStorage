@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobStateMap()
         {
-            Table("JobState");
+            Table("`JobState`");
             Id(i => i.Id).Column("`Id`").GeneratedBy.Identity();
             Map(i => i.Name).Column("`Name`").Length(20).Not.Nullable();
             Map(i => i.Reason).Column("`Reason`").Length(100).Nullable();
