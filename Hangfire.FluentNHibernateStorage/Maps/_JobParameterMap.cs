@@ -3,9 +3,9 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class JobParameterMap : ClassMap<_JobParameter>
+    internal class _JobParameterMap : ClassMap<_JobParameter>
     {
-        public JobParameterMap()
+        public _JobParameterMap()
         {
             Id(i => i.Id).Column("`Id`").GeneratedBy.Identity();
             References(i => i.Job).Column("`JobId`").Not.Nullable().Cascade.All();

@@ -2,21 +2,21 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class CounterMap : Gen1Map<_Counter, long>
+    internal class _AggregatedCounterMap : EntityBase1Map<_AggregatedCounter, long>
     {
-        protected override bool UniqueKey
+        protected override bool HasUniqueKey
         {
-            get { return false; }
+            get { return true; }
         }
 
         protected override string KeyObjectName
         {
-            get { return "IX_Counter_Key"; }
+            get { return "IX_CounterAggregated_Key"; }
         }
 
         protected override string TableName
         {
-            get { return "`Counter`"; }
+            get { return "`AggregatedCounter`"; }
         }
 
         protected override bool ValueNullable

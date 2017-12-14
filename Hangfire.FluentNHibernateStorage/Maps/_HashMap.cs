@@ -2,14 +2,14 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class SqlHashMap : Gen1Map<_Hash, string>
+    internal class _HashMap : EntityBase1Map<_Hash, string>
     {
-        public SqlHashMap()
+        public _HashMap()
         {
             Map(i => i.Field).Column("`Field`").Length(40).Not.Nullable().UniqueKey("IX_Hash_Key_Field");
         }
 
-        protected override bool UniqueKey
+        protected override bool HasUniqueKey
         {
             get { return true; }
         }

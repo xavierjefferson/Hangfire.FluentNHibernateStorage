@@ -2,9 +2,9 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class SqlListMap : Gen1Map<_List, string>
+    internal class _ListMap : EntityBase1Map<_List, string>
     {
-        public SqlListMap()
+        public _ListMap()
         {
             Table("`List`");
         }
@@ -14,7 +14,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             get { return int.MaxValue; }
         }
 
-        protected override bool UniqueKey
+        protected override bool HasUniqueKey
         {
             get { return false; }
         }

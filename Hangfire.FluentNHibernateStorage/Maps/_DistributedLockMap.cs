@@ -3,9 +3,9 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    public class DistributedLockMap : ClassMap<_DistributedLock>
+    public class _DistributedLockMap : ClassMap<_DistributedLock>
     {
-        public DistributedLockMap()
+        public _DistributedLockMap()
         {
             Table("`DistributedLock`");
             Id(i => i.DistributedLockId).Column("`DistributedLockId`").GeneratedBy.Identity();

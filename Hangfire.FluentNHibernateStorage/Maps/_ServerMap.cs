@@ -2,9 +2,9 @@ using FluentNHibernate.Mapping;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class ServerMap : ClassMap<Entities._Server>
+    internal class _ServerMap : ClassMap<Entities._Server>
     {
-        public ServerMap()
+        public _ServerMap()
         {
             Table("`Server`");
             Id(i => i.Id).Length(100).GeneratedBy.Assigned().Column("`Id`");

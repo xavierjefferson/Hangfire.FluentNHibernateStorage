@@ -1,22 +1,27 @@
-﻿using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class AggregatedCounterMap : Gen1Map<_AggregatedCounter, long>
+    internal class _SetMap : EntityBase1Map<_Set, string>
     {
-        protected override bool UniqueKey
+        public _SetMap()
+        {
+            Map(i => i.Score).Column("`Score`").Not.Nullable();
+        }
+
+        protected override bool HasUniqueKey
         {
             get { return true; }
         }
 
         protected override string KeyObjectName
         {
-            get { return "IX_CounterAggregated_Key"; }
+            get { return "IX_Set_Key_Value"; }
         }
 
         protected override string TableName
         {
-            get { return "`AggregatedCounter`"; }
+            get { return "`Set`"; }
         }
 
         protected override bool ValueNullable
@@ -26,7 +31,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override int? ValueLength
         {
-            get { return null; }
+            get { return 256; }
         }
     }
 }

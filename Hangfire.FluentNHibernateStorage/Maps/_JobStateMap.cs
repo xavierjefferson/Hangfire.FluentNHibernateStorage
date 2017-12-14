@@ -3,9 +3,9 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class SqlStateMap : ClassMap<_JobState>
+    internal class _JobStateMap : ClassMap<_JobState>
     {
-        public SqlStateMap()
+        public _JobStateMap()
         {
             Table("JobState");
             Id(i => i.Id).Column("`Id`").GeneratedBy.Identity();

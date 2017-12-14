@@ -3,9 +3,9 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class SqlJobMap : ClassMap<_Job>
+    internal class _JobMap : ClassMap<_Job>
     {
-        public SqlJobMap()
+        public _JobMap()
         {
             Table("Job");
             LazyLoad();

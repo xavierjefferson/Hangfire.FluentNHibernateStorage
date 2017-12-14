@@ -3,9 +3,9 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class SqlJobQueueMap : ClassMap<_JobQueue>
+    internal class _JobQueueMap : ClassMap<_JobQueue>
     {
-        public SqlJobQueueMap()
+        public _JobQueueMap()
         {
             Table("JobQueue");
             Id(i => i.Id).Column("`Id`").GeneratedBy.Assigned();
