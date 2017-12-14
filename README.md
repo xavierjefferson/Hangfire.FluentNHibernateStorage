@@ -17,15 +17,15 @@ Install-Package Hangfire.FluentNHibernateStorage
 ## Usage
 
 Use one the following ways to initialize `FluentNHibernateStorage`: 
-- Create new instance of `FluentNHibernateStorage` with IPersistenceConfigurer parameter and pass it to `Configuration` with `UseStorage` method:
+- Call static method of class FluentNHibernateStorageFactory with ConnectionString parameter and pass it to `Configuration` with `UseStorage` method:
 ```
   GlobalConfiguration.Configuration.UseStorage(
-    new FluentNHibernateStorage(persistenceConfigurer));
+    FluentNHibernateStorageFactory.ForMySQL(connectionString));
 ```
 ```
 GlobalConfiguration.Configuration.UseStorage(
-    new FluentNHibernateStorage(
-        persistenceConfigurer, 
+    FluentNHibernateStorageFactory.ForMySQL(
+        connectionString, 
         new FluentNHibernateStorageOptions
         {
             TransactionIsolationLevel = IsolationLevel.ReadCommitted,

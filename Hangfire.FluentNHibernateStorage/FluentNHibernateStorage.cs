@@ -44,9 +44,7 @@ namespace Hangfire.FluentNHibernateStorage
             ConfigurerFunc = () => { return pcf; };
 
 
-            _options = options ?? throw new ArgumentNullException("options");
-
-             
+            _options = options ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
         }
