@@ -1,34 +1,34 @@
-# Hangfire MySql Storage Implementation
-[![Latest version](https://img.shields.io/nuget/v/Hangfire.MySqlStorage.svg)](https://www.nuget.org/packages/Hangfire.MySqlStorage/) 
+# Hangfire FluentNHibernate Storage Implementation
+[![Latest version](https://img.shields.io/nuget/v/Hangfire.FluentNHibernateStorage.svg)](https://www.nuget.org/packages/Hangfire.FluentNHibernateStorage/) 
 
-MySql storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
+FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
 
-**Some features of MySql storage implementation is under development!**
+**Some features of FluentNHibernate storage implementation is under development!**
 
 ## Installation
-Install MySQL
+ 
 
-Run the following command in the NuGet Package Manager console to install Hangfire.MySqlStorage:
+Run the following command in the NuGet Package Manager console to install Hangfire.FluentNHibernateStorage:
 
 ```
-Install-Package Hangfire.MySqlStorage
+Install-Package Hangfire.FluentNHibernateStorage
 ```
 
 ## Usage
 
-Use one the following ways to initialize `MySqlStorage`: 
-- Create new instance of `MySqlStorage` with connection string constructor parameter and pass it to `Configuration` with `UseStorage` method:
+Use one the following ways to initialize `FluentNHibernateStorage`: 
+- Create new instance of `FluentNHibernateStorage` with connection string constructor parameter and pass it to `Configuration` with `UseStorage` method:
 ```
   GlobalConfiguration.Configuration.UseStorage(
-    new MySqlStorage(connectionString));
+    new FluentNHibernateStorage(connectionString));
 ```
 - There must be `Allow User Variables` set to `true` in the connection string. For example: `server=127.0.0.1;uid=root;pwd=root;database={0};Allow User Variables=True`
-- Alternatively one or more options can be passed as a parameter to `MySqlStorage`:
+- Alternatively one or more options can be passed as a parameter to `FluentNHibernateStorage`:
 ```
 GlobalConfiguration.Configuration.UseStorage(
-    new MySqlStorage(
+    new FluentNHibernateStorage(
         connectionString, 
-        new MySqlStorageOptions
+        new FluentNHibernateStorageOptions
         {
             TransactionIsolationLevel = IsolationLevel.ReadCommitted,
             QueuePollInterval = TimeSpan.FromSeconds(15),
@@ -73,6 +73,6 @@ In order to run unit tests and integrational tests set the following variables i
 
 `Hangfire_SqlServer_ConnectionStringTemplate` (default: `server=127.0.0.1;uid=root;pwd=root;database={0};Allow User Variables=True`)
 
-`Hangfire_SqlServer_DatabaseName` (default: `Hangfire.MySql.Tests`)
+`Hangfire_SqlServer_DatabaseName` (default: `Hangfire.FluentNHibernate.Tests`)
 
 
