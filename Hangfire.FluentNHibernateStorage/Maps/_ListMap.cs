@@ -6,7 +6,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _ListMap()
         {
-            Table("`List`");
+            Table("`Hangfire_List`");
         }
 
         protected override int? ValueLength

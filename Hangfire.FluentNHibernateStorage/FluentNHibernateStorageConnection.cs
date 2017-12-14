@@ -16,10 +16,12 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
         private static readonly string updateJobParameterValueSql =
-            Helper.GetSingleFieldUpdateSql(nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Id));
+            Helper.GetSingleFieldUpdateSql(nameof(_JobParameter), nameof(_JobParameter.Value),
+                nameof(_JobParameter.Id));
 
         private static readonly string deleteServerSql =
-            string.Format("delete from {0} where {1}=:{2}", nameof(_Server), nameof(_Server.Id), Helper.IdParameterName);
+            string.Format("delete from {0} where {1}=:{2}", nameof(_Server), nameof(_Server.Id),
+                Helper.IdParameterName);
 
         private static readonly string updateServerLastHeartBeatSql =
             Helper.GetSingleFieldUpdateSql(nameof(_Server), nameof(_Server.LastHeartbeat), nameof(_Server.Id));
@@ -65,10 +67,11 @@ namespace Hangfire.FluentNHibernateStorage
                     CreatedAt = createdAt,
                     ExpireAt = createdAt.Add(expireIn)
                 };
-                session.Save(sqlJob);
+                session.Insert(sqlJob);
+                session.Flush();
                 foreach (var keyValuePair in parameters)
                 {
-                    session.Save(new _JobParameter
+                    session.Insert(new _JobParameter
                     {
                         Job = sqlJob,
                         Name = keyValuePair.Key,
@@ -109,7 +112,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             _storage.UseSession(session =>
             {
-                var updated = session.CreateQuery(updateJobParameterValueSql).SetParameter(Helper.ValueParameterName, value)
+                var updated = session.CreateQuery(updateJobParameterValueSql)
+                    .SetParameter(Helper.ValueParameterName, value)
                     .SetParameter(Helper.IdParameterName, int.Parse(id)).ExecuteUpdate();
                 if (updated == 0)
                 {
@@ -119,7 +123,7 @@ namespace Hangfire.FluentNHibernateStorage
                         Name = name,
                         Value = value
                     };
-                    session.Save(jobParameter);
+                    session.Insert(jobParameter);
                 }
                 session.Flush();
                 ;
@@ -140,7 +144,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
 
-            return _storage.UseStatelessSession(session =>
+            return _storage.UseSession(session =>
             {
                 var jobData =
                     session
@@ -179,7 +183,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return _storage.UseStatelessSession(session =>
             {
-                var jobState = session.Query<_Job>().Where(i=>i.Id ==int.Parse(jobId)).Select(i=>i.CurrentState).FirstOrDefault();
+                var jobState = session.Query<_Job>().Where(i => i.Id == int.Parse(jobId)).Select(i => i.CurrentState)
+                    .FirstOrDefault();
                 if (jobState == null)
                 {
                     return null;
@@ -236,7 +241,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             _storage.UseStatelessSession(session =>
             {
-                session.CreateQuery(updateServerLastHeartBeatSql).SetParameter(Helper.ValueParameterName, DateTime.UtcNow)
+                session.CreateQuery(updateServerLastHeartBeatSql)
+                    .SetParameter(Helper.ValueParameterName, DateTime.UtcNow)
                     .SetParameter(Helper.IdParameterName, serverId)
                     .ExecuteUpdate();
             });
@@ -369,7 +375,7 @@ namespace Hangfire.FluentNHibernateStorage
                 ;
             });
         }
- 
+
         public override List<string> GetAllItemsFromList(string key)
         {
             if (key == null) throw new ArgumentNullException("key");
@@ -417,7 +423,7 @@ namespace Hangfire.FluentNHibernateStorage
                         i => { i.Value = keyValuePair.Value; }, i =>
                         {
                             i.Key = key;
-                            i.Field = keyValuePair.Value;
+                            i.Field = keyValuePair.Key;
                         });
                 }
             });

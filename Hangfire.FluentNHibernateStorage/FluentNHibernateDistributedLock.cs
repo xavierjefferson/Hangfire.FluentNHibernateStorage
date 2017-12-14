@@ -3,8 +3,6 @@ using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
-using NHibernate;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -19,34 +17,26 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly CancellationToken _cancellationToken;
 
-        private readonly ISession _session;
 
         private readonly DateTime _start;
-        private readonly FluentNHibernateStorage _storage;
+
         private readonly TimeSpan _timeout;
 
-        public FluentNHibernateDistributedLock(FluentNHibernateStorage storage, string resource, TimeSpan timeout)
-            : this(storage.GetStatefulSession(), resource, timeout)
+        public FluentNHibernateDistributedLock(FluentNHibernateStorage storage, string resource, TimeSpan timeout,
+            CancellationToken? cancellationToken = null)
         {
-            _storage = storage;
-        }
-
-        public FluentNHibernateDistributedLock(ISession session, string resource, TimeSpan timeout)
-            : this(session, resource, timeout, new CancellationToken())
-        {
-        }
-
-        public FluentNHibernateDistributedLock(
-            ISession session, string resource, TimeSpan timeout, CancellationToken cancellationToken)
-        {
-            Logger.TraceFormat("{2} resource={0}, timeout={1}", resource, timeout, this.GetType().Name);
+            Logger.TraceFormat("{2} resource={0}, timeout={1}", resource, timeout, GetType().Name);
 
             Resource = resource;
             _timeout = timeout;
-            _session = session;
-            _cancellationToken = cancellationToken;
+
+            _cancellationToken = cancellationToken ?? new CancellationToken();
             _start = DateTime.UtcNow;
+            Session = storage.GetStatefulSession();
         }
+
+
+        internal IWrappedSession Session { get; }
 
         public string Resource { get; }
 
@@ -59,23 +49,26 @@ namespace Hangfire.FluentNHibernateStorage
                 return string.Compare(Resource, mySqlDistributedLock.Resource,
                     StringComparison.InvariantCultureIgnoreCase);
 
-            throw new ArgumentException(string.Format("Object is not a {0}", this.GetType().Name));
+            throw new ArgumentException(string.Format("Object is not a {0}", GetType().Name));
         }
 
         public void Dispose()
         {
-            Release();
-
-            _storage?.ReleaseSession(_session);
+            if (Session != null)
+            {
+                Release();
+                Session.Flush();
+                Session.Dispose();
+            }
         }
 
         private int AcquireLock(string resource, TimeSpan timeout)
         {
-            if (!_session.Query<_DistributedLock>().Any(i =>
+            if (!Session.Query<_DistributedLock>().Any(i =>
                 i.Resource == resource && i.CreatedAt > DateTime.UtcNow.Add(timeout.Negate())))
             {
-                _session.Save(new _DistributedLock {CreatedAt = DateTime.UtcNow, Resource = resource});
-                _session.Flush();
+                Session.Insert(new _DistributedLock {CreatedAt = DateTime.UtcNow, Resource = resource});
+                Session.Flush();
                 return 1;
             }
             return 0;
@@ -115,7 +108,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("Release resource={0}", Resource);
 
-            _session.CreateQuery(DeleteDistributedLockSql).SetParameter("res", Resource).ExecuteUpdate();
+            Session.CreateQuery(DeleteDistributedLockSql).SetParameter("res", Resource).ExecuteUpdate();
         }
     }
 }

@@ -4,9 +4,9 @@ using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    public interface IPersistentJobQueue
+      interface IPersistentJobQueue
     {
         IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken);
-        void Enqueue(ISession connection, string queue, string jobId);
+        void Enqueue(IWrappedSession connection, string queue, string jobId);
     }
 }

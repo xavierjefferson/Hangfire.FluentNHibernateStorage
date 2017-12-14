@@ -114,7 +114,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var statistics =
                 UseStatefulTransaction(connection =>
                     {
-                        var statesDictionary = connection.Query<_Job>().Where(i=>i.CurrentState!=null).GroupBy(i => i.CurrentState.Name)
+                        var statesDictionary = connection.Query<_Job>().Where(i => i.CurrentState != null)
+                            .GroupBy(i => i.CurrentState.Name)
                             .Select(i => new {i.Key, c = i.Count()}).ToDictionary(i => i.Key, j => j.c);
 
                         int GetJobStatusCount(string b)
@@ -318,12 +319,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 GetHourlyTimelineStats(connection, "failed"));
         }
 
-        private T UseStatefulTransaction<T>(Func<ISession, T> action)
+        private T UseStatefulTransaction<T>(Func<IWrappedSession, T> action)
         {
             return _storage.UseStatefulTransaction(action, IsolationLevel.ReadUncommitted);
         }
 
-        private long GetNumberOfJobsByStateName(ISession connection, string stateName)
+        private long GetNumberOfJobsByStateName(IWrappedSession connection, string stateName)
         {
             var count = connection.Query<_Job>().Count(i => i.CurrentState != null && i.CurrentState.Name == stateName);
             if (_jobListLimit.HasValue)
@@ -342,7 +343,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         }
 
         private JobList<TDto> GetJobs<TDto>(
-            ISession connection,
+            IWrappedSession connection,
             int from,
             int count,
             string stateName,
@@ -392,7 +393,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         }
 
         private Dictionary<DateTime, long> GetTimelineStats(
-            ISession connection,
+            IWrappedSession connection,
             string type)
         {
             var endDate = DateTime.UtcNow.Date;
@@ -409,7 +410,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             return GetTimelineStats(connection, keyMaps);
         }
 
-        private Dictionary<DateTime, long> GetTimelineStats(ISession connection,
+        private Dictionary<DateTime, long> GetTimelineStats(IWrappedSession connection,
             IDictionary<string, DateTime> keyMaps)
         {
             var valuesMap = connection.Query<_AggregatedCounter>().Where(i => keyMaps.Keys.Contains(i.Key))
@@ -431,7 +432,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         }
 
         private JobList<EnqueuedJobDto> EnqueuedJobs(
-            ISession connection,
+            IWrappedSession connection,
             IEnumerable<int> jobIds)
         {
             var jobs = connection.Query<_Job>().Where(i => jobIds.Contains(i.Id)).ToList();
@@ -449,7 +450,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         }
 
         private JobList<FetchedJobDto> FetchedJobs(
-            ISession connection,
+            IWrappedSession connection,
             IEnumerable<int> jobIds)
         {
             var result = new List<KeyValuePair<string, FetchedJobDto>>();
@@ -469,7 +470,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         }
 
         private Dictionary<DateTime, long> GetHourlyTimelineStats(
-            ISession connection,
+            IWrappedSession connection,
             string type)
         {
             var endDate = DateTime.UtcNow;

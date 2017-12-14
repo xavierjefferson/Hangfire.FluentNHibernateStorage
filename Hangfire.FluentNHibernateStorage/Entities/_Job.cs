@@ -17,7 +17,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
   KEY `IX_Job_StateName` (`StateName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 */
-    internal class _Job : IExpireWithId
+    public class _Job : IExpireWithId
     {
         public _Job()
         {
@@ -31,7 +31,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public virtual DateTime CreatedAt { get; set; }
 
         public virtual DateTime? FetchedAt { get; set; }
-        
+
         public virtual IList<_JobParameter> Parameters { get; set; }
         public virtual IList<_JobState> History { get; set; }
 

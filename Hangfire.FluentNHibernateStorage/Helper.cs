@@ -1,50 +1,43 @@
 using System;
 using System.Linq;
 using System.Linq.Expressions;
-using NHibernate;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     internal static class Helper
     {
-        public  const string ValueParameterName = "value";
-        public const string IdParameterName = "id"; 
+        public const string ValueParameterName = "newValue";
+        public const string ValueParameter2Name = "newValue2";
+        public const string IdParameterName = "entityId";
 
         internal static string GetSingleFieldUpdateSql(string table, string column, string idcolumn)
         {
-            return string.Format("update {0} set {1}=:{3} where {2}=:{4}", table, column, idcolumn, ValueParameterName,IdParameterName);
-        }
-        public static void UpsertEntity<T>(this IStatelessSession session, Expression<Func<T, bool>> matchFunc, Action<T> changeFunc,
-            Action<T> keysetAction) where T : new()
-        {
-            var entity = session.Query<T>().FirstOrDefault(matchFunc);
-            if (entity == null)
-            {
-                entity = new T();
-                keysetAction(entity);
-                changeFunc(entity);
-                session.Insert(entity);
-            }
-            else
-            {
-                changeFunc(entity);
-                session.Update(entity);
-            }
+            return string.Format("update {0} set {1}=:{3} where {2}=:{4}", table, column, idcolumn, ValueParameterName,
+                IdParameterName);
         }
 
-        public static void UpsertEntity<T>(this ISession session, Expression<Func<T, bool>> matchFunc, Action<T> changeFunc,
+        public static void UpsertEntity<T>(this IWrappedSession session, Expression<Func<T, bool>> matchFunc,
+            Action<T> changeFunc,
             Action<T> keysetAction) where T : new()
         {
-            var entity = session.Query<T>().FirstOrDefault(matchFunc);
-            if (entity == null)
+            using (var p = session.BeginTransaction())
             {
-                entity = new T();
-                keysetAction(entity);
+                var entity = session.Query<T>().FirstOrDefault(matchFunc);
+                if (entity == null)
+                {
+                    entity = new T();
+                    keysetAction(entity);
+                    changeFunc(entity);
+                    session.Insert(entity);
+                }
+                else
+                {
+                    changeFunc(entity);
+                    session.Update(entity);
+                }
+                session.Flush();
+                p.Commit();
             }
-            changeFunc(entity);
-            session.Save(entity);
-            session.Flush();
         }
     }
 }

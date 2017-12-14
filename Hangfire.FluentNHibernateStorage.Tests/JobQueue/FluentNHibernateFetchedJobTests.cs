@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateFetchedJob(null, _connection.Object, _fetchedJob));
+                () => new FluentNHibernateFetchedJob(null, _fetchedJob));
 
             Assert.Equal("storage", exception.ParamName);
         }
@@ -37,7 +37,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Ctor_ThrowsAnException_WhenConnectionIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateFetchedJob(_storage.Object, null, _fetchedJob));
+                () => new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob));
 
             Assert.Equal("connection", exception.ParamName);
         }
@@ -45,7 +45,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [Fact]
         public void Ctor_CorrectlySets_AllInstanceProperties()
         {
-            var fetchedJob = new FluentNHibernateFetchedJob(_storage.Object, _connection.Object, _fetchedJob);
+            var fetchedJob = new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob);
 
             Assert.Equal(JobId.ToString(), fetchedJob.JobId);
             Assert.Equal(Queue, fetchedJob.Queue);
@@ -53,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
         private FluentNHibernateFetchedJob CreateFetchedJob(int jobId, string queue)
         {
-            return new FluentNHibernateFetchedJob(_storage.Object, _connection.Object,
+            return new FluentNHibernateFetchedJob(_storage.Object,
                 new FetchedJob {JobId = jobId, Queue = queue, Id = _id});
         }
     }

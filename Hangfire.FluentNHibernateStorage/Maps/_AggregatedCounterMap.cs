@@ -16,7 +16,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string TableName
         {
-            get { return "`AggregatedCounter`"; }
+            get { return "`Hangfire_AggregatedCounter`"; }
         }
 
         protected override bool ValueNullable

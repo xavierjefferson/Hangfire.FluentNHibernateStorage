@@ -21,8 +21,8 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly string uz =
             Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.ExpireAt), nameof(_Job.Id));
 
-        private readonly Queue<Action<ISession>> _commandQueue
-            = new Queue<Action<ISession>>();
+        private readonly Queue<Action<IWrappedSession>> _commandQueue
+            = new Queue<Action<IWrappedSession>>();
 
         private readonly FluentNHibernateStorage _storage;
 
@@ -51,7 +51,8 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(uz).SetParameter(Helper.ValueParameterName, null).SetParameter(Helper.IdParameterName, int.Parse(jobId))
+                session.CreateQuery(uz).SetParameter(Helper.ValueParameterName, null)
+                    .SetParameter(Helper.IdParameterName, int.Parse(jobId))
                     .ExecuteUpdate());
         }
 
@@ -72,11 +73,12 @@ namespace Hangfire.FluentNHibernateStorage
                     CreatedAt = DateTime.UtcNow,
                     Data = JobHelper.ToJson(state.SerializeData())
                 };
-                session.Save(sqlState);
+                session.Insert(sqlState);
                 session.Flush();
-           
+
                 job.CurrentState = sqlState;
-                session.Save(job);
+                session.Update(job);
+                session.Flush();
             });
         }
 
@@ -87,14 +89,14 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireStateLock();
             QueueCommand(session =>
             {
-                session.Save(new _JobState
+                session.Insert(new _JobState
                 {
                     Job = new _Job {Id = int.Parse(jobId)},
                     Name = state.Name,
                     Reason = state.Reason,
                     CreatedAt = DateTime.UtcNow,
                     Data = JobHelper.ToJson(state.SerializeData())
-                });
+                }); 
             });
         }
 
@@ -110,37 +112,37 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void IncrementCounter(string key)
         {
-            Logger.TraceFormat("IncrementCounter key={0}", key);
-
-            AcquireCounterLock();
-            QueueCommand(session => session.Save(new _Counter {Key = key, Value = 1}));
+            InsertCounter(key, 1);
         }
 
 
         public override void IncrementCounter(string key, TimeSpan expireIn)
         {
-            Logger.TraceFormat("IncrementCounter key={0}, expireIn={1}", key, expireIn);
+            InsertCounter(key, 1, expireIn);
+        }
+
+        private void InsertCounter(string key, int value, TimeSpan? expireIn = null)
+        {
+            Logger.TraceFormat("InsertCounter key={0}, expireIn={1}", key, expireIn);
 
             AcquireCounterLock();
             QueueCommand(session =>
-                session.Save(new _Counter {Key = key, Value = 1, ExpireAt = DateTime.UtcNow.Add(expireIn)}));
+                session.Insert(new _Counter
+                {
+                    Key = key,
+                    Value = value,
+                    ExpireAt = expireIn == null ? (DateTime?) null : DateTime.UtcNow.Add(expireIn.Value)
+                }));
         }
 
         public override void DecrementCounter(string key)
         {
-            Logger.TraceFormat("DecrementCounter key={0}", key);
-
-            AcquireCounterLock();
-            QueueCommand(session => session.Save(new _Counter {Key = key, Value = -1}));
+            InsertCounter(key, -1);
         }
 
         public override void DecrementCounter(string key, TimeSpan expireIn)
         {
-            Logger.TraceFormat("DecrementCounter key={0} expireIn={1}", key, expireIn);
-
-            AcquireCounterLock();
-            QueueCommand(session =>
-                session.Save(new _Counter {Key = key, Value = -1, ExpireAt = DateTime.UtcNow.Add(expireIn)}));
+            InsertCounter(key, -1, expireIn);
         }
 
         public override void AddToSet(string key, string value)
@@ -175,7 +177,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 foreach (var i in items)
                 {
-                    session.Save(new _Set {Key = key, Value = i, Score = 0});
+                    session.Insert(new _Set {Key = key, Value = i, Score = 0});
                 }
             });
         }
@@ -205,7 +207,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("InsertToList key={0} value={1}", key, value);
 
             AcquireListLock();
-            QueueCommand(session => session.Save(new _List {Key = key, Value = value}));
+            QueueCommand(session => session.Insert(new _List {Key = key, Value = value}));
         }
 
 
@@ -217,7 +219,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             AcquireListLock();
             QueueCommand(session =>
-                session.DoActionByExpression<_List>(i => i.Key == key, i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
+                session.DoActionByExpression<_List>(i => i.Key == key,
+                    i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
         }
 
         public override void RemoveFromList(string key, string value)
@@ -235,11 +238,12 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireListLock();
             QueueCommand(session =>
             {
-                var idList = session.Query<_List>().OrderBy(i=>i.Id).Where(i=>i.Key==key).Select((i, j) => new {index = j, id = i.Id});
-                var before = idList.Where(i => i.index < keepStartingFrom).Union(idList.Where(i => i.index > keepEndingAt))
+                var idList = session.Query<_List>().OrderBy(i => i.Id).Where(i => i.Key == key)
+                    .Select((i, j) => new {index = j, id = i.Id});
+                var before = idList.Where(i => i.index < keepStartingFrom)
+                    .Union(idList.Where(i => i.index > keepEndingAt))
                     .Select(i => i.id);
-                session.DeleteByExpression<_List>(0,i=>before.Contains(i.Id));
-
+                session.DeleteByExpression<_List>(0, i => before.Contains(i.Id));
             });
         }
 
@@ -295,7 +299,8 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 foreach (var keyValuePair in keyValuePairs)
                 {
-                    session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key, i => i.Value = keyValuePair.Value,
+                    session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
+                        i => i.Value = keyValuePair.Value,
                         i =>
                         {
                             i.Field = keyValuePair.Key;
@@ -314,7 +319,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             AcquireHashLock();
             QueueCommand(session =>
-                session.DoActionByExpression<_Hash>(i => i.Key == key, i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
+                session.DoActionByExpression<_Hash>(i => i.Key == key,
+                    i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
         }
 
         public override void RemoveHash(string key)
@@ -329,17 +335,17 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void Commit()
         {
-            _storage.UseStatefulTransaction(connection =>
+            _storage.UseStatefulTransaction(session =>
             {
                 foreach (var command in _commandQueue)
                 {
-                    command(connection);
-                    connection.Flush();
+                    command(session);
+                    session.Flush();
                 }
             });
         }
 
-        internal void QueueCommand(Action<ISession> action)
+        internal void QueueCommand(Action<IWrappedSession> action)
         {
             _commandQueue.Enqueue(action);
         }

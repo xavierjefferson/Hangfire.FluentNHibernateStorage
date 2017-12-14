@@ -4,7 +4,6 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
- 
 using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
@@ -51,36 +50,30 @@ namespace Hangfire.FluentNHibernateStorage
             var entityName = typeof(T).Name;
             Logger.DebugFormat("Removing outdated records from table '{0}'...", entityName);
 
-           long removedCount = 0;
+            long removedCount = 0;
 
             do
             {
-                _storage.UseSession(connection =>
+                try
                 {
-                    try
-                    {
-                        Logger.DebugFormat("delete from `{0}` where ExpireAt < @now limit @count;", entityName);
+                    Logger.DebugFormat("delete from `{0}` where ExpireAt < @now limit @count;", entityName);
 
-                        using (
-                            new FluentNHibernateDistributedLock(
-                                connection,
-                                DistributedLockKey,
-                                DefaultLockTimeout,
-                                cancellationToken).Acquire())
-                        {
-                            var idList = connection.Query<T>().Where(i => i.ExpireAt < DateTime.UtcNow)
-                                .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
-                            removedCount = connection.DeleteById<T>(idList);
-                            
-                        }
-
-                        Logger.DebugFormat("removed records count={0}", removedCount);
-                    }
-                    catch (Exception ex)
+                    using (var distributedLock =
+                        new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
+                            cancellationToken).Acquire())
                     {
-                        Logger.Error(ex.ToString());
+                        var idList = distributedLock.Session.Query<T>().Where(i => i.ExpireAt < DateTime.UtcNow)
+                            .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+                        removedCount = distributedLock.Session.DeleteById<T>(idList);
                     }
-                });
+
+                    Logger.DebugFormat("removed records count={0}", removedCount);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.ToString());
+                }
+
 
                 if (removedCount > 0)
                 {

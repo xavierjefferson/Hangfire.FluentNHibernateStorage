@@ -27,7 +27,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         public void Ctor_ThrowsAnException_WhenOptionsValueIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => FluentNHibernateStorageFactory.ForMySQL(System.Configuration.ConfigurationManager.ConnectionString["hello"]), null));
+                () => FluentNHibernateStorageFactory.ForMySQL(System.Configuration.ConfigurationManager.ConnectionString["hello"]), null);
 
             Assert.Equal("options", exception.ParamName);
         }

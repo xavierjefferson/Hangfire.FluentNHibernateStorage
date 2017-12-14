@@ -43,7 +43,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             return _storage.UseStatelessSession(connection =>
             {
-                return connection.Query<_JobQueue>().OrderBy(i=>i.Id).Where(i => i.Queue == queue).Select(i => i.Job.Id).Skip(from)
+                return connection.Query<_JobQueue>().OrderBy(i => i.Id).Where(i => i.Queue == queue)
+                    .Select(i => i.Job.Id).Skip(from)
                     .Take(perPage).ToList();
             });
         }

@@ -1,15 +1,14 @@
-﻿using FluentNHibernate.Mapping;
-using Hangfire.FluentNHibernateStorage.Entities;
+﻿using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal abstract class EntityBase1Map<T, U> : ClassMap<T> where T : EntityBase1<U>
+    internal abstract class EntityBase1Map<T, U> : IntIdMap<T> where T : EntityBase1<U>
     {
         protected EntityBase1Map()
         {
             Table(TableName);
             LazyLoad();
-            Id(i => i.Id).Column("`Id`").GeneratedBy.Identity();
+
             var keyPropertyPart = Map(i => i.Key).Column("`Key`").Not.Nullable();
             if (HasUniqueKey)
             {
@@ -19,7 +18,12 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             {
                 keyPropertyPart.Index(KeyObjectName);
             }
+            
             var valuePropertyPart = Map(i => i.Value).Column("`Value`");
+            if (ValueInKey)
+            {
+                valuePropertyPart.UniqueKey(KeyObjectName);
+            }
             if (ValueNullable)
             {
                 valuePropertyPart.Nullable();
@@ -35,6 +39,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Map(i => i.ExpireAt).Column("`ExpireAt`").Nullable();
         }
 
+        protected virtual bool ValueInKey { get { return false; } }
         protected abstract bool HasUniqueKey { get; }
         protected abstract string KeyObjectName { get; }
         protected abstract string TableName { get; }

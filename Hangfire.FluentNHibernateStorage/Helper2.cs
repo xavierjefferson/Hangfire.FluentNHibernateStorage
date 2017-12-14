@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using Hangfire.FluentNHibernateStorage.Entities;
-using NHibernate;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -13,12 +11,12 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly Dictionary<Type, string> DeleteCommands = new Dictionary<Type, string>();
         private static readonly object mutex = new object();
 
-        public static void DeleteById<T>(this ISession session, int id) where T : IExpireWithId
+        public static void DeleteById<T>(this IWrappedSession session, int id) where T : IExpireWithId
         {
             DeleteById<T>(session, new[] {id});
         }
 
-        public static long DeleteById<T>(this ISession session, ICollection<int> id) where T : IExpireWithId
+        public static long DeleteById<T>(this IWrappedSession session, ICollection<int> id) where T : IExpireWithId
         {
             if (!id.Any())
             {
@@ -27,21 +25,23 @@ namespace Hangfire.FluentNHibernateStorage
             string queryString;
             lock (mutex)
             {
-                if (DeleteCommands.ContainsKey(typeof(T)))
+                var typeName = typeof(T);
+                if (DeleteCommands.ContainsKey(typeName))
                 {
-                    queryString = DeleteCommands[typeof(T)];
+                    queryString = DeleteCommands[typeName];
                 }
                 else
                 {
-                    queryString = string.Format("delete from {0} where {1} in (:{2})", nameof(T),
+                    queryString = string.Format("delete from {0} where {1} in (:{2})", typeName.Name,
                         nameof(IExpireWithId.Id), Helper.IdParameterName);
-                    DeleteCommands[typeof(T)] = queryString;
+                    DeleteCommands[typeName] = queryString;
                 }
             }
             return session.CreateQuery(queryString).SetParameterList(Helper.IdParameterName, id).ExecuteUpdate();
         }
 
-        public static void DoActionByExpression<T>(this ISession session, Expression<Func<T, bool>> expr,
+
+        public static void DoActionByExpression<T>(this IWrappedSession session, Expression<Func<T, bool>> expr,
             Action<T> action)
             where T : IExpireWithId
         {
@@ -52,7 +52,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        public static void DeleteByExpression<T>(this ISession session, int id, Expression<Func<T, bool>> expr)
+        public static void DeleteByExpression<T>(this IWrappedSession session, int id, Expression<Func<T, bool>> expr)
             where T : IExpireWithId
         {
             var idList = session.Query<T>().Where(expr).Select(i => i.Id).ToList();

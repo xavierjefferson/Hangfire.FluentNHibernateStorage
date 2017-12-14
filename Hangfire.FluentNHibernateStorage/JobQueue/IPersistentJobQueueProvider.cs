@@ -1,6 +1,6 @@
 ﻿namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    public interface IPersistentJobQueueProvider
+     interface IPersistentJobQueueProvider
     {
         IPersistentJobQueue GetJobQueue();
         IPersistentJobQueueMonitoringApi GetJobQueueMonitoringApi();

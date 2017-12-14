@@ -3,11 +3,10 @@ using System.Globalization;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
-using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    public  class FluentNHibernateFetchedJob : IFetchedJob
+    public class FluentNHibernateFetchedJob : IFetchedJob
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -18,8 +17,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         private static readonly string UpdateJobQueueSql =
             Helper.GetSingleFieldUpdateSql(nameof(_JobQueue), nameof(_JobQueue.FetchedAt), nameof(_JobQueue.Id));
 
-        private readonly ISession _session;
         private readonly int _id;
+
+      
 
         private readonly FluentNHibernateStorage _storage;
         private bool _disposed;
@@ -28,11 +28,10 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public FluentNHibernateFetchedJob(
             FluentNHibernateStorage storage,
-            ISession connection,
             FetchedJob fetchedJob)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
-            _session = connection ?? throw new ArgumentNullException("connection");
+           
             _id = fetchedJob?.Id ?? throw new ArgumentNullException("fetchedJob");
             JobId = fetchedJob.JobId.ToString(CultureInfo.InvariantCulture);
             Queue = fetchedJob.Queue;
@@ -49,7 +48,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 Requeue();
             }
 
-            _storage.ReleaseSession(_session);
+             
 
             _disposed = true;
         }
@@ -57,20 +56,24 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public void RemoveFromQueue()
         {
             Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
-
-            //todo: unit test
-            _session.CreateQuery(DeleteJobQueueSql).SetParameter(Helper.IdParameterName, _id).ExecuteUpdate();
-
+            using (var session = _storage.GetStatefulSession())
+            {
+                //todo: unit test
+                session.CreateQuery(DeleteJobQueueSql).SetParameter(Helper.IdParameterName, _id).ExecuteUpdate();
+            }
             _removedFromQueue = true;
         }
 
         public void Requeue()
         {
             Logger.TraceFormat("Requeue JobId={0}", JobId);
-
-            //todo: unit test
-            _session.CreateQuery(UpdateJobQueueSql).SetParameter(Helper.ValueParameterName, null).SetParameter(Helper.IdParameterName, _id)
-                .ExecuteUpdate();
+            using (var session = _storage.GetStatefulSession())
+            {
+                //todo: unit test
+                session.CreateQuery(UpdateJobQueueSql).SetParameter(Helper.ValueParameterName, null)
+                    .SetParameter(Helper.IdParameterName, _id)
+                    .ExecuteUpdate();
+            }
             _requeued = true;
         }
 

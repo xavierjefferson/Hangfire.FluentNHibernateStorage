@@ -1,4 +1,5 @@
 using Hangfire.FluentNHibernateStorage.Entities;
+using NHibernate.Linq.Functions;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
@@ -21,14 +22,16 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string TableName
         {
-            get { return "`Set`"; }
+            get { return "`Hangfire_Set`"; }
         }
 
         protected override bool ValueNullable
         {
             get { return false; }
         }
-
+        protected override bool ValueInKey{get {
+            return true;
+        }}
         protected override int? ValueLength
         {
             get { return 256; }
