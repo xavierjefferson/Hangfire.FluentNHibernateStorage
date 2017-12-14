@@ -17,7 +17,7 @@ Install-Package Hangfire.FluentNHibernateStorage
 ## Usage
 
 Use one the following ways to initialize `FluentNHibernateStorage`: 
-- Call static method of class FluentNHibernateStorageFactory with ConnectionString parameter and pass it to `Configuration` with `UseStorage` method:
+- Call one of the static methods of class FluentNHibernateStorageFactory (respective to your database provider) with ConnectionString parameter and pass it to `Configuration` with `UseStorage` method:
 ```
   GlobalConfiguration.Configuration.UseStorage(
     FluentNHibernateStorageFactory.ForMySQL(connectionString));
