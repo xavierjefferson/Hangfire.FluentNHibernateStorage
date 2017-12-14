@@ -7,8 +7,8 @@
     <ProjectGuid>{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Hangfire.MySql</RootNamespace>
-    <AssemblyName>Hangfire.MySql</AssemblyName>
+    <RootNamespace>Hangfire.FluentNHibernateStorage</RootNamespace>
+    <AssemblyName>Hangfire.FluentNHibernateStorage</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -33,8 +33,14 @@
     <Reference Include="Dapper">
       <HintPath>..\packages\Dapper.1.42\lib\net45\Dapper.dll</HintPath>
     </Reference>
+    <Reference Include="FluentNHibernate, Version=2.0.3.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\FluentNHibernate.2.0.3.0\lib\net40\FluentNHibernate.dll</HintPath>
+    </Reference>
     <Reference Include="Hangfire.Core">
       <HintPath>..\packages\Hangfire.Core.1.5.3\lib\net45\Hangfire.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Iesi.Collections, Version=4.0.0.0, Culture=neutral, PublicKeyToken=aa95f207798dfdb4, processorArchitecture=MSIL">
+      <HintPath>..\packages\Iesi.Collections.4.0.0.4000\lib\net40\Iesi.Collections.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data, Version=6.9.9.0, Culture=neutral, PublicKeyToken=c5687fc88969c44d">
       <SpecificVersion>False</SpecificVersion>
@@ -43,6 +49,9 @@
     <Reference Include="Newtonsoft.Json, Version=4.5.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Newtonsoft.Json.5.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="NHibernate, Version=4.0.0.4000, Culture=neutral, PublicKeyToken=aa95f207798dfdb4, processorArchitecture=MSIL">
+      <HintPath>..\packages\NHibernate.4.0.0.4000\lib\net40\NHibernate.dll</HintPath>
     </Reference>
     <Reference Include="Owin">
       <HintPath>..\packages\Owin.1.0\lib\net40\Owin.dll</HintPath>
@@ -59,39 +68,63 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CountersAggregator.cs" />
-    <Compile Include="Entities\JobParameter.cs" />
-    <Compile Include="Entities\SqlHash.cs" />
-    <Compile Include="Entities\SqlState.cs" />
+    <Compile Include="Entities\EntityBase0.cs" />
+    <Compile Include="Entities\_DistributedLock.cs" />
+    <Compile Include="Maps\DistributedLockMap.cs" />
+    <Compile Include="Entities\_AggregatedCounter.cs" />
+    <Compile Include="Maps\AggregatedCounterMap.cs" />
+    <Compile Include="Entities\_Counter.cs" />
+    <Compile Include="Maps\Gen1Map.cs" />
+    <Compile Include="Maps\CounterMap.cs" />
+    <Compile Include="Entities\EntityBase1.cs" />
+    <Compile Include="Entities\IExpirable.cs" />
+    <Compile Include="Entities\IExpireWithId.cs" />
+    <Compile Include="Entities\IExpireWithKey.cs" />
+    <Compile Include="Entities\_JobParameter.cs" />
+    <Compile Include="Maps\JobParameterMap.cs" />
+    <Compile Include="Maps\ServerMap.cs" />
+    <Compile Include="Entities\_Hash.cs" />
+    <Compile Include="Maps\SqlHashMap.cs" />
+    <Compile Include="Maps\SqlJobMap.cs" />
+    <Compile Include="Entities\_JobQueue.cs" />
+    <Compile Include="Maps\SqlJobQueueMap.cs" />
+    <Compile Include="Entities\_List.cs" />
+    <Compile Include="Maps\SqlListMap.cs" />
+    <Compile Include="Entities\_Set.cs" />
+    <Compile Include="Maps\SqlSetMap.cs" />
+    <Compile Include="Entities\_JobState.cs" />
+    <Compile Include="Maps\SqlStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
+    <Compile Include="Helper.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueMonitoringApi.cs" />
     <Compile Include="JobQueue\EnqueuedAndFetchedCountDto.cs" />
     <Compile Include="JobQueue\IPersistentJobQueue.cs" />
-    <Compile Include="JobQueue\MySqlFetchedJob.cs" />
-    <Compile Include="JobQueue\MySqlJobQueue.cs" />
-    <Compile Include="JobQueue\MySqlJobQueueMonitoringApi.cs" />
-    <Compile Include="JobQueue\MySqlJobQueueProvider.cs" />
-    <Compile Include="Monitoring\MySqlMonitoringApi.cs" />
-    <Compile Include="Entities\SqlJob.cs" />
-    <Compile Include="Entities\Server.cs" />
-    <Compile Include="MySqlDistributedLock.cs" />
-    <Compile Include="MySqlDistributedLockException.cs" />
-    <Compile Include="MySqlObjectsInstaller.cs" />
-    <Compile Include="MySqlStorage.cs" />
-    <Compile Include="MySqlStorageConnection.cs" />
-    <Compile Include="MySqlStorageOptions.cs" />
-    <Compile Include="MySqlWriteOnlyTransaction.cs" />
+    <Compile Include="JobQueue\NHFetchedJob.cs" />
+    <Compile Include="JobQueue\NHJobQueue.cs" />
+    <Compile Include="JobQueue\NHJobQueueMonitoringApi.cs" />
+    <Compile Include="JobQueue\NHJobQueueProvider.cs" />
+    <Compile Include="Monitoring\NHMonitoringApi.cs" />
+    <Compile Include="Entities\_Job.cs" />
+    <Compile Include="Entities\_Server.cs" />
+    <Compile Include="NHDistributedLock.cs" />
+    <Compile Include="NHDistributedLockException.cs" />
+    <Compile Include="NHStorage.cs" />
+    <Compile Include="NHStorageConnection.cs" />
+    <Compile Include="NHStorageOptions.cs" />
+    <Compile Include="NHWriteOnlyTransaction.cs" />
     <Compile Include="JobQueue\PersistentJobQueueProviderCollection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Entities\ServerData.cs" />
+    <Compile Include="z0.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Install.sql" />
+    <None Include="Install.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

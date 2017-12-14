@@ -1,30 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Transactions;
-using Dapper;
-using Hangfire.MySql.JobQueue;
-using Hangfire.MySql.Monitoring;
-using Hangfire.Storage.Monitoring;
-using Moq;
-using MySql.Data.MySqlClient;
-using Xunit;
+using Hangfire.FluentNHibernateStorage.JobQueue;
 
-namespace Hangfire.MySql.Tests.Monitoring
+namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
 {
     public class MySqlMonitoringApiTests : IClassFixture<TestDatabaseFixture>, IDisposable
     {
-        private readonly MySqlMonitoringApi _sut;
-        private readonly MySqlStorage _storage;
-        private readonly int? _jobListLimit = 1000;
+        private readonly string _arguments = "[\"test\"]";
         private readonly MySqlConnection _connection;
+        private readonly DateTime _createdAt = DateTime.UtcNow;
+        private readonly DateTime _expireAt = DateTime.UtcNow.AddMinutes(1);
+
         private readonly string _invocationData =
             "{\"Type\":\"System.Console, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"," +
             "\"Method\":\"WriteLine\"," +
             "\"ParameterTypes\":\"[\\\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\\\"]\"," +
             "\"Arguments\":\"[\\\"\\\"test\\\"\\\"]\"}";
-        private readonly string _arguments = "[\"test\"]";
-        private readonly DateTime _createdAt = DateTime.UtcNow;
-        private readonly DateTime _expireAt = DateTime.UtcNow.AddMinutes(1);
+
+        private readonly int? _jobListLimit = 1000;
+        private readonly NHStorage _storage;
+        private readonly MySqlMonitoringApi _sut;
 
         public MySqlMonitoringApiTests()
         {
@@ -38,7 +33,7 @@ namespace Hangfire.MySql.Tests.Monitoring
             defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                 .Returns(persistentJobQueueMonitoringApiMock.Object);
 
-            var mySqlStorageMock = new Mock<MySqlStorage>(_connection);
+            var mySqlStorageMock = new Mock<NHStorage>(_connection);
             mySqlStorageMock
                 .Setup(m => m.QueueProviders)
                 .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
@@ -53,7 +48,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             _storage.Dispose();
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnEnqueuedCount()
         {
             const int expectedEnqueuedCount = 1;
@@ -71,7 +67,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedEnqueuedCount, result.Enqueued);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnFailedCount()
         {
             const int expectedFailedCount = 2;
@@ -90,7 +87,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedFailedCount, result.Failed);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnProcessingCount()
         {
             const int expectedProcessingCount = 1;
@@ -108,7 +106,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedProcessingCount, result.Processing);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnScheduledCount()
         {
             const int expectedScheduledCount = 3;
@@ -128,7 +127,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedScheduledCount, result.Scheduled);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnQueuesCount()
         {
             const int expectedQueuesCount = 1;
@@ -138,7 +138,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedQueuesCount, result.Queues);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnServersCount()
         {
             const int expectedServersCount = 2;
@@ -157,7 +158,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedServersCount, result.Servers);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnSucceededCount()
         {
             const int expectedStatsSucceededCount = 11;
@@ -177,7 +179,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedStatsSucceededCount, result.Succeeded);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnDeletedCount()
         {
             const int expectedStatsDeletedCount = 7;
@@ -198,11 +201,12 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedStatsDeletedCount, result.Deleted);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnRecurringCount()
         {
             const int expectedRecurringCount = 1;
-            
+
             StatisticsDto result = null;
             _storage.UseConnection(connection =>
             {
@@ -216,20 +220,26 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(expectedRecurringCount, result.Recurring);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnJob()
         {
             JobDetailsDto result = null;
 
             _storage.UseConnection(connection =>
             {
-                var jobId = 
+                var jobId =
                     connection.ExecuteScalar<string>(
-                    "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
-                    "values (@createdAt, @invocationData, @arguments,@expireAt);" +
-                    "select last_insert_id(); ",
-
-                    new { createdAt = _createdAt, invocationData = _invocationData, arguments = _arguments, expireAt = _expireAt });
+                        "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
+                        "values (@createdAt, @invocationData, @arguments,@expireAt);" +
+                        "select last_insert_id(); ",
+                        new
+                        {
+                            createdAt = _createdAt,
+                            invocationData = _invocationData,
+                            arguments = _arguments,
+                            expireAt = _expireAt
+                        });
 
                 result = _sut.JobDetails(jobId);
             });
@@ -237,7 +247,8 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.NotNull(result.Job);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnCreatedAtAndExpireAt()
         {
             JobDetailsDto result = null;
@@ -246,40 +257,54 @@ namespace Hangfire.MySql.Tests.Monitoring
             {
                 var jobId =
                     connection.ExecuteScalar<string>(
-                    "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
-                    "values (@createdAt, @invocationData, @arguments,@expireAt);" +
-                    "select last_insert_id(); ",
-                    new { createdAt = _createdAt, invocationData = _invocationData, arguments = _arguments, expireAt = _expireAt });
+                        "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
+                        "values (@createdAt, @invocationData, @arguments,@expireAt);" +
+                        "select last_insert_id(); ",
+                        new
+                        {
+                            createdAt = _createdAt,
+                            invocationData = _invocationData,
+                            arguments = _arguments,
+                            expireAt = _expireAt
+                        });
 
                 result = _sut.JobDetails(jobId);
             });
 
-            Assert.Equal(_createdAt.ToString("yyyy-MM-dd hh:mm:ss"), result.CreatedAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
-            Assert.Equal(_expireAt.ToString("yyyy-MM-dd hh:mm:ss"), result.ExpireAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
+            Assert.Equal(_createdAt.ToString("yyyy-MM-dd hh:mm:ss"),
+                result.CreatedAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
+            Assert.Equal(_expireAt.ToString("yyyy-MM-dd hh:mm:ss"),
+                result.ExpireAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnProperties()
         {
             var properties = new Dictionary<string, string>();
             properties["CurrentUICulture"] = "en-US";
             properties["CurrentCulture"] = "lt-LT";
-           
+
             JobDetailsDto result = null;
 
             _storage.UseConnection(connection =>
             {
                 var jobId =
                     connection.ExecuteScalar<string>(
-                    "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
-                    "values (@createdAt, @invocationData, @arguments,@expireAt);" +
-                    "set @jobId = last_insert_id(); " +
-                    "insert into JobParameter (JobId, Name, Value) " +
-                    "values (@jobId, 'CurrentUICulture', 'en-US')," +
-                    "       (@jobId, 'CurrentCulture', 'lt-LT');" +
-                    "select @jobId;",
-
-                    new { createdAt = _createdAt, invocationData = _invocationData, arguments = _arguments, expireAt = _expireAt });
+                        "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
+                        "values (@createdAt, @invocationData, @arguments,@expireAt);" +
+                        "set @jobId = last_insert_id(); " +
+                        "insert into JobParameter (JobId, Name, Value) " +
+                        "values (@jobId, 'CurrentUICulture', 'en-US')," +
+                        "       (@jobId, 'CurrentCulture', 'lt-LT');" +
+                        "select @jobId;",
+                        new
+                        {
+                            createdAt = _createdAt,
+                            invocationData = _invocationData,
+                            arguments = _arguments,
+                            expireAt = _expireAt
+                        });
 
                 result = _sut.JobDetails(jobId);
             });
@@ -287,11 +312,13 @@ namespace Hangfire.MySql.Tests.Monitoring
             Assert.Equal(properties, result.Properties);
         }
 
-        [Fact, CleanDatabase(IsolationLevel.ReadUncommitted)]
+        [Fact]
+        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnHistory()
         {
             const string jobStateName = "Scheduled";
-            const string stateData = "{\"EnqueueAt\":\"2016-02-21T11:56:05.0561988Z\", \"ScheduledAt\":\"2016-02-21T11:55:50.0561988Z\"}";
+            const string stateData =
+                "{\"EnqueueAt\":\"2016-02-21T11:56:05.0561988Z\", \"ScheduledAt\":\"2016-02-21T11:55:50.0561988Z\"}";
 
             JobDetailsDto result = null;
 
@@ -299,22 +326,21 @@ namespace Hangfire.MySql.Tests.Monitoring
             {
                 var jobId =
                     connection.ExecuteScalar<string>(
-                    "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
-                    "values (@createdAt, @invocationData, @arguments,@expireAt);" +
-                    "set @jobId = last_insert_id(); " +
-                    "insert into State (JobId, Name, CreatedAt, Data) " +
-                    "values (@jobId, @jobStateName, @createdAt, @stateData);" +
-                    "select @jobId;",
-
-                    new
-                    {
-                        createdAt = _createdAt, 
-                        invocationData = _invocationData, 
-                        arguments = _arguments, 
-                        expireAt = _expireAt, 
-                        jobStateName, 
-                        stateData
-                    });
+                        "insert into Job (CreatedAt,InvocationData,Arguments,ExpireAt) " +
+                        "values (@createdAt, @invocationData, @arguments,@expireAt);" +
+                        "set @jobId = last_insert_id(); " +
+                        "insert into State (JobId, Name, CreatedAt, Data) " +
+                        "values (@jobId, @jobStateName, @createdAt, @stateData);" +
+                        "select @jobId;",
+                        new
+                        {
+                            createdAt = _createdAt,
+                            invocationData = _invocationData,
+                            arguments = _arguments,
+                            expireAt = _expireAt,
+                            jobStateName,
+                            stateData
+                        });
 
                 result = _sut.JobDetails(jobId);
             });

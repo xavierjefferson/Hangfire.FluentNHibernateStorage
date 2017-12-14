@@ -1,4 +1,4 @@
-﻿namespace Hangfire.MySql.JobQueue
+﻿namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public interface IPersistentJobQueueProvider
     {

@@ -1,13 +1,13 @@
 using System;
 using System.Transactions;
 
-namespace Hangfire.MySql
+namespace Hangfire.FluentNHibernateStorage
 {
-    public  class MySqlStorageOptions
+    public class NHStorageOptions
     {
         private TimeSpan _queuePollInterval;
 
-        public MySqlStorageOptions()
+        public NHStorageOptions()
         {
             TransactionIsolationLevel = IsolationLevel.ReadCommitted;
             QueuePollInterval = TimeSpan.FromSeconds(15);
@@ -26,7 +26,7 @@ namespace Hangfire.MySql
             get { return _queuePollInterval; }
             set
             {
-                var message = String.Format(
+                var message = string.Format(
                     "The QueuePollInterval property value should be positive. Given: {0}.",
                     value);
 
@@ -50,7 +50,9 @@ namespace Hangfire.MySql
 
         public int? DashboardJobListLimit { get; set; }
         public TimeSpan TransactionTimeout { get; set; }
-        [Obsolete("Does not make sense anymore. Background jobs re-queued instantly even after ungraceful shutdown now. Will be removed in 2.0.0.")]
+
+        [Obsolete(
+            "Does not make sense anymore. Background jobs re-queued instantly even after ungraceful shutdown now. Will be removed in 2.0.0.")]
         public TimeSpan InvisibilityTimeout { get; set; }
     }
 }

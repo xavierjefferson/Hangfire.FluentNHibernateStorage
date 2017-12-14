@@ -1,14 +1,13 @@
 ﻿using System;
-using Xunit;
 
-namespace Hangfire.MySql.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class StorageOptionsTests
     {
         [Fact]
         public void Ctor_SetsTheDefaultOptions()
         {
-            var options = new MySqlStorageOptions();
+            var options = new NHStorageOptions();
 
             Assert.True(options.QueuePollInterval > TimeSpan.Zero);
             Assert.True(options.InvisibilityTimeout > TimeSpan.Zero);
@@ -19,7 +18,7 @@ namespace Hangfire.MySql.Tests
         [Fact]
         public void Set_QueuePollInterval_ShouldThrowAnException_WhenGivenIntervalIsEqualToZero()
         {
-            var options = new MySqlStorageOptions();
+            var options = new NHStorageOptions();
             Assert.Throws<ArgumentException>(
                 () => options.QueuePollInterval = TimeSpan.Zero);
         }
@@ -27,7 +26,7 @@ namespace Hangfire.MySql.Tests
         [Fact]
         public void Set_QueuePollInterval_ShouldThrowAnException_WhenGivenIntervalIsNegative()
         {
-            var options = new MySqlStorageOptions();
+            var options = new NHStorageOptions();
             Assert.Throws<ArgumentException>(
                 () => options.QueuePollInterval = TimeSpan.FromSeconds(-1));
         }
@@ -35,7 +34,7 @@ namespace Hangfire.MySql.Tests
         [Fact]
         public void Set_QueuePollInterval_SetsTheValue()
         {
-            var options = new MySqlStorageOptions();
+            var options = new NHStorageOptions();
             options.QueuePollInterval = TimeSpan.FromSeconds(1);
             Assert.Equal(TimeSpan.FromSeconds(1), options.QueuePollInterval);
         }

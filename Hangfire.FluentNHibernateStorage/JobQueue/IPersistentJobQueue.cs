@@ -1,12 +1,12 @@
-using System.Data;
 using System.Threading;
 using Hangfire.Storage;
+using NHibernate;
 
-namespace Hangfire.MySql.JobQueue
+namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public interface IPersistentJobQueue
     {
         IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken);
-        void Enqueue(IDbConnection connection, string queue, string jobId);
+        void Enqueue(ISession connection, string queue, string jobId);
     }
 }

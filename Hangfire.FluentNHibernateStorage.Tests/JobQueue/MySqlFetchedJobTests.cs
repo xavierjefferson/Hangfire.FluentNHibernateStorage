@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Data;
-using Dapper;
-using Hangfire.MySql.JobQueue;
-using Moq;
-using Xunit;
 
-namespace Hangfire.MySql.Tests.JobQueue
+namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 {
     public class MySqlFetchedJobTests : IClassFixture<TestDatabaseFixture>
     {
@@ -13,16 +8,16 @@ namespace Hangfire.MySql.Tests.JobQueue
         private const string Queue = "queue";
 
         private readonly Mock<IDbConnection> _connection;
-        private readonly Mock<MySqlStorage> _storage;
-        private readonly int _id = 0;
         private readonly FetchedJob _fetchedJob;
+        private readonly int _id = 0;
+        private readonly Mock<NHStorage> _storage;
 
         public MySqlFetchedJobTests()
         {
-            _fetchedJob = new FetchedJob(){Id = _id, JobId = JobId, Queue = Queue};
+            _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
             _connection = new Mock<IDbConnection>();
-            var options = new MySqlStorageOptions { PrepareSchemaIfNecessary = false };
-            _storage = new Mock<MySqlStorage>(ConnectionUtils.GetConnectionString(), options);
+            var options = new NHStorageOptions {PrepareSchemaIfNecessary = false};
+            _storage = new Mock<NHStorage>(ConnectionUtils.GetConnectionString(), options);
         }
 
         [Fact]
@@ -42,7 +37,7 @@ namespace Hangfire.MySql.Tests.JobQueue
 
             Assert.Equal("connection", exception.ParamName);
         }
-        
+
         [Fact]
         public void Ctor_CorrectlySets_AllInstanceProperties()
         {
@@ -55,7 +50,7 @@ namespace Hangfire.MySql.Tests.JobQueue
         private MySqlFetchedJob CreateFetchedJob(int jobId, string queue)
         {
             return new MySqlFetchedJob(_storage.Object, _connection.Object,
-                new FetchedJob() {JobId = jobId, Queue = queue, Id = _id});
+                new FetchedJob {JobId = jobId, Queue = queue, Id = _id});
         }
     }
 }

@@ -45,7 +45,14 @@ CREATE TABLE `DistributedLock` (
   `CreatedAt` datetime(6) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
-
+CREATE TABLE `List`
+(
+	`Id` int(11) NOT NULL AUTO_INCREMENT,
+	`Key` varchar(100) NOT NULL,
+	`Value` longtext NULL,
+	`ExpireAt` datetime(6) NULL,
+	PRIMARY KEY (`Id`)
+) ENGINE=InnoDB  CHARSET=latin1;
 -- ----------------------------
 -- Table structure for `Hash`
 -- ----------------------------
@@ -143,11 +150,3 @@ CREATE TABLE `State`
 	CONSTRAINT `FK_HangFire_State_Job` FOREIGN KEY (`JobId`) REFERENCES `Job` (`Id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB  CHARSET=latin1;
 
-CREATE TABLE `List`
-(
-	`Id` int(11) NOT NULL AUTO_INCREMENT,
-	`Key` varchar(100) NOT NULL,
-	`Value` longtext NULL,
-	`ExpireAt` datetime(6) NULL,
-	PRIMARY KEY (`Id`)
-) ENGINE=InnoDB  CHARSET=latin1;

@@ -1,11 +1,7 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
-using Dapper;
-using MySql.Data.MySqlClient;
-using Xunit;
 
-namespace Hangfire.MySql.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class ExpirationManagerTests : IClassFixture<TestDatabaseFixture>
     {
@@ -23,7 +19,8 @@ namespace Hangfire.MySql.Tests
             Assert.Throws<ArgumentNullException>(() => new ExpirationManager(null));
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_RemovesOutdatedRecords()
         {
             using (var connection = CreateConnection())
@@ -37,7 +34,8 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithNoExpirationTimeSet()
         {
             using (var connection = CreateConnection())
@@ -51,7 +49,8 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
         {
             using (var connection = CreateConnection())
@@ -65,7 +64,8 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_Processes_AggregatedCounterTable()
         {
             using (var connection = CreateConnection())
@@ -73,8 +73,8 @@ namespace Hangfire.MySql.Tests
                 // Arrange
                 connection
                     .Execute(
-                        "insert into AggregatedCounter (`Key`, Value, ExpireAt) values ('key', 1, @expireAt)", 
-                        new { expireAt = DateTime.UtcNow.AddMonths(-1) });
+                        "insert into AggregatedCounter (`Key`, Value, ExpireAt) values ('key', 1, @expireAt)",
+                        new {expireAt = DateTime.UtcNow.AddMonths(-1)});
 
                 var manager = CreateManager(connection);
 
@@ -86,7 +86,8 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_Processes_JobTable()
         {
             using (var connection = CreateConnection())
@@ -94,8 +95,8 @@ namespace Hangfire.MySql.Tests
                 // Arrange
                 connection.Execute(
                     "insert into Job (InvocationData, Arguments, CreatedAt, ExpireAt) " +
-                    "values ('', '', UTC_TIMESTAMP(), @expireAt)", 
-                    new { expireAt = DateTime.UtcNow.AddMonths(-1) });
+                    "values ('', '', UTC_TIMESTAMP(), @expireAt)",
+                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
 
                 var manager = CreateManager(connection);
 
@@ -107,15 +108,16 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_Processes_ListTable()
         {
             using (var connection = CreateConnection())
             {
                 // Arrange
                 connection.Execute(
-                    "insert into List (`Key`, ExpireAt) values ('key', @expireAt)", 
-                    new { expireAt = DateTime.UtcNow.AddMonths(-1) });
+                    "insert into List (`Key`, ExpireAt) values ('key', @expireAt)",
+                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
 
                 var manager = CreateManager(connection);
 
@@ -127,15 +129,16 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_Processes_SetTable()
         {
             using (var connection = CreateConnection())
             {
                 // Arrange
                 connection.Execute(
-                    "insert into `Set` (`Key`, Score, Value, ExpireAt) values ('key', 0, '', @expireAt)", 
-                    new { expireAt = DateTime.UtcNow.AddMonths(-1) });
+                    "insert into `Set` (`Key`, Score, Value, ExpireAt) values ('key', 0, '', @expireAt)",
+                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
 
                 var manager = CreateManager(connection);
 
@@ -147,7 +150,8 @@ namespace Hangfire.MySql.Tests
             }
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Execute_Processes_HashTable()
         {
             using (var connection = CreateConnection())
@@ -157,7 +161,7 @@ namespace Hangfire.MySql.Tests
 insert into Hash (`Key`, Field, Value, ExpireAt) 
 values ('key1', 'field', '', @expireAt),
        ('key2', 'field', '', @expireAt)";
-                connection.Execute(createSql, new { expireAt = DateTime.UtcNow.AddMonths(-1) });
+                connection.Execute(createSql, new {expireAt = DateTime.UtcNow.AddMonths(-1)});
 
                 var manager = CreateManager(connection);
 
@@ -177,7 +181,7 @@ insert into AggregatedCounter (`Key`, Value, ExpireAt)
 values ('key', 1, @expireAt);
 select last_insert_id() as Id";
 
-            var id = connection.Query(insertSql, new { @expireAt = expireAt }).Single();
+            var id = connection.Query(insertSql, new {expireAt}).Single();
             var recordId = (int) id.Id;
             return recordId;
         }
@@ -185,7 +189,7 @@ select last_insert_id() as Id";
         private static bool IsEntryExpired(MySqlConnection connection, int entryId)
         {
             var count = connection.Query<int>(
-                    "select count(*) from AggregatedCounter where Id = @id", new { id = entryId }).Single();
+                "select count(*) from AggregatedCounter where Id = @id", new {id = entryId}).Single();
             return count == 0;
         }
 
@@ -196,7 +200,7 @@ select last_insert_id() as Id";
 
         private ExpirationManager CreateManager(MySqlConnection connection)
         {
-            var storage = new MySqlStorage(connection);
+            var storage = new NHStorage(connection);
             return new ExpirationManager(storage, TimeSpan.Zero);
         }
     }

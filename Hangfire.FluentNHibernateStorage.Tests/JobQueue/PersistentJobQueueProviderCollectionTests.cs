@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Linq;
-using Hangfire.MySql.JobQueue;
-using Moq;
-using Xunit;
+using Hangfire.FluentNHibernateStorage.JobQueue;
 
-namespace Hangfire.MySql.Tests.JobQueue
+namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 {
     public class PersistentJobQueueProviderCollectionTests
     {
-        private static readonly string[] _queues = { "default", "critical" };
+        private static readonly string[] _queues = {"default", "critical"};
         private readonly Mock<IPersistentJobQueueProvider> _defaultProvider;
         private readonly Mock<IPersistentJobQueueProvider> _provider;
 

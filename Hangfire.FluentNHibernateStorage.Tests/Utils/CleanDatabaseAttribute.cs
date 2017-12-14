@@ -1,15 +1,13 @@
 ﻿using System.Reflection;
-using System.Transactions;
-using Xunit.Sdk;
 
-namespace Hangfire.MySql.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class CleanDatabaseAttribute : BeforeAfterTestAttribute
     {
         private readonly IsolationLevel _isolationLevel;
 
         private TransactionScope _transaction;
-        
+
         public CleanDatabaseAttribute(
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
         {
@@ -22,7 +20,7 @@ namespace Hangfire.MySql.Tests
             {
                 _transaction = new TransactionScope(
                     TransactionScopeOption.RequiresNew,
-                    new TransactionOptions { IsolationLevel = _isolationLevel });
+                    new TransactionOptions {IsolationLevel = _isolationLevel});
             }
         }
 

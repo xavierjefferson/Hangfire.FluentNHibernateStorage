@@ -1,24 +1,18 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
-using Dapper;
-using Hangfire.MySql.JobQueue;
-using Moq;
-using MySql.Data.MySqlClient;
-using Xunit;
 
-namespace Hangfire.MySql.Tests.JobQueue
+namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 {
     public class MySqlJobQueueTests : IClassFixture<TestDatabaseFixture>, IDisposable
     {
-        private static readonly string[] DefaultQueues = { "default" };
-        private readonly MySqlStorage _storage;
+        private static readonly string[] DefaultQueues = {"default"};
         private readonly MySqlConnection _connection;
+        private readonly NHStorage _storage;
 
         public MySqlJobQueueTests()
         {
             _connection = ConnectionUtils.CreateConnection();
-            _storage = new MySqlStorage(_connection);
+            _storage = new NHStorage(_connection);
         }
 
         public void Dispose()
@@ -27,16 +21,18 @@ namespace Hangfire.MySql.Tests.JobQueue
             _storage.Dispose();
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new MySqlJobQueue(null, new MySqlStorageOptions()));
+                () => new MySqlJobQueue(null, new NHStorageOptions()));
 
             Assert.Equal("storage", exception.ParamName);
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Ctor_ThrowsAnException_WhenOptionsValueIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
@@ -45,7 +41,8 @@ namespace Hangfire.MySql.Tests.JobQueue
             Assert.Equal("options", exception.ParamName);
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldThrowAnException_WhenQueuesCollectionIsNull()
         {
             _storage.UseConnection(connection =>
@@ -59,7 +56,8 @@ namespace Hangfire.MySql.Tests.JobQueue
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldThrowAnException_WhenQueuesCollectionIsEmpty()
         {
             _storage.UseConnection(connection =>
@@ -73,7 +71,8 @@ namespace Hangfire.MySql.Tests.JobQueue
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ThrowsOperationCanceled_WhenCancellationTokenIsSetAtTheBeginning()
         {
             _storage.UseConnection(connection =>
@@ -87,7 +86,8 @@ namespace Hangfire.MySql.Tests.JobQueue
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldWaitIndefinitely_WhenThereAreNoJobs()
         {
             _storage.UseConnection(connection =>
@@ -100,7 +100,8 @@ namespace Hangfire.MySql.Tests.JobQueue
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldFetchAJob_FromTheSpecifiedQueue()
         {
             const string arrangeSql = @"
@@ -111,13 +112,13 @@ select last_insert_id() as Id;";
             // Arrange
             _storage.UseConnection(connection =>
             {
-                var id = (int)connection.Query(
+                var id = (int) connection.Query(
                     arrangeSql,
-                    new { jobId = 1, queue = "default" }).Single().Id;
+                    new {jobId = 1, queue = "default"}).Single().Id;
                 var queue = CreateJobQueue(connection);
 
                 // Act
-                var payload = (MySqlFetchedJob)queue.Dequeue(
+                var payload = (MySqlFetchedJob) queue.Dequeue(
                     DefaultQueues,
                     CreateTimingOutCancellationToken());
 
@@ -127,7 +128,8 @@ select last_insert_id() as Id;";
             });
         }
 
-        [Fact,CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldDeleteAJob()
         {
             const string arrangeSql = @"
@@ -143,7 +145,7 @@ values (last_insert_id(), @queue)";
             {
                 connection.Execute(
                     arrangeSql,
-                    new { invocationData = "", arguments = "", queue = "default" });
+                    new {invocationData = "", arguments = "", queue = "default"});
                 var queue = CreateJobQueue(connection);
 
                 // Act
@@ -161,7 +163,8 @@ values (last_insert_id(), @queue)";
             });
         }
 
-        [Fact,CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldFetchATimedOutJobs_FromTheSpecifiedQueue()
         {
             const string arrangeSql = @"
@@ -194,7 +197,8 @@ values (last_insert_id(), @queue, @fetchedAt)";
             });
         }
 
-        [Fact,CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldSetFetchedAt_OnlyForTheFetchedJob()
         {
             const string arrangeSql = @"
@@ -212,8 +216,8 @@ values (last_insert_id(), @queue)";
                     arrangeSql,
                     new[]
                     {
-                        new { queue = "default", invocationData = "", arguments = "" },
-                        new { queue = "default", invocationData = "", arguments = "" }
+                        new {queue = "default", invocationData = "", arguments = ""},
+                        new {queue = "default", invocationData = "", arguments = ""}
                     });
                 var queue = CreateJobQueue(connection);
 
@@ -225,13 +229,14 @@ values (last_insert_id(), @queue)";
                 // Assert
                 var otherJobFetchedAt = connection.Query<DateTime?>(
                     "select FetchedAt from JobQueue where JobId != @id",
-                    new { id = payload.JobId }).Single();
+                    new {id = payload.JobId}).Single();
 
                 Assert.Null(otherJobFetchedAt);
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldFetchJobs_OnlyFromSpecifiedQueues()
         {
             const string arrangeSql = @"
@@ -247,7 +252,7 @@ values (last_insert_id(), @queue)";
 
                 connection.Execute(
                     arrangeSql,
-                    new { queue = "critical", invocationData = "", arguments = "" });
+                    new {queue = "critical", invocationData = "", arguments = ""});
 
                 Assert.Throws<OperationCanceledException>(
                     () => queue.Dequeue(
@@ -256,7 +261,8 @@ values (last_insert_id(), @queue)";
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Dequeue_ShouldFetchJobs_FromMultipleQueues()
         {
             const string arrangeSql = @"
@@ -271,21 +277,21 @@ values (last_insert_id(), @queue)";
                     arrangeSql,
                     new[]
                     {
-                        new { queue = "default", invocationData = "", arguments = "" },
-                        new { queue = "critical", invocationData = "", arguments = "" }
+                        new {queue = "default", invocationData = "", arguments = ""},
+                        new {queue = "critical", invocationData = "", arguments = ""}
                     });
 
                 var queue = CreateJobQueue(connection);
 
-                var critical = (MySqlFetchedJob)queue.Dequeue(
-                    new[] { "critical", "default" },
+                var critical = (MySqlFetchedJob) queue.Dequeue(
+                    new[] {"critical", "default"},
                     CreateTimingOutCancellationToken());
 
                 Assert.NotNull(critical.JobId);
                 Assert.Equal("critical", critical.Queue);
 
-                var @default = (MySqlFetchedJob)queue.Dequeue(
-                    new[] { "critical", "default" },
+                var @default = (MySqlFetchedJob) queue.Dequeue(
+                    new[] {"critical", "default"},
                     CreateTimingOutCancellationToken());
 
                 Assert.NotNull(@default.JobId);
@@ -293,7 +299,8 @@ values (last_insert_id(), @queue)";
             });
         }
 
-        [Fact, CleanDatabase]
+        [Fact]
+        [CleanDatabase]
         public void Enqueue_AddsAJobToTheQueue()
         {
             _storage.UseConnection(connection =>
@@ -317,12 +324,14 @@ values (last_insert_id(), @queue)";
             return source.Token;
         }
 
-        public static void Sample(string arg1, string arg2) { }
+        public static void Sample(string arg1, string arg2)
+        {
+        }
 
         private static MySqlJobQueue CreateJobQueue(MySqlConnection connection)
         {
-            var storage = new MySqlStorage(connection);
-            return new MySqlJobQueue(storage, new MySqlStorageOptions());
+            var storage = new NHStorage(connection);
+            return new MySqlJobQueue(storage, new NHStorageOptions());
         }
     }
 }

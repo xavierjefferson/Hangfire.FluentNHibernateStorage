@@ -1,6 +1,6 @@
 using System;
 
-namespace Hangfire.MySql.Entities
+namespace Hangfire.FluentNHibernateStorage.Entities
 {
     internal class ServerData
     {

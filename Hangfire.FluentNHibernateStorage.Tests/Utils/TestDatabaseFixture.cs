@@ -3,16 +3,18 @@ using System.Threading;
 using Dapper;
 using MySql.Data.MySqlClient;
 
-namespace Hangfire.MySql.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class TestDatabaseFixture : IDisposable
     {
         private static readonly object GlobalLock = new object();
+
         public TestDatabaseFixture()
         {
             Monitor.Enter(GlobalLock);
             CreateAndInitializeDatabase();
         }
+
         public void Dispose()
         {
             DropDatabase();
@@ -21,7 +23,7 @@ namespace Hangfire.MySql.Tests
 
         private static void CreateAndInitializeDatabase()
         {
-            var recreateDatabaseSql = String.Format(
+            var recreateDatabaseSql = string.Format(
                 @"CREATE DATABASE IF NOT EXISTS `{0}`",
                 ConnectionUtils.GetDatabaseName());
 
@@ -31,18 +33,14 @@ namespace Hangfire.MySql.Tests
                 connection.Execute(recreateDatabaseSql);
             }
 
-            using (var connection = new MySqlConnection(
-                ConnectionUtils.GetConnectionString()))
-            {
-                MySqlObjectsInstaller.Install(connection);
-            }
+            
         }
 
         private static void DropDatabase()
         {
-            var recreateDatabaseSql = String.Format(
-                   @"DROP DATABASE IF EXISTS `{0}`",
-                   ConnectionUtils.GetDatabaseName());
+            var recreateDatabaseSql = string.Format(
+                @"DROP DATABASE IF EXISTS `{0}`",
+                ConnectionUtils.GetDatabaseName());
 
             using (var connection = new MySqlConnection(
                 ConnectionUtils.GetMasterConnectionString()))

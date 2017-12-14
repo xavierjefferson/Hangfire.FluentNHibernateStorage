@@ -3,18 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using Hangfire.Logging;
 
-namespace Hangfire.MySql.JobQueue
+namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public class PersistentJobQueueProviderCollection : IEnumerable<IPersistentJobQueueProvider>
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
+        private readonly IPersistentJobQueueProvider _defaultProvider;
+
         private readonly List<IPersistentJobQueueProvider> _providers
             = new List<IPersistentJobQueueProvider>();
+
         private readonly Dictionary<string, IPersistentJobQueueProvider> _providersByQueue
             = new Dictionary<string, IPersistentJobQueueProvider>(StringComparer.OrdinalIgnoreCase);
-
-        private readonly IPersistentJobQueueProvider _defaultProvider;
 
         public PersistentJobQueueProviderCollection(IPersistentJobQueueProvider defaultProvider)
         {
@@ -23,6 +24,16 @@ namespace Hangfire.MySql.JobQueue
             _defaultProvider = defaultProvider;
 
             _providers.Add(_defaultProvider);
+        }
+
+        public IEnumerator<IPersistentJobQueueProvider> GetEnumerator()
+        {
+            return _providers.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
 
         public void Add(IPersistentJobQueueProvider provider, IEnumerable<string> queues)
@@ -45,16 +56,6 @@ namespace Hangfire.MySql.JobQueue
             return _providersByQueue.ContainsKey(queue)
                 ? _providersByQueue[queue]
                 : _defaultProvider;
-        }
-
-        public IEnumerator<IPersistentJobQueueProvider> GetEnumerator()
-        {
-            return _providers.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
         }
     }
 }
