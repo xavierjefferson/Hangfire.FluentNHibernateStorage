@@ -14,12 +14,12 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage.Monitoring
 {
-    internal class NHMonitoringApi : IMonitoringApi
+    internal class FluentNHibernateMonitoringApi : IMonitoringApi
     {
         private readonly int? _jobListLimit;
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public NHMonitoringApi([NotNull] NHStorage storage, int? jobListLimit)
+        public FluentNHibernateMonitoringApi([NotNull] FluentNHibernateStorage storage, int? jobListLimit)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
             _jobListLimit = jobListLimit;

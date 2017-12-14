@@ -70,6 +70,7 @@
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="Entities\EntityBase0.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
+    <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="Maps\DistributedLockMap.cs" />
     <Compile Include="Entities\_AggregatedCounter.cs" />
     <Compile Include="Maps\AggregatedCounterMap.cs" />
@@ -101,23 +102,23 @@
     <Compile Include="JobQueue\IPersistentJobQueueMonitoringApi.cs" />
     <Compile Include="JobQueue\EnqueuedAndFetchedCountDto.cs" />
     <Compile Include="JobQueue\IPersistentJobQueue.cs" />
-    <Compile Include="JobQueue\NHFetchedJob.cs" />
-    <Compile Include="JobQueue\NHJobQueue.cs" />
-    <Compile Include="JobQueue\NHJobQueueMonitoringApi.cs" />
-    <Compile Include="JobQueue\NHJobQueueProvider.cs" />
-    <Compile Include="Monitoring\NHMonitoringApi.cs" />
+    <Compile Include="JobQueue\FluentNHibernateFetchedJob.cs" />
+    <Compile Include="JobQueue\FluentNHibernateJobQueue.cs" />
+    <Compile Include="JobQueue\FluentNHibernateJobQueueMonitoringApi.cs" />
+    <Compile Include="JobQueue\FluentNHibernateJobQueueProvider.cs" />
+    <Compile Include="Monitoring\FluentNHibernateMonitoringApi.cs" />
     <Compile Include="Entities\_Job.cs" />
     <Compile Include="Entities\_Server.cs" />
-    <Compile Include="NHDistributedLock.cs" />
-    <Compile Include="NHDistributedLockException.cs" />
-    <Compile Include="NHStorage.cs" />
-    <Compile Include="NHStorageConnection.cs" />
-    <Compile Include="NHStorageOptions.cs" />
-    <Compile Include="NHWriteOnlyTransaction.cs" />
+    <Compile Include="FluentNHibernateDistributedLock.cs" />
+    <Compile Include="FluentNHibernateDistributedLockException.cs" />
+    <Compile Include="FluentNHibernateStorage.cs" />
+    <Compile Include="FluentNHibernateStorageConnection.cs" />
+    <Compile Include="FluentNHibernateStorageOptions.cs" />
+    <Compile Include="FluentNHibernateWriteOnlyTransaction.cs" />
     <Compile Include="JobQueue\PersistentJobQueueProviderCollection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Entities\ServerData.cs" />
-    <Compile Include="z0.cs" />
+    <Compile Include="Helper2.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

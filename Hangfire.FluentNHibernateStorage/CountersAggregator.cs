@@ -15,9 +15,9 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
         private readonly TimeSpan _interval;
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public CountersAggregator(NHStorage storage, TimeSpan interval)
+        public CountersAggregator(FluentNHibernateStorage storage, TimeSpan interval)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
             _interval = interval;

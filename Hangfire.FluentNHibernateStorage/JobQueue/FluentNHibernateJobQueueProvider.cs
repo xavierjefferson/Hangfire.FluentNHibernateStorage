@@ -2,18 +2,18 @@
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class NHJobQueueProvider : IPersistentJobQueueProvider
+    internal class FluentNHibernateJobQueueProvider : IPersistentJobQueueProvider
     {
         private readonly IPersistentJobQueue _jobQueue;
         private readonly IPersistentJobQueueMonitoringApi _monitoringApi;
 
-        public NHJobQueueProvider(NHStorage storage, NHStorageOptions options)
+        public FluentNHibernateJobQueueProvider(FluentNHibernateStorage storage, FluentNHibernateStorageOptions options)
         {
             if (storage == null) throw new ArgumentNullException("storage");
             if (options == null) throw new ArgumentNullException("options");
 
-            _jobQueue = new NHJobQueue(storage, options);
-            _monitoringApi = new NHJobQueueMonitoringApi(storage);
+            _jobQueue = new FluentNHibernateJobQueue(storage, options);
+            _monitoringApi = new FluentNHibernateJobQueueMonitoringApi(storage);
         }
 
         public IPersistentJobQueue GetJobQueue()

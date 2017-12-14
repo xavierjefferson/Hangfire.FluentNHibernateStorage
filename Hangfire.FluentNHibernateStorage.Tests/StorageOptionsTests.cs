@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [Fact]
         public void Ctor_SetsTheDefaultOptions()
         {
-            var options = new NHStorageOptions();
+            var options = new FluentNHibernateStorageOptions();
 
             Assert.True(options.QueuePollInterval > TimeSpan.Zero);
             Assert.True(options.InvisibilityTimeout > TimeSpan.Zero);
@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [Fact]
         public void Set_QueuePollInterval_ShouldThrowAnException_WhenGivenIntervalIsEqualToZero()
         {
-            var options = new NHStorageOptions();
+            var options = new FluentNHibernateStorageOptions();
             Assert.Throws<ArgumentException>(
                 () => options.QueuePollInterval = TimeSpan.Zero);
         }
@@ -26,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [Fact]
         public void Set_QueuePollInterval_ShouldThrowAnException_WhenGivenIntervalIsNegative()
         {
-            var options = new NHStorageOptions();
+            var options = new FluentNHibernateStorageOptions();
             Assert.Throws<ArgumentException>(
                 () => options.QueuePollInterval = TimeSpan.FromSeconds(-1));
         }
@@ -34,7 +34,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [Fact]
         public void Set_QueuePollInterval_SetsTheValue()
         {
-            var options = new NHStorageOptions();
+            var options = new FluentNHibernateStorageOptions();
             options.QueuePollInterval = TimeSpan.FromSeconds(1);
             Assert.Equal(TimeSpan.FromSeconds(1), options.QueuePollInterval);
         }

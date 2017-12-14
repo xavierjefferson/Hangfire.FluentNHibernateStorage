@@ -200,7 +200,7 @@ select last_insert_id() as Id";
 
         private ExpirationManager CreateManager(MySqlConnection connection)
         {
-            var storage = new NHStorage(connection);
+            var storage = new FluentNHibernateStorage(connection);
             return new ExpirationManager(storage, TimeSpan.Zero);
         }
     }

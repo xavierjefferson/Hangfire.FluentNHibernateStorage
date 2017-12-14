@@ -7,7 +7,7 @@ using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class NHFetchedJob : IFetchedJob
+    public  class FluentNHibernateFetchedJob : IFetchedJob
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -21,13 +21,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         private readonly ISession _connection;
         private readonly int _id;
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
         private bool _disposed;
         private bool _removedFromQueue;
         private bool _requeued;
 
-        public NHFetchedJob(
-            NHStorage storage,
+        public FluentNHibernateFetchedJob(
+            FluentNHibernateStorage storage,
             ISession connection,
             FetchedJob fetchedJob)
         {

@@ -1,16 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using Dapper;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.Server;
+using Hangfire.Storage;
+using Moq;
+using MySql.Data.MySqlClient;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
-    public class MySqlStorageConnectionTests : IClassFixture<TestDatabaseFixture>
+    public class FluentNHibernateStorageConnectionTests : IClassFixture<TestDatabaseFixture>
     {
         private readonly PersistentJobQueueProviderCollection _providers;
         private readonly Mock<IPersistentJobQueue> _queue;
 
-        public MySqlStorageConnectionTests()
+        public FluentNHibernateStorageConnectionTests()
         {
             _queue = new Mock<IPersistentJobQueue>();
 
@@ -25,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new NHStorageConnection(null));
+                () => new FluentNHibernateStorageConnection(null));
 
             Assert.Equal("storage", exception.ParamName);
         }
@@ -142,7 +150,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 invocationData.Arguments = sqlJob.Arguments;
 
                 var job = invocationData.Deserialize();
-                Assert.Equal(typeof(MySqlStorageConnectionTests), job.Type);
+                Assert.Equal(typeof(FluentNHibernateStorageConnectionTests), job.Type);
                 Assert.Equal("SampleMethod", job.Method.Name);
                 Assert.Equal("\"Hello\"", job.Arguments[0]);
 
@@ -1418,26 +1426,26 @@ values (@key, @value, @expireAt, 0.0)";
             });
         }
 
-        private void UseConnections(Action<MySqlConnection, NHStorageConnection> action)
+        private void UseConnections(Action<MySqlConnection, FluentNHibernateStorageConnection> action)
         {
             using (var sqlConnection = ConnectionUtils.CreateConnection())
             {
-                var storage = new NHStorage(sqlConnection);
-                using (var connection = new NHStorageConnection(storage))
+                var storage = new FluentNHibernateStorage(sqlConnection);
+                using (var connection = new FluentNHibernateStorageConnection(storage))
                 {
                     action(sqlConnection, connection);
                 }
             }
         }
 
-        private void UseConnection(Action<NHStorageConnection> action)
+        private void UseConnection(Action<FluentNHibernateStorageConnection> action)
         {
             using (var sql = ConnectionUtils.CreateConnection())
             {
-                var storage = new Mock<NHStorage>(sql);
+                var storage = new Mock<FluentNHibernateStorage>(sql);
                 storage.Setup(x => x.QueueProviders).Returns(_providers);
 
-                using (var connection = new NHStorageConnection(storage.Object))
+                using (var connection = new FluentNHibernateStorageConnection(storage.Object))
                 {
                     action(connection);
                 }

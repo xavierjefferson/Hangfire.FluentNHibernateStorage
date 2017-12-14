@@ -9,7 +9,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal class ExpirationManager : IServerComponent
+    public class ExpirationManager : IServerComponent
     {
         private const string DistributedLockKey = "expirationmanager";
         private const int NumberOfRecordsInSinglePass = 1000;
@@ -20,14 +20,14 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly TimeSpan _checkInterval;
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public ExpirationManager(NHStorage storage)
+        public ExpirationManager(FluentNHibernateStorage storage)
             : this(storage, TimeSpan.FromHours(1))
         {
         }
 
-        public ExpirationManager(NHStorage storage, TimeSpan checkInterval)
+        public ExpirationManager(FluentNHibernateStorage storage, TimeSpan checkInterval)
         {
             if (storage == null) throw new ArgumentNullException("storage");
 
@@ -62,7 +62,7 @@ namespace Hangfire.FluentNHibernateStorage
                         Logger.DebugFormat("delete from `{0}` where ExpireAt < @now limit @count;", nameof(T));
 
                         using (
-                            new NHDistributedLock(
+                            new FluentNHibernateDistributedLock(
                                 connection,
                                 DistributedLockKey,
                                 DefaultLockTimeout,

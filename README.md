@@ -17,17 +17,15 @@ Install-Package Hangfire.FluentNHibernateStorage
 ## Usage
 
 Use one the following ways to initialize `FluentNHibernateStorage`: 
-- Create new instance of `FluentNHibernateStorage` with connection string constructor parameter and pass it to `Configuration` with `UseStorage` method:
+- Create new instance of `FluentNHibernateStorage` with IPersistenceConfigurer parameter and pass it to `Configuration` with `UseStorage` method:
 ```
   GlobalConfiguration.Configuration.UseStorage(
-    new FluentNHibernateStorage(connectionString));
+    new FluentNHibernateStorage(persistenceConfigurer));
 ```
-- There must be `Allow User Variables` set to `true` in the connection string. For example: `server=127.0.0.1;uid=root;pwd=root;database={0};Allow User Variables=True`
-- Alternatively one or more options can be passed as a parameter to `FluentNHibernateStorage`:
 ```
 GlobalConfiguration.Configuration.UseStorage(
     new FluentNHibernateStorage(
-        connectionString, 
+        persistenceConfigurer, 
         new FluentNHibernateStorageOptions
         {
             TransactionIsolationLevel = IsolationLevel.ReadCommitted,

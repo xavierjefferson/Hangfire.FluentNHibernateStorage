@@ -8,7 +8,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class NHDistributedLock : IDisposable, IComparable
+    public class FluentNHibernateDistributedLock : IDisposable, IComparable
     {
         private const int DelayBetweenPasses = 100;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
@@ -22,21 +22,21 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly ISession _connection;
 
         private readonly DateTime _start;
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
         private readonly TimeSpan _timeout;
 
-        public NHDistributedLock(NHStorage storage, string resource, TimeSpan timeout)
+        public FluentNHibernateDistributedLock(FluentNHibernateStorage storage, string resource, TimeSpan timeout)
             : this(storage.CreateAndOpenSession(), resource, timeout)
         {
             _storage = storage;
         }
 
-        public NHDistributedLock(ISession connection, string resource, TimeSpan timeout)
+        public FluentNHibernateDistributedLock(ISession connection, string resource, TimeSpan timeout)
             : this(connection, resource, timeout, new CancellationToken())
         {
         }
 
-        public NHDistributedLock(
+        public FluentNHibernateDistributedLock(
             ISession connection, string resource, TimeSpan timeout, CancellationToken cancellationToken)
         {
             Logger.TraceFormat("MySqlDistributedLock resource={0}, timeout={1}", resource, timeout);
@@ -54,7 +54,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (obj == null) return 1;
 
-            var mySqlDistributedLock = obj as NHDistributedLock;
+            var mySqlDistributedLock = obj as FluentNHibernateDistributedLock;
             if (mySqlDistributedLock != null)
                 return string.Compare(Resource, mySqlDistributedLock.Resource,
                     StringComparison.InvariantCultureIgnoreCase);
@@ -84,7 +84,7 @@ namespace Hangfire.FluentNHibernateStorage
             return 0;
         }
 
-        internal NHDistributedLock Acquire()
+        internal FluentNHibernateDistributedLock Acquire()
         {
             Logger.TraceFormat("Acquire resource={0}, timeout={1}", Resource, _timeout);
 
@@ -104,7 +104,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             if (insertedObjectCount == 0)
             {
-                throw new NHDistributedLockException("cannot acquire lock");
+                throw new FluentNHibernateDistributedLockException("cannot acquire lock");
             }
             return this;
         }

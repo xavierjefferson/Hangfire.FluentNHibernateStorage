@@ -3,11 +3,11 @@ using System.Transactions;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class NHStorageOptions
+    public class FluentNHibernateStorageOptions
     {
         private TimeSpan _queuePollInterval;
 
-        public NHStorageOptions()
+        public FluentNHibernateStorageOptions()
         {
             TransactionIsolationLevel = IsolationLevel.ReadCommitted;
             QueuePollInterval = TimeSpan.FromSeconds(15);

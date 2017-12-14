@@ -8,7 +8,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal static class z0
+    internal static class Helper2
     {
         private static readonly Dictionary<Type, string> dz = new Dictionary<Type, string>();
         private static readonly object mutex = new object();

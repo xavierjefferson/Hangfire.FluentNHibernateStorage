@@ -11,7 +11,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal class NHWriteOnlyTransaction : JobStorageTransaction
+    internal class FluentNHibernateWriteOnlyTransaction : JobStorageTransaction
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -24,9 +24,9 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly Queue<Action<ISession>> _commandQueue
             = new Queue<Action<ISession>>();
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public NHWriteOnlyTransaction(NHStorage storage)
+        public FluentNHibernateWriteOnlyTransaction(FluentNHibernateStorage storage)
         {
             if (storage == null) throw new ArgumentNullException("storage");
 

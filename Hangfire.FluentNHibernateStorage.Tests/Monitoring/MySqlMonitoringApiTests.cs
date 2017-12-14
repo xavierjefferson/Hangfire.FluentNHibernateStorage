@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             "\"Arguments\":\"[\\\"\\\"test\\\"\\\"]\"}";
 
         private readonly int? _jobListLimit = 1000;
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
         private readonly MySqlMonitoringApi _sut;
 
         public MySqlMonitoringApiTests()
@@ -33,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                 .Returns(persistentJobQueueMonitoringApiMock.Object);
 
-            var mySqlStorageMock = new Mock<NHStorage>(_connection);
+            var mySqlStorageMock = new Mock<FluentNHibernateStorage>(_connection);
             mySqlStorageMock
                 .Setup(m => m.QueueProviders)
                 .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));

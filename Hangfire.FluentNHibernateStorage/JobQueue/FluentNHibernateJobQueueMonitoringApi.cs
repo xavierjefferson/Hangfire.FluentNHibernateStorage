@@ -6,16 +6,16 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class NHJobQueueMonitoringApi : IPersistentJobQueueMonitoringApi
+    public class FluentNHibernateJobQueueMonitoringApi : IPersistentJobQueueMonitoringApi
     {
         private static readonly TimeSpan QueuesCacheTimeout = TimeSpan.FromSeconds(5);
         private readonly object _cacheLock = new object();
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
         private DateTime _cacheUpdated;
         private List<string> _queuesCache = new List<string>();
 
-        public NHJobQueueMonitoringApi(NHStorage storage)
+        public FluentNHibernateJobQueueMonitoringApi(FluentNHibernateStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
         }

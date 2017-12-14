@@ -10,14 +10,14 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class NHJobQueue : IPersistentJobQueue
+    internal class FluentNHibernateJobQueue : IPersistentJobQueue
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(NHJobQueue));
-        private readonly NHStorageOptions _options;
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobQueue));
+        private readonly FluentNHibernateStorageOptions _options;
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public NHJobQueue(NHStorage storage, NHStorageOptions options)
+        public FluentNHibernateJobQueue(FluentNHibernateStorage storage, FluentNHibernateStorageOptions options)
         {
             if (storage == null) throw new ArgumentNullException("storage");
             if (options == null) throw new ArgumentNullException("options");
@@ -41,7 +41,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                 try
                 {
-                    using (new NHDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)))
+                    using (new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)))
                     {
                         var token = Guid.NewGuid().ToString();
 
@@ -83,7 +83,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 }
             } while (fetchedJob == null);
 
-            return new NHFetchedJob(_storage, connection, fetchedJob);
+            return new FluentNHibernateFetchedJob(_storage, connection, fetchedJob);
         }
 
         public void Enqueue(ISession connection, string queue, string jobId)

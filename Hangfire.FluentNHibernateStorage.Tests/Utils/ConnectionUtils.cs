@@ -1,4 +1,5 @@
 ﻿using System;
+using MySql.Data.MySqlClient;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {

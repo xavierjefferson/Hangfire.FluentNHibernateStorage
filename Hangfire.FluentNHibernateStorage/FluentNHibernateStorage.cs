@@ -16,13 +16,13 @@ using NHibernate.Tool.hbm2ddl;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class NHStorage : JobStorage, IDisposable
+    public class FluentNHibernateStorage : JobStorage, IDisposable
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(NHStorage));
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateStorage));
 
 
         private readonly ISession _existingSession;
-        private readonly NHStorageOptions _options;
+        private readonly FluentNHibernateStorageOptions _options;
 
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
@@ -33,12 +33,13 @@ namespace Hangfire.FluentNHibernateStorage
 
         public Action<MappingConfiguration> GetMappings;
 
-        public NHStorage(IPersistenceConfigurer pcf)
-            : this(pcf, new NHStorageOptions())
+
+        public FluentNHibernateStorage(IPersistenceConfigurer pcf)
+            : this(pcf, new FluentNHibernateStorageOptions())
         {
         }
 
-        public NHStorage(IPersistenceConfigurer pcf, NHStorageOptions options)
+        public FluentNHibernateStorage(IPersistenceConfigurer pcf, FluentNHibernateStorageOptions options)
         {
             ConfigurerFunc = () => { return pcf; };
 
@@ -50,10 +51,10 @@ namespace Hangfire.FluentNHibernateStorage
             InitializeQueueProviders();
         }
 
-        internal NHStorage(ISession existingSession)
+        internal FluentNHibernateStorage(ISession existingSession)
         {
             _existingSession = existingSession ?? throw new ArgumentNullException("existingSession");
-            _options = new NHStorageOptions();
+            _options = new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
         }
@@ -71,7 +72,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             QueueProviders =
                 new PersistentJobQueueProviderCollection(
-                    new NHJobQueueProvider(this, _options));
+                    new FluentNHibernateJobQueueProvider(this, _options));
         }
 
         public override IEnumerable<IServerComponent> GetComponents()
@@ -94,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IStorageConnection GetConnection()
         {
-            return new NHStorageConnection(this);
+            return new FluentNHibernateStorageConnection(this);
         }
 
 

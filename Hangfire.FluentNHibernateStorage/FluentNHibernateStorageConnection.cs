@@ -11,7 +11,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class NHStorageConnection : JobStorageConnection
+    public class FluentNHibernateStorageConnection : JobStorageConnection
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -29,9 +29,9 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(Entities._Server),
             nameof(Entities._Server.LastHeartbeat));
 
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
 
-        public NHStorageConnection(NHStorage storage)
+        public FluentNHibernateStorageConnection(FluentNHibernateStorage storage)
         {
             if (storage == null) throw new ArgumentNullException("storage");
             _storage = storage;
@@ -39,12 +39,12 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IWriteOnlyTransaction CreateWriteTransaction()
         {
-            return new NHWriteOnlyTransaction(_storage);
+            return new FluentNHibernateWriteOnlyTransaction(_storage);
         }
 
         public override IDisposable AcquireDistributedLock(string resource, TimeSpan timeout)
         {
-            return new NHDistributedLock(_storage, resource, timeout).Acquire();
+            return new FluentNHibernateDistributedLock(_storage, resource, timeout).Acquire();
         }
 
         public override string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt,

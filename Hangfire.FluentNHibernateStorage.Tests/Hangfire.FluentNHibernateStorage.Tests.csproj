@@ -36,17 +36,17 @@
   <ItemGroup>
     <Compile Include="CountersAggregatorTests.cs" />
     <Compile Include="ExpirationManagerTests.cs" />
-    <Compile Include="JobQueue\MySqlFetchedJobTests.cs" />
-    <Compile Include="JobQueue\MySqlJobQueueMonitoringApiTests.cs" />
-    <Compile Include="JobQueue\MySqlJobQueueTests.cs" />
+    <Compile Include="JobQueue\FluentNHibernateFetchedJobTests.cs" />
+    <Compile Include="JobQueue\FluentNHibernateJobQueueMonitoringApiTests.cs" />
+    <Compile Include="JobQueue\FluentNHibernateJobQueueTests.cs" />
     <Compile Include="JobQueue\PersistentJobQueueProviderCollectionTests.cs" />
     <Compile Include="Monitoring\MySqlMonitoringApiTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MySqlStorageTests.cs">
+    <Compile Include="FluentNHibernateStorageTests.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="MySqlStorageConnectionTests.cs" />
-    <Compile Include="MySqlWriteOnlyTransactionTests.cs" />
+    <Compile Include="FluentNHibernateStorageConnectionTests.cs" />
+    <Compile Include="FluentNHibernateWriteOnlyTransactionTests.cs" />
     <Compile Include="StorageOptionsTests.cs" />
     <Compile Include="Utils\TestDatabaseFixture.cs" />
     <Compile Include="Utils\ConnectionUtils.cs" />

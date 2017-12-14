@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Threading;
+using MySql.Data.MySqlClient;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class CountersAggregatorTests : IClassFixture<TestDatabaseFixture>, IDisposable
     {
         private readonly MySqlConnection _connection;
-        private readonly NHStorage _storage;
+        private readonly FluentNHibernateStorage _storage;
         private readonly CountersAggregator _sut;
 
         public CountersAggregatorTests()
         {
             _connection = ConnectionUtils.CreateConnection();
-            _storage = new NHStorage(_connection);
+            _storage = new FluentNHibernateStorage(_connection);
             _sut = new CountersAggregator(_storage, TimeSpan.Zero);
         }
 

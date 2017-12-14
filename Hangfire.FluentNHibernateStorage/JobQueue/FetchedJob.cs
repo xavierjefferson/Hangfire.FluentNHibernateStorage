@@ -1,6 +1,6 @@
 ﻿namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class FetchedJob
+    public class FetchedJob
     {
         public int Id { get; set; }
         public int JobId { get; set; }
