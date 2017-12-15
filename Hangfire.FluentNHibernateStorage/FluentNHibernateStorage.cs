@@ -30,7 +30,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         protected IPersistenceConfigurer _configurer;
 
-        private bool _testBuild;
+      
 
 
         public FluentNHibernateStorage(IPersistenceConfigurer pcf)
@@ -144,9 +144,10 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal void UseStatelessSession([InstantHandle] Action<IWrappedSession> action)
         {
-            using (var session =  GetStatelessSession())
+            using (var session = GetStatelessSession())
             {
-                action(session);
+                
+                action(session); 
             }
         }
 
@@ -154,7 +155,10 @@ namespace Hangfire.FluentNHibernateStorage
         {
             using (var session = GetStatelessSession())
             {
-                return func(session);
+                
+                var result = func(session);
+                
+                return result;
             }
         }
 
@@ -162,7 +166,9 @@ namespace Hangfire.FluentNHibernateStorage
         {
             using (var session = GetStatefulSession())
             {
+                
                 action(session);
+                
             }
         }
 
@@ -173,16 +179,6 @@ namespace Hangfire.FluentNHibernateStorage
                 return func(session);
             }
         }
-
-        internal void ReleaseSession(IWrappedSession session)
-        {
-            if (session != null)
-            {
-                session.Dispose();
-            }
-        }
-
-        
 
         private ISessionFactory GetSessionFactory(IPersistenceConfigurer configurer)
         {
@@ -216,53 +212,60 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal IWrappedSession GetStatefulSession()
         {
-            DoTestBuild();
-            return new SessionWrapper( GetSessionFactory(GetConfigurer()).OpenSession());
+            lock (mutex)
+            {
+                if (_options.PrepareSchemaIfNecessary)
+                {
+                    TryBuildSchema();
+                }
+            }
+            return new SessionWrapper(GetSessionFactory(GetConfigurer()).OpenSession());
         }
 
         internal IWrappedSession GetStatelessSession()
         {
-            DoTestBuild();
-            return new StatelessSessionWrapper( GetSessionFactory(GetConfigurer()).OpenStatelessSession());
+            lock (mutex)
+            {
+                if (_options.PrepareSchemaIfNecessary)
+                {
+                    TryBuildSchema();
+                }
+            }
+            return new StatelessSessionWrapper(GetSessionFactory(GetConfigurer()).OpenStatelessSession());
         }
 
-        private void DoTestBuild()
+        private void TryBuildSchema()
         {
-            if (_options.PrepareSchemaIfNecessary)
+            lock (mutex)
             {
-                lock (mutex)
-                {
-                    if (!_testBuild)
+                Logger.Info("Start installing Hangfire SQL object check...");
+                Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>())
+                    .Database(GetConfigurer())
+                    .ExposeConfiguration(cfg =>
                     {
-                        Logger.Info("Start installing Hangfire SQL objects...");
-                        Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>())
-                            .Database(GetConfigurer())
-                            .ExposeConfiguration(cfg =>
+                        var schemaUpdate = new SchemaUpdate(cfg);
+                        using (var stringWriter = new StringWriter())
+                        {
+                            string _last = null;
+                            try
                             {
-                                var a = new SchemaUpdate(cfg);
-                                using (var stringWriter = new StringWriter())
+                                schemaUpdate.Execute(i =>
                                 {
-                                    string _last = null;
-                                    try
-                                    {
-                                        a.Execute(i =>
-                                        {
-                                            _last = i;
-                                            stringWriter.WriteLine(i);
-                                        }, true);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Logger.ErrorException(string.Format("Can't do schema update '{0}'", _last), ex);
-                                        throw;
-                                    }
-                                }
-                            })
-                            .BuildConfiguration();
-                        _testBuild = true;
-                        Logger.Info("Hangfire SQL objects installed.");
-                    }
-                }
+                                    _last = i;
+                                    stringWriter.WriteLine(i);
+                                }, true);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.ErrorException(string.Format("Can't do schema update '{0}'", _last), ex);
+                                throw;
+                            }
+                        }
+                    })
+                    .BuildConfiguration();
+
+                Logger.Info("Hangfire SQL object check done.");
+                _options.PrepareSchemaIfNecessary = false;
             }
         }
     }

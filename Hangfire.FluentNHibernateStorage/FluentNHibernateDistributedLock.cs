@@ -33,6 +33,7 @@ namespace Hangfire.FluentNHibernateStorage
             _cancellationToken = cancellationToken ?? new CancellationToken();
             _start = DateTime.UtcNow;
             Session = storage.GetStatefulSession();
+           
         }
 
 
@@ -59,6 +60,7 @@ namespace Hangfire.FluentNHibernateStorage
                 Release();
                 Session.Flush();
                 Session.Dispose();
+             
             }
         }
 

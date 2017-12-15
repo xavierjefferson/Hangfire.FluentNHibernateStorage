@@ -4,7 +4,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class StatelessSessionWrapper : IWrappedSession
+    public class StatelessSessionWrapper : SessionWrapperBase, IWrappedSession
     {
         private IStatelessSession s;
 
@@ -43,9 +43,10 @@ namespace Hangfire.FluentNHibernateStorage
             return s.CreateQuery(queryString);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             s?.Dispose();
+            base.Dispose();
         }
     }
 }

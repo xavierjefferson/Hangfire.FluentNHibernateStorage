@@ -60,28 +60,31 @@ namespace Hangfire.FluentNHibernateStorage
 
             return _storage.UseSession(session =>
             {
-                var sqlJob = new _Job
+                using (var transaction = session.BeginTransaction())
                 {
-                    InvocationData = JobHelper.ToJson(invocationData),
-                    Arguments = invocationData.Arguments,
-                    CreatedAt = createdAt,
-                    ExpireAt = createdAt.Add(expireIn)
-                };
-                session.Insert(sqlJob);
-                session.Flush();
-                foreach (var keyValuePair in parameters)
-                {
-                    session.Insert(new _JobParameter
+                    var sqlJob = new _Job
                     {
-                        Job = sqlJob,
-                        Name = keyValuePair.Key,
-                        Value = keyValuePair.Value
-                    });
+                        InvocationData = JobHelper.ToJson(invocationData),
+                        Arguments = invocationData.Arguments,
+                        CreatedAt = createdAt,
+                        ExpireAt = createdAt.Add(expireIn)
+                    };
+                    session.Insert(sqlJob);
+                    session.Flush();
+                    foreach (var keyValuePair in parameters)
+                    {
+                        session.Insert(new _JobParameter
+                        {
+                            Job = sqlJob,
+                            Name = keyValuePair.Key,
+                            Value = keyValuePair.Value
+                        });
+                    }
+                    session.Flush();
+
+                    transaction.Commit();
+                    return sqlJob.Id.ToString();
                 }
-                session.Flush();
-
-
-                return sqlJob.Id.ToString();
             });
         }
 

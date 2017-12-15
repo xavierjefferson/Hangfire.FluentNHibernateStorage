@@ -6,8 +6,6 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.States;
 using Hangfire.Storage;
-using NHibernate;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -15,12 +13,33 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
-        private static readonly string updatez =
+        private static readonly string UpdateJobExpireAtSql =
             Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.ExpireAt), nameof(_Job.Id));
 
-        private static readonly string uz =
-            Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.ExpireAt), nameof(_Job.Id));
+        private static readonly Dictionary<Type, string> DeleteByKeyStatementDictionary = new Dictionary<Type, string>
+        {
+            {typeof(_Set), GetDeleteByKeyStatement<_Set>()},
+            {typeof(_Hash), GetDeleteByKeyStatement<_List>()},
+            {typeof(_List), GetDeleteByKeyStatement<_List>()}
+        };
 
+        private static readonly Dictionary<Type, string> DeleteByKeyValueStatementlDictionary =
+            new Dictionary<Type, string>
+            {
+                {typeof(_Set), GetDeleteByKeyValueStatement<_Set>()},
+                {typeof(_Hash), GetDeleteByKeyValueStatement<_List>()},
+                {typeof(_List), GetDeleteByKeyValueStatement<_List>()}
+            };
+
+        private static readonly Dictionary<Type, string> SetExpireStatementDictionary = new Dictionary<Type, string>
+        {
+            {typeof(_Set), GetSetExpireByKeyStatement<_Set>()},
+            {typeof(_Hash), GetSetExpireByKeyStatement<_List>()},
+            {typeof(_List), GetSetExpireByKeyStatement<_List>()}
+        };
+
+
+        //transactional command queue.
         private readonly Queue<Action<IWrappedSession>> _commandQueue
             = new Queue<Action<IWrappedSession>>();
 
@@ -28,9 +47,46 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateWriteOnlyTransaction(FluentNHibernateStorage storage)
         {
-            if (storage == null) throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException("storage");
+        }
 
-            _storage = storage;
+        private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpireWithKey
+        {
+            session.CreateQuery(SetExpireStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, expire)
+                .SetParameter(Helper.IdParameterName, key).ExecuteUpdate();
+        }
+
+        private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpireWithKey
+        {
+            session.CreateQuery(DeleteByKeyStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, key)
+                .ExecuteUpdate();
+        }
+
+        private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpireWithKey
+        {
+            session.CreateQuery(DeleteByKeyValueStatementlDictionary[typeof(T)])
+                .SetParameter(Helper.ValueParameterName, key)
+                .SetParameter(Helper.ValueParameter2Name, value).ExecuteUpdate();
+        }
+
+        private static string GetSetExpireByKeyStatement<T>() where T : IExpireWithKey
+        {
+            return string.Format("update `{0}` set `{1}`={2} where `{3}`:={4}", typeof(T).Name,
+                nameof(IExpirable.ExpireAt), Helper.ValueParameterName, nameof(IExpireWithKey.Key),
+                Helper.IdParameterName);
+        }
+
+        private static string GetDeleteByKeyStatement<T>() where T : IExpireWithKey
+        {
+            return string.Format("delete from `{0}` where `{1}`:={2}", typeof(T).Name, nameof(IExpireWithKey.Key),
+                Helper.ValueParameterName);
+        }
+
+        private static string GetDeleteByKeyValueStatement<T>() where T : IKeyStringValue
+        {
+            return string.Format("delete from `{0}` where `{1}`:={2} and `{3}`=:{4}", typeof(T).Name,
+                nameof(IExpireWithKey.Key),
+                Helper.ValueParameterName, nameof(IKeyStringValue.Value), Helper.ValueParameter2Name);
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -40,7 +96,7 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(updatez).SetParameter(Helper.IdParameterName, int.Parse(jobId))
+                session.CreateQuery(UpdateJobExpireAtSql).SetParameter(Helper.IdParameterName, int.Parse(jobId))
                     .SetParameter(Helper.ValueParameterName, DateTime.UtcNow.Add(expireIn)).ExecuteUpdate());
         }
 
@@ -51,7 +107,7 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(uz).SetParameter(Helper.ValueParameterName, null)
+                session.CreateQuery(UpdateJobExpireAtSql).SetParameter(Helper.ValueParameterName, null)
                     .SetParameter(Helper.IdParameterName, int.Parse(jobId))
                     .ExecuteUpdate());
         }
@@ -65,20 +121,23 @@ namespace Hangfire.FluentNHibernateStorage
             QueueCommand(session =>
             {
                 var job = session.Query<_Job>().FirstOrDefault(i => i.Id == int.Parse(jobId));
-                var sqlState = new _JobState
+                if (job != null)
                 {
-                    Job = job,
-                    Reason = state.Reason,
-                    Name = state.Name,
-                    CreatedAt = DateTime.UtcNow,
-                    Data = JobHelper.ToJson(state.SerializeData())
-                };
-                session.Insert(sqlState);
-                session.Flush();
+                    var sqlState = new _JobState
+                    {
+                        Job = job,
+                        Reason = state.Reason,
+                        Name = state.Name,
+                        CreatedAt = DateTime.UtcNow,
+                        Data = JobHelper.ToJson(state.SerializeData())
+                    };
+                    session.Insert(sqlState);
+                    session.Flush();
 
-                job.CurrentState = sqlState;
-                session.Update(job);
-                session.Flush();
+                    job.CurrentState = sqlState;
+                    session.Update(job);
+                    session.Flush();
+                }
             });
         }
 
@@ -96,7 +155,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Reason = state.Reason,
                     CreatedAt = DateTime.UtcNow,
                     Data = JobHelper.ToJson(state.SerializeData())
-                }); 
+                });
             });
         }
 
@@ -188,7 +247,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("RemoveFromSet key={0} value={1}", key, value);
 
             AcquireSetLock();
-            QueueCommand(session => session.DeleteByExpression<_Set>(0, i => i.Key == key && i.Value == value));
+            QueueCommand(session => { DeleteByKeyValue<_Set>(key, value, session); });
         }
 
         public override void ExpireSet(string key, TimeSpan expireIn)
@@ -198,8 +257,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireSetLock();
-            QueueCommand(session =>
-                session.DoActionByExpression<_Set>(i => i.Key == key, i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
+            QueueCommand(session => { SetExpireAt<_Set>(key, DateTime.UtcNow.Add(expireIn), session); });
         }
 
         public override void InsertToList(string key, string value)
@@ -218,9 +276,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("ExpireList key={0} expirein={1}", key, expireIn);
 
             AcquireListLock();
-            QueueCommand(session =>
-                session.DoActionByExpression<_List>(i => i.Key == key,
-                    i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
+            QueueCommand(session => { SetExpireAt<_List>(key, DateTime.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveFromList(string key, string value)
@@ -228,7 +284,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("RemoveFromList key={0} value={1}", key, value);
 
             AcquireListLock();
-            QueueCommand(session => session.DeleteByExpression<_List>(0, i => i.Key == key && i.Value == value));
+            QueueCommand(session => { DeleteByKeyValue<_List>(key, value, session); });
         }
 
         public override void TrimList(string key, int keepStartingFrom, int keepEndingAt)
@@ -242,8 +298,8 @@ namespace Hangfire.FluentNHibernateStorage
                     .Select((i, j) => new {index = j, id = i.Id});
                 var before = idList.Where(i => i.index < keepStartingFrom)
                     .Union(idList.Where(i => i.index > keepEndingAt))
-                    .Select(i => i.id);
-                session.DeleteByExpression<_List>(0, i => before.Contains(i.Id));
+                    .Select(i => i.id).ToList();
+                session.DeleteById<_List>(before);
             });
         }
 
@@ -254,7 +310,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireHashLock();
-            QueueCommand(session => session.DoActionByExpression<_Hash>(i => i.Key == key, i => i.ExpireAt = null));
+            QueueCommand(session => { SetExpireAt<_Hash>(key, null, session); });
         }
 
         public override void PersistSet(string key)
@@ -264,7 +320,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireSetLock();
-            QueueCommand(session => session.DoActionByExpression<_Set>(i => i.Key == key, i => i.ExpireAt = null));
+            QueueCommand(session => { SetExpireAt<_Set>(key, null, session); });
         }
 
         public override void RemoveSet(string key)
@@ -274,7 +330,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireSetLock();
-            QueueCommand(session => session.DeleteByExpression<_Set>(0, i => i.Key == key));
+            QueueCommand(session => { DeleteByKey<_Set>(key, session); });
         }
 
         public override void PersistList(string key)
@@ -284,7 +340,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireListLock();
-            QueueCommand(session => session.DoActionByExpression<_List>(i => i.Key == key, i => i.ExpireAt = null));
+            QueueCommand(session => { SetExpireAt<_List>(key, null, session); });
         }
 
         public override void SetRangeInHash(string key, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
@@ -318,9 +374,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireHashLock();
-            QueueCommand(session =>
-                session.DoActionByExpression<_Hash>(i => i.Key == key,
-                    i => i.ExpireAt = DateTime.UtcNow.Add(expireIn)));
+            QueueCommand(session => { SetExpireAt<_Hash>(key, DateTime.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveHash(string key)
@@ -330,7 +384,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireHashLock();
-            QueueCommand(session => session.DeleteByExpression<_Hash>(0, i => i.Key == key));
+            QueueCommand(session => { DeleteByKey<_Hash>(key, session); });
         }
 
         public override void Commit()

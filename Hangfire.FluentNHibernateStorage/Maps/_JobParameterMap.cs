@@ -9,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Table("`Hangfire_JobParameter`");
             References(i => i.Job).Column(Constants.JobId).Not.Nullable().Cascade.All();
             Map(i => i.Name).Column("`Name`").Length(40).Not.Nullable();
-            Map(i => i.Value).Column("`Value`").Length(int.MaxValue).Nullable();
+            Map(i => i.Value).Column("`Value`").Length(Constants.VarcharMaxLength).Nullable();
         }
     }
 }

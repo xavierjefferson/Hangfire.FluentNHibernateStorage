@@ -4,7 +4,6 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -15,18 +14,10 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
 
         private static readonly string UpdateAggregateCounterSql = string.Format(
-            "update `{0}` s set s.`{1}`=s.`{1}` + :{4}, s.`{3}`=:{6} where s.`{2}` = :{5}",
+            "update `{0}` s set s.`{1}`=s.`{1}` + :{4}, s.`{3}`= case when s.`{3}` >  :{6} then s.`{3}` else :{6} end where s.`{2}` = :{5}",
             nameof(_AggregatedCounter), nameof(_AggregatedCounter.Value), nameof(_AggregatedCounter.Key),
-            nameof(_AggregatedCounter.ExpireAt), Helper.ValueParameterName, Helper.IdParameterName, Helper.ValueParameter2Name);
-
-        //private static readonly string UpdateAggregateCounterSql = string.Format(
-        //    "update `{0}` s set s.`{3}`=:{6} where s.`{2}` = :{5}",
-        //    nameof(_AggregatedCounter), nameof(_AggregatedCounter.Value), nameof(_AggregatedCounter.Id),
-        //    nameof(_AggregatedCounter.ExpireAt), Helper.ValueParameterName, Helper.IdParameterName, Helper.ValueParameter2Name);
-
-        private static readonly string DeleteCounterByIdsSql = string.Format("delete from `{0}` where `{1}` in (:ids)",
-            nameof(_Counter),
-            nameof(_Counter.Id));
+            nameof(_AggregatedCounter.ExpireAt), Helper.ValueParameterName, Helper.IdParameterName,
+            Helper.ValueParameter2Name);
 
         private readonly TimeSpan _interval;
 
@@ -42,49 +33,49 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.DebugFormat("Aggregating records in 'Counter' table...");
 
-           long removedCount = 0;
+            long removedCount = 0;
 
             do
             {
                 _storage.UseStatelessSession(connection =>
                 {
-                    using (var i = connection.BeginTransaction())
+                    using (var transaction = connection.BeginTransaction())
                     {
-                        var m = connection.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
-                        var c = m.GroupBy(iz => iz.Key).Select(iz =>
-                            new {id = iz.Key, value = iz.Sum(im => im.Value), expireAt = iz.Max(k => k.ExpireAt)}).ToList();
-                        var q = connection.CreateQuery(UpdateAggregateCounterSql);
-                        foreach (var item in c)
+                        var counters = connection.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
+                        var countersByName = counters.GroupBy(counter => counter.Key).Select(i =>
+                            new
+                            {
+                                i.Key,
+                                value = i.Sum(counter => counter.Value),
+                                expireAt = i.Max(counter => counter.ExpireAt)
+                            }).ToList();
+                        var query = connection.CreateQuery(UpdateAggregateCounterSql);
+                        foreach (var item in countersByName)
                         {
-                            //if (q.SetParameter(Helper.ValueParameterName, item.value).SetParameter(Helper.ValueParameter2Name, item.expireAt)
-                            //        .SetParameter(Helper.IdParameterName, item.id)
-                            //        .ExecuteUpdate() == 0)
                             if (item.expireAt.HasValue)
                             {
-                                q.SetParameter(Helper.ValueParameter2Name, item.expireAt.Value);
-
+                                query.SetParameter(Helper.ValueParameter2Name, item.expireAt.Value);
                             }
                             else
                             {
-                                q.SetParameter(Helper.ValueParameter2Name, null);
+                                query.SetParameter(Helper.ValueParameter2Name, null);
                             }
-                                if (q.SetString(Helper.IdParameterName, item.id).SetParameter(Helper.ValueParameterName, item.value)
+                            if (query.SetString(Helper.IdParameterName, item.Key)
+                                    .SetParameter(Helper.ValueParameterName, item.value)
                                     .ExecuteUpdate() == 0)
                             {
                                 connection.Insert(new _AggregatedCounter
                                 {
-                                    Key = item.id,
+                                    Key = item.Key,
                                     Value = item.value,
                                     ExpireAt = item.expireAt
                                 });
                             }
                             ;
                         }
-                        removedCount = m.Any()
-                            ? connection.DeleteById<_Counter>(m.Select(iz => iz.Id).ToArray())
-                                
-                            : 0;
-                        i.Commit();
+                        removedCount = connection.DeleteById<_Counter>(counters.Select(iz => iz.Id).ToArray());
+
+                        transaction.Commit();
                     }
                 });
 

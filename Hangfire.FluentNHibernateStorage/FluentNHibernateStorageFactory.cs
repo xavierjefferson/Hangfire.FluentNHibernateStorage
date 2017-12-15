@@ -4,6 +4,27 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public sealed class FluentNHibernateStorageFactory
     {
+        public static FluentNHibernateStorage ForMsCe(string connectionString,
+            FluentNHibernateStorageOptions options = null)
+        {
+            return new FluentNHibernateStorage(MsSqlCeConfiguration.Standard.ConnectionString(connectionString),
+                options);
+        }
+
+        public static FluentNHibernateStorage ForMsCe40(string connectionString,
+            FluentNHibernateStorageOptions options = null)
+        {
+            return new FluentNHibernateStorage(MsSqlCeConfiguration.MsSqlCe40.ConnectionString(connectionString),
+                options);
+        }
+
+        public static FluentNHibernateStorage ForJetDriver(string connectionString,
+            FluentNHibernateStorageOptions options = null)
+        {
+            return new FluentNHibernateStorage(JetDriverConfiguration.Standard.ConnectionString(connectionString),
+                options);
+        }
+
         public static FluentNHibernateStorage ForOracle10(string connectionString,
             FluentNHibernateStorageOptions options = null)
         {
@@ -42,7 +63,7 @@ namespace Hangfire.FluentNHibernateStorage
         public static FluentNHibernateStorage ForFirebird(string connectionString,
             FluentNHibernateStorageOptions options = null)
         {
-            return new FluentNHibernateStorage(new FirebirdConfiguration(), options);
+            return new FluentNHibernateStorage(new FirebirdConfiguration().ConnectionString(connectionString), options);
         }
 
         public static FluentNHibernateStorage ForSQLiteWithFile(string fileName, string password = null,

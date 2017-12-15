@@ -34,7 +34,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
         }}
         protected override int? ValueLength
         {
-            get { return 256; }
+            get { return 255; }
         }
     }
 }

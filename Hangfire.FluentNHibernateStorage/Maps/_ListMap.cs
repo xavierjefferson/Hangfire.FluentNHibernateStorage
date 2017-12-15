@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override int? ValueLength
         {
-            get { return int.MaxValue; }
+            get { return Constants.VarcharMaxLength; }
         }
 
         protected override bool HasUniqueKey

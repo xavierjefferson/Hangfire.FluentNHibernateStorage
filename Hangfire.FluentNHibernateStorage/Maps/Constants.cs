@@ -2,6 +2,7 @@
 {
     internal class Constants
     {
+        public const int VarcharMaxLength = 4001;
         public const string JobId = "`JobId`";
         public const string Id = "`Id`";
         public const string Data = "`Data`";

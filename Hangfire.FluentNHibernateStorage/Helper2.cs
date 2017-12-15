@@ -11,11 +11,6 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly Dictionary<Type, string> DeleteCommands = new Dictionary<Type, string>();
         private static readonly object mutex = new object();
 
-        public static void DeleteById<T>(this IWrappedSession session, int id) where T : IExpireWithId
-        {
-            DeleteById<T>(session, new[] {id});
-        }
-
         public static long DeleteById<T>(this IWrappedSession session, ICollection<int> id) where T : IExpireWithId
         {
             if (!id.Any())
@@ -52,12 +47,6 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        public static void DeleteByExpression<T>(this IWrappedSession session, int id, Expression<Func<T, bool>> expr)
-            where T : IExpireWithId
-        {
-            var idList = session.Query<T>().Where(expr).Select(i => i.Id).ToList();
-
-            DeleteById<T>(session, idList);
-        }
+        
     }
 }

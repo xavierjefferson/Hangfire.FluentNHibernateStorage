@@ -1,10 +1,37 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using Hangfire.Logging;
 using NHibernate;
 using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class SessionWrapper : IWrappedSession
+   public  abstract class SessionWrapperBase : IDisposable
+    {
+        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static object mutex = new object();
+        private static int count = 0;
+        public SessionWrapperBase()
+        {
+            lock (mutex)
+            {
+                count++;
+
+                Logger.InfoFormat("+Session {0} {1}", this.GetHashCode(), count);
+            }
+        }
+
+        public virtual void Dispose()
+        {
+            lock (mutex)
+            {
+                count--;
+
+                Logger.InfoFormat("-Session {0} {1}", this.GetHashCode(), count);
+            }
+        }
+    }
+    public class SessionWrapper : SessionWrapperBase, IWrappedSession
     {
         public ITransaction BeginTransaction()
         {
@@ -41,9 +68,10 @@ namespace Hangfire.FluentNHibernateStorage
             s.Flush();
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             s?.Dispose();
+            base.Dispose();
         }
     }
 }
