@@ -21,16 +21,15 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateStorage));
 
         private static readonly object mutex = new object();
-
-
         private readonly FluentNHibernateStorageOptions _options;
 
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
 
         protected IPersistenceConfigurer _configurer;
+        private readonly CountersAggregator _countersAggregator;
 
-      
+        private readonly ExpirationManager _expirationManager;
 
 
         public FluentNHibernateStorage(IPersistenceConfigurer pcf)
@@ -46,6 +45,8 @@ namespace Hangfire.FluentNHibernateStorage
             _options = options ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
+            _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
+            _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
         }
 
 
@@ -65,11 +66,12 @@ namespace Hangfire.FluentNHibernateStorage
                     new FluentNHibernateJobQueueProvider(this, _options));
         }
 
-        public override IEnumerable<IServerComponent> GetComponents()
+
+        public List<IBackgroundProcess> GetBackgroundProcesses()
         {
-            yield return new ExpirationManager(this, _options.JobExpirationCheckInterval);
-            yield return new CountersAggregator(this, _options.CountersAggregateInterval);
+            return new List<IBackgroundProcess> {_expirationManager, _countersAggregator};
         }
+
 
         public override void WriteOptionsToLog(ILog logger)
         {
@@ -146,8 +148,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             using (var session = GetStatelessSession())
             {
-                
-                action(session); 
+                action(session);
             }
         }
 
@@ -155,9 +156,8 @@ namespace Hangfire.FluentNHibernateStorage
         {
             using (var session = GetStatelessSession())
             {
-                
                 var result = func(session);
-                
+
                 return result;
             }
         }
@@ -166,9 +166,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             using (var session = GetStatefulSession())
             {
-                
                 action(session);
-                
             }
         }
 

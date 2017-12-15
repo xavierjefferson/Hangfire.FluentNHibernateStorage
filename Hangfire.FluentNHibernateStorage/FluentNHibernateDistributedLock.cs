@@ -11,9 +11,9 @@ namespace Hangfire.FluentNHibernateStorage
         private const int DelayBetweenPasses = 100;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
-        private static readonly string DeleteDistributedLockSql = string.Format("delete from {0} where {1}=:res",
+        private static readonly string DeleteDistributedLockSql = string.Format("delete from `{0}` where `{1}`=:{2}",
             nameof(_DistributedLock),
-            nameof(_DistributedLock.Resource));
+            nameof(_DistributedLock.Resource), Helper.IdParameterName);
 
         private readonly CancellationToken _cancellationToken;
 
@@ -33,11 +33,10 @@ namespace Hangfire.FluentNHibernateStorage
             _cancellationToken = cancellationToken ?? new CancellationToken();
             _start = DateTime.UtcNow;
             Session = storage.GetStatefulSession();
-           
         }
 
 
-        internal IWrappedSession Session { get; }
+        internal IWrappedSession Session { get; private set; }
 
         public string Resource { get; }
 
@@ -60,57 +59,61 @@ namespace Hangfire.FluentNHibernateStorage
                 Release();
                 Session.Flush();
                 Session.Dispose();
-             
+                Session = null;
             }
         }
 
-        private int AcquireLock(string resource, TimeSpan timeout)
+        private bool AcquireLock(string resource, TimeSpan timeout)
         {
-            if (!Session.Query<_DistributedLock>().Any(i =>
-                i.Resource == resource && i.CreatedAt > DateTime.UtcNow.Add(timeout.Negate())))
+            using (var transaction = Session.BeginTransaction())
             {
-                Session.Insert(new _DistributedLock {CreatedAt = DateTime.UtcNow, Resource = resource});
-                Session.Flush();
-                return 1;
+                if (!Session.Query<_DistributedLock>().Any(i =>
+                    i.Resource == resource && i.CreatedAt > DateTime.UtcNow.Add(timeout.Negate())))
+                {
+                    Session.Insert(new _DistributedLock {CreatedAt = DateTime.UtcNow, Resource = resource});
+                    Session.Flush();
+                    transaction.Commit();
+                    return true;
+                }
+                return false;
             }
-            return 0;
         }
 
         internal FluentNHibernateDistributedLock Acquire()
         {
             Logger.TraceFormat("Acquire resource={0}, timeout={1}", Resource, _timeout);
 
-            int insertedObjectCount;
+            bool acquiredLock;
             do
             {
                 _cancellationToken.ThrowIfCancellationRequested();
 
-                insertedObjectCount = AcquireLock(Resource, _timeout);
+                acquiredLock = AcquireLock(Resource, _timeout);
 
-                if (ContinueCondition(insertedObjectCount))
+                if (ContinueCondition(acquiredLock))
                 {
                     _cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
                     _cancellationToken.ThrowIfCancellationRequested();
                 }
-            } while (ContinueCondition(insertedObjectCount));
+            } while (ContinueCondition(acquiredLock));
 
-            if (insertedObjectCount == 0)
+            if (!acquiredLock )
             {
                 throw new FluentNHibernateDistributedLockException("cannot acquire lock");
             }
             return this;
         }
 
-        private bool ContinueCondition(int insertedObjectCount)
+        private bool ContinueCondition(bool acquiredLock)
         {
-            return insertedObjectCount == 0 && _start.Add(_timeout) > DateTime.UtcNow;
+            return !acquiredLock  && _start.Add(_timeout) > DateTime.UtcNow;
         }
 
         internal void Release()
         {
             Logger.TraceFormat("Release resource={0}", Resource);
 
-            Session.CreateQuery(DeleteDistributedLockSql).SetParameter("res", Resource).ExecuteUpdate();
+            Session.CreateQuery(DeleteDistributedLockSql).SetParameter(Helper.IdParameterName, Resource).ExecuteUpdate();
         }
     }
 }

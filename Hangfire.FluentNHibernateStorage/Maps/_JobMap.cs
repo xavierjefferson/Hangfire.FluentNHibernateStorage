@@ -2,8 +2,6 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-     
-
     internal class _JobMap : IntIdMap<_Job>
     {
         public _JobMap()

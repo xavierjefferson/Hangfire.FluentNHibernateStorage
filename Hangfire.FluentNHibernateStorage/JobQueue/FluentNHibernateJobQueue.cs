@@ -26,10 +26,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             if (queues == null) throw new ArgumentNullException("queues");
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
 
-            FetchedJob fetchedJob = null;
 
-
-            do
+            while(true)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -58,12 +56,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                     distributedLock.Session.Flush();
 
                                     transaction.Commit();
-                                    fetchedJob = new FetchedJob
+                                    var fetchedJob = new FetchedJob
                                     {
                                         Id = jobQueue.Id,
                                         JobId = jobQueue.Job.Id,
                                         Queue = jobQueue.Queue
                                     };
+                                    return new FluentNHibernateFetchedJob(_storage, fetchedJob);
                                 }
                             }
                         }
@@ -76,14 +75,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     throw;
                 }
 
-                if (fetchedJob == null)
-                {
-                    cancellationToken.WaitHandle.WaitOne(_options.QueuePollInterval);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-            } while (fetchedJob == null);
-
-            return new FluentNHibernateFetchedJob(_storage, fetchedJob);
+                cancellationToken.WaitHandle.WaitOne(_options.QueuePollInterval);
+                cancellationToken.ThrowIfCancellationRequested();
+            } 
         }
 
         public void Enqueue(IWrappedSession connection, string queue, string jobId)

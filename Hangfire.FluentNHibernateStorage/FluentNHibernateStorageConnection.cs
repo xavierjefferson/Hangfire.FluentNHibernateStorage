@@ -7,7 +7,6 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -393,18 +392,18 @@ namespace Hangfire.FluentNHibernateStorage
             });
         }
 
-        private TimeSpan GetTTL<T>(string key) where T : IExpireWithKey
+        private TimeSpan GetTTL<T>(string key) where T : IExpirableWithKey
         {
             if (key == null) throw new ArgumentNullException("key");
 
             return _storage.UseStatelessSession(session =>
             {
-                var a = session.Query<_List>().Where(i => i.Key == key).Min(i => i.ExpireAt);
-                if (a == null)
+                var item = session.Query<_List>().Where(i => i.Key == key).Min(i => i.ExpireAt);
+                if (item == null)
                 {
                     return TimeSpan.FromSeconds(-1);
                 }
-                return a.Value - DateTime.UtcNow;
+                return item.Value - DateTime.UtcNow;
             });
         }
 

@@ -4,13 +4,14 @@ using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    interface IWrappedSession:IDisposable
+    internal interface IWrappedSession : IDisposable
     {
         ITransaction BeginTransaction();
-       
+
         IQueryable<T> Query<T>();
         IQuery CreateQuery(string queryString);
-        void Insert(object x); void Update(object x);
+        void Insert(object x);
+        void Update(object x);
         void Flush();
     }
 }

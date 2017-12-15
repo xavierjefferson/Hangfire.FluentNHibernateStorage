@@ -62,7 +62,8 @@
   <ItemGroup>
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="Entities\EntityBase0.cs" />
-    <Compile Include="Entities\IIntId.cs" />
+    <Compile Include="Entities\IInt32Id.cs" />
+    <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="IWrappedSession.cs" />
@@ -76,8 +77,8 @@
     <Compile Include="Maps\_CounterMap.cs" />
     <Compile Include="Entities\EntityBase1.cs" />
     <Compile Include="Entities\IExpirable.cs" />
-    <Compile Include="Entities\IExpireWithId.cs" />
-    <Compile Include="Entities\IExpireWithKey.cs" />
+    <Compile Include="Entities\IExpirableWithId.cs" />
+    <Compile Include="Entities\IExpirableWithKey.cs" />
     <Compile Include="Entities\_JobParameter.cs" />
     <Compile Include="Maps\_JobParameterMap.cs" />
     <Compile Include="Maps\_ServerMap.cs" />
@@ -117,6 +118,7 @@
     <Compile Include="Entities\ServerData.cs" />
     <Compile Include="Helper2.cs" />
     <Compile Include="SessionWrapper.cs" />
+    <Compile Include="SessionWrapperBase.cs" />
     <Compile Include="StatelessSessionWrapper.cs" />
   </ItemGroup>
   <ItemGroup>

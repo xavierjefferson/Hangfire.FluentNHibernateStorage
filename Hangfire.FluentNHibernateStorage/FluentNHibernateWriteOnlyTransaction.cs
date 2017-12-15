@@ -50,43 +50,43 @@ namespace Hangfire.FluentNHibernateStorage
             _storage = storage ?? throw new ArgumentNullException("storage");
         }
 
-        private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpireWithKey
+        private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpirableWithKey
         {
             session.CreateQuery(SetExpireStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, expire)
                 .SetParameter(Helper.IdParameterName, key).ExecuteUpdate();
         }
 
-        private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpireWithKey
+        private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpirableWithKey
         {
             session.CreateQuery(DeleteByKeyStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, key)
                 .ExecuteUpdate();
         }
 
-        private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpireWithKey
+        private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpirableWithKey
         {
             session.CreateQuery(DeleteByKeyValueStatementlDictionary[typeof(T)])
                 .SetParameter(Helper.ValueParameterName, key)
                 .SetParameter(Helper.ValueParameter2Name, value).ExecuteUpdate();
         }
 
-        private static string GetSetExpireByKeyStatement<T>() where T : IExpireWithKey
+        private static string GetSetExpireByKeyStatement<T>() where T : IExpirableWithKey
         {
             return string.Format("update `{0}` set `{1}`={2} where `{3}`:={4}", typeof(T).Name,
-                nameof(IExpirable.ExpireAt), Helper.ValueParameterName, nameof(IExpireWithKey.Key),
+                nameof(IExpirable.ExpireAt), Helper.ValueParameterName, nameof(IExpirableWithKey.Key),
                 Helper.IdParameterName);
         }
 
-        private static string GetDeleteByKeyStatement<T>() where T : IExpireWithKey
+        private static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
         {
-            return string.Format("delete from `{0}` where `{1}`:={2}", typeof(T).Name, nameof(IExpireWithKey.Key),
+            return string.Format("delete from `{0}` where `{1}`:={2}", typeof(T).Name, nameof(IExpirableWithKey.Key),
                 Helper.ValueParameterName);
         }
 
-        private static string GetDeleteByKeyValueStatement<T>() where T : IKeyStringValue
+        private static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
         {
             return string.Format("delete from `{0}` where `{1}`:={2} and `{3}`=:{4}", typeof(T).Name,
-                nameof(IExpireWithKey.Key),
-                Helper.ValueParameterName, nameof(IKeyStringValue.Value), Helper.ValueParameter2Name);
+                nameof(IExpirableWithKey.Key),
+                Helper.ValueParameterName, nameof(IKeyWithStringValue.Value), Helper.ValueParameter2Name);
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -299,7 +299,7 @@ namespace Hangfire.FluentNHibernateStorage
                 var before = idList.Where(i => i.index < keepStartingFrom)
                     .Union(idList.Where(i => i.index > keepEndingAt))
                     .Select(i => i.id).ToList();
-                session.DeleteById<_List>(before);
+                session.DeleteByInt32Id<_List>(before);
             });
         }
 

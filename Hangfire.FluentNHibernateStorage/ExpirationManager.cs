@@ -4,11 +4,10 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class ExpirationManager : IServerComponent
+    public class ExpirationManager : IBackgroundProcess
     {
         private const string DistributedLockKey = "expirationmanager";
         private const int NumberOfRecordsInSinglePass = 1000;
@@ -28,14 +27,13 @@ namespace Hangfire.FluentNHibernateStorage
 
         public ExpirationManager(FluentNHibernateStorage storage, TimeSpan checkInterval)
         {
-            if (storage == null) throw new ArgumentNullException("storage");
-
-            _storage = storage;
+            _storage = storage ?? throw new ArgumentNullException("storage");
             _checkInterval = checkInterval;
         }
 
-        public void Execute(CancellationToken cancellationToken)
+        public void Execute(BackgroundProcessContext context)
         {
+            var cancellationToken = context.CancellationToken;
             Execute<_AggregatedCounter>(cancellationToken);
             Execute<_Job>(cancellationToken);
             Execute<_List>(cancellationToken);
@@ -45,7 +43,9 @@ namespace Hangfire.FluentNHibernateStorage
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
 
-        private void Execute<T>(CancellationToken cancellationToken) where T : IExpireWithId
+         
+
+        private void Execute<T>(CancellationToken cancellationToken) where T : IExpirableWithId
         {
             var entityName = typeof(T).Name;
             Logger.DebugFormat("Removing outdated records from table '{0}'...", entityName);
@@ -56,15 +56,13 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 try
                 {
-                    Logger.DebugFormat("delete from `{0}` where ExpireAt < @now limit @count;", entityName);
-
                     using (var distributedLock =
                         new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
                             cancellationToken).Acquire())
                     {
                         var idList = distributedLock.Session.Query<T>().Where(i => i.ExpireAt < DateTime.UtcNow)
                             .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
-                        removedCount = distributedLock.Session.DeleteById<T>(idList);
+                        removedCount = distributedLock.Session.DeleteByInt32Id<T>(idList);
                     }
 
                     Logger.DebugFormat("removed records count={0}", removedCount);

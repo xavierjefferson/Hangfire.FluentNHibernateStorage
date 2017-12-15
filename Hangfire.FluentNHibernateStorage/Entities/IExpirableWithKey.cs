@@ -1,6 +1,6 @@
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    internal interface IExpireWithKey : IExpirable
+    internal interface IExpirableWithKey : IExpirable
     {
         string Key { get; set; }
     }

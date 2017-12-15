@@ -6,15 +6,16 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class StatelessSessionWrapper : SessionWrapperBase, IWrappedSession
     {
-        private IStatelessSession s;
+        private readonly IStatelessSession s;
+
+        public StatelessSessionWrapper(IStatelessSession s)
+        {
+            this.s = s;
+        }
 
         public ITransaction BeginTransaction()
         {
             return s.BeginTransaction();
-        }
-        public StatelessSessionWrapper(IStatelessSession s)
-        {
-            this.s = s;
         }
 
         public void Insert(object x)
@@ -25,12 +26,10 @@ namespace Hangfire.FluentNHibernateStorage
         public void Update(object x)
         {
             s.Update(x);
-            
         }
 
         public void Flush()
         {
-           
         }
 
         public IQueryable<X> Query<X>()

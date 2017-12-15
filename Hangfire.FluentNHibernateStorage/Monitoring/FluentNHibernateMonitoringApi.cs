@@ -9,8 +9,6 @@ using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.States;
 using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
-using NHibernate;
-using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage.Monitoring
 {

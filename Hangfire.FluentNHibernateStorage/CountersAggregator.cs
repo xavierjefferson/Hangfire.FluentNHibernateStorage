@@ -7,7 +7,7 @@ using Hangfire.Server;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal class CountersAggregator : IServerComponent
+    public class CountersAggregator :   IBackgroundProcess
     {
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
@@ -30,6 +30,12 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
         public void Execute(CancellationToken cancellationToken)
+        {
+            var token = cancellationToken;
+            GetValue(token);
+        }
+
+        private void GetValue(CancellationToken token)
         {
             Logger.DebugFormat("Aggregating records in 'Counter' table...");
 
@@ -73,7 +79,7 @@ namespace Hangfire.FluentNHibernateStorage
                             }
                             ;
                         }
-                        removedCount = connection.DeleteById<_Counter>(counters.Select(iz => iz.Id).ToArray());
+                        removedCount = connection.DeleteByInt32Id<_Counter>(counters.Select(iz => iz.Id).ToArray());
 
                         transaction.Commit();
                     }
@@ -81,17 +87,22 @@ namespace Hangfire.FluentNHibernateStorage
 
                 if (removedCount >= NumberOfRecordsInSinglePass)
                 {
-                    cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
-                    cancellationToken.ThrowIfCancellationRequested();
+                    token.WaitHandle.WaitOne(DelayBetweenPasses);
+                    token.ThrowIfCancellationRequested();
                 }
             } while (removedCount >= NumberOfRecordsInSinglePass);
 
-            cancellationToken.WaitHandle.WaitOne(_interval);
+            token.WaitHandle.WaitOne(_interval);
         }
 
         public override string ToString()
         {
             return GetType().ToString();
+        }
+
+        public void Execute(BackgroundProcessContext context)
+        {
+            GetValue(context.CancellationToken);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly Dictionary<Type, string> DeleteCommands = new Dictionary<Type, string>();
         private static readonly object mutex = new object();
 
-        public static long DeleteById<T>(this IWrappedSession session, ICollection<int> id) where T : IExpireWithId
+        public static long DeleteByInt32Id<T>(this IWrappedSession session, ICollection<int> id) where T : IInt32Id
         {
             if (!id.Any())
             {
@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage
                 else
                 {
                     queryString = string.Format("delete from {0} where {1} in (:{2})", typeName.Name,
-                        nameof(IExpireWithId.Id), Helper.IdParameterName);
+                        nameof(IInt32Id.Id), Helper.IdParameterName);
                     DeleteCommands[typeName] = queryString;
                 }
             }
@@ -38,7 +38,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public static void DoActionByExpression<T>(this IWrappedSession session, Expression<Func<T, bool>> expr,
             Action<T> action)
-            where T : IExpireWithId
+            where T : IExpirableWithId
         {
             var entities = session.Query<T>().Where(expr);
             foreach (var entity in entities)
@@ -46,7 +46,5 @@ namespace Hangfire.FluentNHibernateStorage
                 action(entity);
             }
         }
-
-        
     }
 }

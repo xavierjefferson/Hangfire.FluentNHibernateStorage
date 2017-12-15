@@ -19,7 +19,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         private readonly int _id;
 
-      
 
         private readonly FluentNHibernateStorage _storage;
         private bool _disposed;
@@ -31,7 +30,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             FetchedJob fetchedJob)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
-           
+
             _id = fetchedJob?.Id ?? throw new ArgumentNullException("fetchedJob");
             JobId = fetchedJob.JobId.ToString(CultureInfo.InvariantCulture);
             Queue = fetchedJob.Queue;
@@ -48,7 +47,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 Requeue();
             }
 
-             
 
             _disposed = true;
         }

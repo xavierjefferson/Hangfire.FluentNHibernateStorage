@@ -12,7 +12,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal static string GetSingleFieldUpdateSql(string table, string column, string idcolumn)
         {
-            return string.Format("update `{0}` set `{1}`=:{3} where `{2}`=:{4}", table, column, idcolumn, ValueParameterName,
+            return string.Format("update `{0}` set `{1}`=:{3} where `{2}`=:{4}", table, column, idcolumn,
+                ValueParameterName,
                 IdParameterName);
         }
 
@@ -20,22 +21,20 @@ namespace Hangfire.FluentNHibernateStorage
             Action<T> changeFunc,
             Action<T> keysetAction) where T : new()
         {
-            
-                var entity = session.Query<T>().FirstOrDefault(matchFunc);
-                if (entity == null)
-                {
-                    entity = new T();
-                    keysetAction(entity);
-                    changeFunc(entity);
-                    session.Insert(entity);
-                }
-                else
-                {
-                    changeFunc(entity);
-                    session.Update(entity);
-                }
-                session.Flush();
-               
+            var entity = session.Query<T>().FirstOrDefault(matchFunc);
+            if (entity == null)
+            {
+                entity = new T();
+                keysetAction(entity);
+                changeFunc(entity);
+                session.Insert(entity);
+            }
+            else
+            {
+                changeFunc(entity);
+                session.Update(entity);
+            }
+            session.Flush();
         }
     }
 }

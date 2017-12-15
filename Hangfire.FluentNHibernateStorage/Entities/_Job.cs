@@ -17,7 +17,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
   KEY `IX_Job_StateName` (`StateName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 */
-    public class _Job : IExpireWithId
+    public class _Job : IExpirableWithId
     {
         public _Job()
         {

@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             {
                 keyPropertyPart.Index(KeyObjectName);
             }
-            
+
             var valuePropertyPart = Map(i => i.Value).Column("`Value`");
             if (ValueInKey)
             {
@@ -39,7 +39,11 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Map(i => i.ExpireAt).Column("`ExpireAt`").Nullable();
         }
 
-        protected virtual bool ValueInKey { get { return false; } }
+        protected virtual bool ValueInKey
+        {
+            get { return false; }
+        }
+
         protected abstract bool HasUniqueKey { get; }
         protected abstract string KeyObjectName { get; }
         protected abstract string TableName { get; }
