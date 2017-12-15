@@ -7,15 +7,15 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private static readonly object mutex = new object();
-        private static int count;
+        private static int _sessionCount;
 
-        public SessionWrapperBase()
+        protected SessionWrapperBase()
         {
             lock (mutex)
             {
-                count++;
+                _sessionCount++;
 
-                Logger.DebugFormat("+Session {0} {1}", GetHashCode(), count);
+                Logger.DebugFormat("+Session {0} {1}", GetHashCode(), _sessionCount);
             }
         }
 
@@ -23,9 +23,9 @@ namespace Hangfire.FluentNHibernateStorage
         {
             lock (mutex)
             {
-                count--;
+                _sessionCount--;
 
-                Logger.DebugFormat("-Session {0} {1}", GetHashCode(), count);
+                Logger.DebugFormat("-Session {0} {1}", GetHashCode(), _sessionCount);
             }
         }
     }
