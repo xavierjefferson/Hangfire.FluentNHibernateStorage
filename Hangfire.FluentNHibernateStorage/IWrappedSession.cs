@@ -4,7 +4,7 @@ using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal interface IWrappedSession : IDisposable
+    public interface IWrappedSession : IDisposable
     {
         ITransaction BeginTransaction();
 

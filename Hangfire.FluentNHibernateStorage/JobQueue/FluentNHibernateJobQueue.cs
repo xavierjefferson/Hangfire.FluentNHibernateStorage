@@ -35,7 +35,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 try
                 {
                     using (var distributedLock =
-                        new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)))
+                        new FluentNHibernateStatelessDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)))
                     {
                         var token = Guid.NewGuid().ToString();
 

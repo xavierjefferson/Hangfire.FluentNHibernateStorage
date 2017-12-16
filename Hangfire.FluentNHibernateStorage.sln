@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateSt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.Tests", "Hangfire.FluentNHibernateStorage.Tests\Hangfire.FluentNHibernateStorage.Tests.csproj", "{6DFFA275-C483-4501-823A-741AC9EC0846}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.SqliteExample", "Example\SqliteExample\Hangfire.FluentNHibernateStorage.SqliteExample.csproj", "{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.SqlServerExample", "Example\SqliteExample\Hangfire.FluentNHibernateStorage.SqlServerExample.csproj", "{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -65,6 +65,8 @@
     <Compile Include="Entities\IInt32Id.cs" />
     <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
+    <Compile Include="FluentNHibernateDistributedLockBase.cs" />
+    <Compile Include="FluentNHibernateStatelessDistributedLock.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="IWrappedSession.cs" />
     <Compile Include="Maps\Constants.cs" />

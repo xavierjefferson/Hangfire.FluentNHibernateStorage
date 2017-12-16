@@ -57,7 +57,7 @@ namespace Hangfire.FluentNHibernateStorage
                 try
                 {
                     using (var distributedLock =
-                        new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
+                        new FluentNHibernateStatelessDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
                             cancellationToken).Acquire())
                     {
                         var idList = distributedLock.Session.Query<T>().Where(i => i.ExpireAt < DateTime.UtcNow)
