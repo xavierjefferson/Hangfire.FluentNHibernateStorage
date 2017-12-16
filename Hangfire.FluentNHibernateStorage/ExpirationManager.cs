@@ -48,7 +48,7 @@ namespace Hangfire.FluentNHibernateStorage
         private void Execute<T>(CancellationToken cancellationToken) where T : IExpirableWithId
         {
             var entityName = typeof(T).Name;
-            Logger.DebugFormat("Removing outdated records from table '{0}'...", entityName);
+            Logger.InfoFormat("Removing outdated records from table '{0}'...", entityName);
 
             long removedCount = 0;
 
@@ -65,7 +65,7 @@ namespace Hangfire.FluentNHibernateStorage
                         removedCount = distributedLock.Session.DeleteByInt32Id<T>(idList);
                     }
 
-                    Logger.DebugFormat("removed records count={0}", removedCount);
+                    Logger.InfoFormat("removed records count={0}", removedCount);
                 }
                 catch (Exception ex)
                 {
@@ -75,7 +75,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                 if (removedCount > 0)
                 {
-                    Logger.Trace(string.Format("Removed {0} outdated record(s) from '{1}' table.", removedCount,
+                    Logger.Info(string.Format("Removed {0} outdated record(s) from '{1}' table.", removedCount,
                         entityName));
 
                     cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);

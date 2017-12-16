@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateSt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.Tests", "Hangfire.FluentNHibernateStorage.Tests\Hangfire.FluentNHibernateStorage.Tests.csproj", "{6DFFA275-C483-4501-823A-741AC9EC0846}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.SqlServerExample", "Example\SqliteExample\Hangfire.FluentNHibernateStorage.SqlServerExample.csproj", "{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.SampleApplication", "Hangfire.FluentNHibernate.SampleApplication\Hangfire.FluentNHibernate.SampleApplication.csproj", "{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DF04D9B5-92FA-4D8E-A5EB-5A1F35F700AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

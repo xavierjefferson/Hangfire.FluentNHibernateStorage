@@ -37,7 +37,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void GetValue(CancellationToken token)
         {
-            Logger.DebugFormat("Aggregating records in 'Counter' table...");
+            Logger.Info("Aggregating records in 'Counter' table...");
 
             long removedCount = 0;
 

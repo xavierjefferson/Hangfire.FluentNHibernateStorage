@@ -120,7 +120,6 @@
     <Compile Include="Entities\ServerData.cs" />
     <Compile Include="Helper2.cs" />
     <Compile Include="SessionWrapper.cs" />
-    <Compile Include="SessionWrapperBase.cs" />
     <Compile Include="StatelessSessionWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
