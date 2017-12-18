@@ -98,7 +98,7 @@
     <Compile Include="Entities\_JobState.cs" />
     <Compile Include="Maps\_JobStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
-    <Compile Include="Helper.cs" />
+    <Compile Include="SQLHelper.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueMonitoringApi.cs" />

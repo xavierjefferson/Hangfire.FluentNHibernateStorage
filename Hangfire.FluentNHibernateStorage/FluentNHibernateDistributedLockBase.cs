@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using NHibernate;
 using NHibernate.Exceptions;
@@ -13,10 +14,6 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private const int DelayBetweenPasses = 100;
         protected static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
-
-        private static readonly string DeleteDistributedLockSql = string.Format("delete from `{0}` where `{1}`=:{2}",
-            nameof(_DistributedLock),
-            nameof(_DistributedLock.Resource), Helper.IdParameterName);
 
         private bool _acquired;
 
@@ -139,7 +136,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("Release resource={0}", Resource);
             Logger.InfoFormat("Released distributed lock for {0}", Resource);
 
-            Session.CreateQuery(DeleteDistributedLockSql).SetParameter(Helper.IdParameterName, Resource)
+            Session.CreateQuery(SQLHelper.DeleteDistributedLockSql).SetParameter(SQLHelper.IdParameterName, Resource)
                 .ExecuteUpdate();
         }
     }

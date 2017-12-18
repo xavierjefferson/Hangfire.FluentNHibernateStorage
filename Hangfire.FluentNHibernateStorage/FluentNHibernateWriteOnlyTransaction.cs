@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using Hangfire.States;
 using Hangfire.Storage;
@@ -12,31 +13,6 @@ namespace Hangfire.FluentNHibernateStorage
     internal class FluentNHibernateWriteOnlyTransaction : JobStorageTransaction
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
-
-        private static readonly string UpdateJobExpireAtSql =
-            Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.ExpireAt), nameof(_Job.Id));
-
-        private static readonly Dictionary<Type, string> DeleteByKeyStatementDictionary = new Dictionary<Type, string>
-        {
-            {typeof(_Set), GetDeleteByKeyStatement<_Set>()},
-            {typeof(_Hash), GetDeleteByKeyStatement<_List>()},
-            {typeof(_List), GetDeleteByKeyStatement<_List>()}
-        };
-
-        private static readonly Dictionary<Type, string> DeleteByKeyValueStatementlDictionary =
-            new Dictionary<Type, string>
-            {
-                {typeof(_Set), GetDeleteByKeyValueStatement<_Set>()},
-                {typeof(_Hash), GetDeleteByKeyValueStatement<_List>()},
-                {typeof(_List), GetDeleteByKeyValueStatement<_List>()}
-            };
-
-        private static readonly Dictionary<Type, string> SetExpireStatementDictionary = new Dictionary<Type, string>
-        {
-            {typeof(_Set), GetSetExpireByKeyStatement<_Set>()},
-            {typeof(_Hash), GetSetExpireByKeyStatement<_List>()},
-            {typeof(_List), GetSetExpireByKeyStatement<_List>()}
-        };
 
 
         //transactional command queue.
@@ -52,41 +28,21 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SetExpireStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, expire)
-                .SetParameter(Helper.IdParameterName, key).ExecuteUpdate();
+            session.CreateQuery(SQLHelper.SetExpireStatementDictionary[typeof(T)]).SetParameter(SQLHelper.ValueParameterName, expire)
+                .SetParameter(SQLHelper.IdParameterName, key).ExecuteUpdate();
         }
 
         private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(DeleteByKeyStatementDictionary[typeof(T)]).SetParameter(Helper.ValueParameterName, key)
+            session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)]).SetParameter(SQLHelper.ValueParameterName, key)
                 .ExecuteUpdate();
         }
 
         private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(DeleteByKeyValueStatementlDictionary[typeof(T)])
-                .SetParameter(Helper.ValueParameterName, key)
-                .SetParameter(Helper.ValueParameter2Name, value).ExecuteUpdate();
-        }
-
-        private static string GetSetExpireByKeyStatement<T>() where T : IExpirableWithKey
-        {
-            return string.Format("update `{0}` set `{1}`={2} where `{3}`:={4}", typeof(T).Name,
-                nameof(IExpirable.ExpireAt), Helper.ValueParameterName, nameof(IExpirableWithKey.Key),
-                Helper.IdParameterName);
-        }
-
-        private static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
-        {
-            return string.Format("delete from `{0}` where `{1}`:={2}", typeof(T).Name, nameof(IExpirableWithKey.Key),
-                Helper.ValueParameterName);
-        }
-
-        private static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
-        {
-            return string.Format("delete from `{0}` where `{1}`:={2} and `{3}`=:{4}", typeof(T).Name,
-                nameof(IExpirableWithKey.Key),
-                Helper.ValueParameterName, nameof(IKeyWithStringValue.Value), Helper.ValueParameter2Name);
+            session.CreateQuery(SQLHelper.DeleteByKeyValueStatementlDictionary[typeof(T)])
+                .SetParameter(SQLHelper.ValueParameterName, key)
+                .SetParameter(SQLHelper.ValueParameter2Name, value).ExecuteUpdate();
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -96,8 +52,8 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(UpdateJobExpireAtSql).SetParameter(Helper.IdParameterName, int.Parse(jobId))
-                    .SetParameter(Helper.ValueParameterName, DateTime.UtcNow.Add(expireIn)).ExecuteUpdate());
+                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement).SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
+                    .SetParameter(SQLHelper.ValueParameterName, DateTime.UtcNow.Add(expireIn)).ExecuteUpdate());
         }
 
         public override void PersistJob(string jobId)
@@ -107,8 +63,8 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(UpdateJobExpireAtSql).SetParameter(Helper.ValueParameterName, null)
-                    .SetParameter(Helper.IdParameterName, int.Parse(jobId))
+                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement).SetParameter(SQLHelper.ValueParameterName, null)
+                    .SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
                     .ExecuteUpdate());
         }
 

@@ -44,10 +44,9 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     return 0;
                 }
-                var sql = Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.CurrentState), nameof(_Job.Id));
 
-                var r = session.CreateQuery(sql).SetParameter(Helper.ValueParameterName, null)
-                    .SetParameterList(Helper.IdParameterName, idList).ExecuteUpdate();
+                var r = session.CreateQuery(SQLHelper.UpdateJobCurrentStateStatement).SetParameter(SQLHelper.ValueParameterName, null)
+                    .SetParameterList(SQLHelper.IdParameterName, idList).ExecuteUpdate();
 
                 return r;
             }, baseDate);
