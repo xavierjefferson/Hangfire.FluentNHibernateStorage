@@ -25,18 +25,6 @@ namespace Hangfire.FluentNHibernate.SampleApplication.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;")]
-        public string ConnectionString {
-            get {
-                return ((string)(this["ConnectionString"]));
-            }
-            set {
-                this["ConnectionString"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public string DataSource {
             get {
@@ -44,6 +32,18 @@ namespace Hangfire.FluentNHibernate.SampleApplication.Properties {
             }
             set {
                 this["DataSource"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string ConnectionStrings {
+            get {
+                return ((string)(this["ConnectionStrings"]));
+            }
+            set {
+                this["ConnectionStrings"] = value;
             }
         }
     }
