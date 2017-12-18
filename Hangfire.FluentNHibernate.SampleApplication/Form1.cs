@@ -123,9 +123,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     .UseStorage(storage);
                 try
                 {
-                    Settings.Default.DataSource = PersistenceConfigurerType.ToString();
-                    Settings.Default.ConnectionString = ConnectionStringTextBox.Text;
-                    Settings.Default.Save();
+                    
 
                     _timer = new Timer(60000);
                     _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
