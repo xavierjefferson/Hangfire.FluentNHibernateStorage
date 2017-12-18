@@ -3,7 +3,7 @@
 
 FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
 
-**Some features of FluentNHibernate storage implementation is under development!**
+This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  I've added hooks for the serverless databases, which are MS SQL Compact Edition, SQLite, and Jet (Access), but as the SQLite implementation quickly falls on its face, I wouldn't advise use of any of these three.
 
 ## Installation
  
