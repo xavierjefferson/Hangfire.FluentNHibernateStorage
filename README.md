@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             Console.ReadLine();
         }
     }
-}```
+}
 ```
 Description of optional parameters:
 - `TransactionIsolationLevel` - transaction isolation level. Default is read committed.
