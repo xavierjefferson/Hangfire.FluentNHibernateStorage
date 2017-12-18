@@ -77,14 +77,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         }
                     }
                 }
-                catch (GenericADOException ex)
+                catch (GenericADOException)
                 {
                     //do nothing
                 }
                 catch (Exception ex)
                 {
                     Logger.ErrorException(ex.Message, ex);
-
                     throw;
                 }
 

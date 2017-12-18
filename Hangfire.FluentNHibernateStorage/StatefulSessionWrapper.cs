@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Data;
+using System.Linq;
 using NHibernate;
 using NHibernate.Linq;
 
@@ -10,12 +11,17 @@ namespace Hangfire.FluentNHibernateStorage
 
         public StatefulSessionWrapper(ISession session)
         {
-            this._session = session;
+            _session = session;
         }
 
         public ITransaction BeginTransaction()
         {
             return _session.BeginTransaction();
+        }
+
+        public ITransaction BeginTransaction(IsolationLevel level)
+        {
+            return _session.BeginTransaction(level);
         }
 
         public IQueryable<T> Query<T>()
@@ -26,6 +32,11 @@ namespace Hangfire.FluentNHibernateStorage
         public IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
+        }
+
+        public ISQLQuery CreateSqlQuery(string queryString)
+        {
+            return _session.CreateSQLQuery(queryString);
         }
 
         public void Insert(object x)
@@ -43,10 +54,9 @@ namespace Hangfire.FluentNHibernateStorage
             _session.Flush();
         }
 
-        public  void Dispose()
+        public void Dispose()
         {
             _session?.Dispose();
-           
         }
     }
 }

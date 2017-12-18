@@ -1,6 +1,5 @@
 ﻿using System.Data;
 using System.Linq;
-using FluentNHibernate.Cfg.Db;
 using NHibernate;
 using NHibernate.Linq;
 
@@ -10,14 +9,14 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private readonly IStatelessSession _session;
 
-        public StatelessSessionWrapper(IStatelessSession s, IPersistenceConfigurer cfg) : base(cfg)
+        public StatelessSessionWrapper(IStatelessSession s)
         {
             _session = s;
         }
 
-        public ITransaction BeginTransaction(IsolationLevel iso)
+        public ITransaction BeginTransaction(IsolationLevel level)
         {
-            return _session.BeginTransaction(iso);
+            return _session.BeginTransaction(level);
         }
 
         public ISQLQuery CreateSqlQuery(string queryString)

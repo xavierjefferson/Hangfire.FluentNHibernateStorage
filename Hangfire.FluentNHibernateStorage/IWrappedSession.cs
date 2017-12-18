@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public interface IWrappedSession : IDisposable
     {
-        ITransaction BeginTransaction(IsolationLevel iso);
+        ITransaction BeginTransaction(IsolationLevel level);
         ITransaction BeginTransaction();
         IQueryable<T> Query<T>();
         IQuery CreateQuery(string queryString);

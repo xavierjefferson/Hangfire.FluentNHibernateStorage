@@ -84,7 +84,7 @@ namespace Hangfire.FluentNHibernateStorage
                             }
                             ;
                         }
-                        removedCount = connection.DeleteByInt32Id<_Counter>(counters.Select(iz => iz.Id).ToArray());
+                        removedCount = connection.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
                         transaction.Commit();
                     }

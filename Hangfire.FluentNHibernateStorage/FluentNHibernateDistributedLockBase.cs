@@ -80,8 +80,8 @@ namespace Hangfire.FluentNHibernateStorage
                         Session.Insert(new _DistributedLock
                         {
                             CreatedAt = now,
-                            Resource = resource,
-                            Id = Guid.NewGuid().ToString()
+                            Resource = resource 
+                            
                         });
                         Session.Flush();
                         transaction.Commit();
@@ -89,11 +89,11 @@ namespace Hangfire.FluentNHibernateStorage
                     }
                 }
             }
-            catch (TransactionException tx)
+            catch (TransactionException)
             {
                 //do nothing
             }
-            catch (GenericADOException gx)
+            catch (GenericADOException)
             {
                 //do nothing
             }
