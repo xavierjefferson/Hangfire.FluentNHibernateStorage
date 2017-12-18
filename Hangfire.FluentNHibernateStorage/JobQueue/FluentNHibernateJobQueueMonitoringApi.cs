@@ -10,11 +10,11 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         private static readonly TimeSpan QueuesCacheTimeout = TimeSpan.FromSeconds(5);
         private readonly object _cacheLock = new object();
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
         private DateTime _cacheUpdated;
         private List<string> _queuesCache = new List<string>();
 
-        public FluentNHibernateJobQueueMonitoringApi(FluentNHibernateStorage storage)
+        public FluentNHibernateJobQueueMonitoringApi(FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
         }

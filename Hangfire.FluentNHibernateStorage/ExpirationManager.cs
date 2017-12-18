@@ -18,14 +18,14 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly TimeSpan _checkInterval;
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
 
-        public ExpirationManager(FluentNHibernateStorage storage)
+        public ExpirationManager(FluentNHibernateJobStorage storage)
             : this(storage, TimeSpan.FromHours(1))
         {
         }
 
-        public ExpirationManager(FluentNHibernateStorage storage, TimeSpan checkInterval)
+        public ExpirationManager(FluentNHibernateJobStorage storage, TimeSpan checkInterval)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
             _checkInterval = checkInterval;

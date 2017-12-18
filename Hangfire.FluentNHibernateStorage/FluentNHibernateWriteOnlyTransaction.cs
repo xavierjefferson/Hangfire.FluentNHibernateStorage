@@ -43,9 +43,9 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly Queue<Action<IWrappedSession>> _commandQueue
             = new Queue<Action<IWrappedSession>>();
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
 
-        public FluentNHibernateWriteOnlyTransaction(FluentNHibernateStorage storage)
+        public FluentNHibernateWriteOnlyTransaction(FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
         }

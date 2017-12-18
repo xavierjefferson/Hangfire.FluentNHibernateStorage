@@ -9,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Table(TableName);
             LazyLoad();
 
-            var keyPropertyPart = Map(i => i.Key).Column("`Key`").Not.Nullable();
+            var keyPropertyPart = Map(i => i.Key).Column("Key".WrapObjectName()).Not.Nullable();
             if (HasUniqueKey)
             {
                 keyPropertyPart.UniqueKey(KeyObjectName);
@@ -19,7 +19,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
                 keyPropertyPart.Index(KeyObjectName);
             }
 
-            var valuePropertyPart = Map(i => i.Value).Column("`Value`");
+            var valuePropertyPart = Map(i => i.Value).Column("Value".WrapObjectName());
             if (ValueInKey)
             {
                 valuePropertyPart.UniqueKey(KeyObjectName);
@@ -36,13 +36,10 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             {
                 valuePropertyPart.Length(ValueLength.Value);
             }
-            Map(i => i.ExpireAt).Column("`ExpireAt`").Nullable();
+            Map(i => i.ExpireAt).Column("ExpireAt".WrapObjectName()).Nullable();
         }
 
-        protected virtual bool ValueInKey
-        {
-            get { return false; }
-        }
+        protected virtual bool ValueInKey => false;
 
         protected abstract bool HasUniqueKey { get; }
         protected abstract string KeyObjectName { get; }

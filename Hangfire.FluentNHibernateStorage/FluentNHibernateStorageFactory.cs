@@ -5,7 +5,7 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public sealed class FluentNHibernateStorageFactory
     {
-        public static FluentNHibernateStorage For(PersistenceConfigurerEnum type, string connectionString,
+        public static FluentNHibernateJobStorage For(PersistenceConfigurerEnum type, string connectionString,
             FluentNHibernateStorageOptions options = null)
         {
             IPersistenceConfigurer configurer;
@@ -65,7 +65,7 @@ namespace Hangfire.FluentNHibernateStorage
                 default:
                     throw new ArgumentException("type");
             }
-            return new FluentNHibernateStorage(configurer, options);
+            return new FluentNHibernateJobStorage(configurer, options);
         }
     }
 }

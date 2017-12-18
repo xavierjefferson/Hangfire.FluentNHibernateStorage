@@ -4,11 +4,11 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class SessionWrapper : IWrappedSession
+    public class StatefulSessionWrapper : IWrappedSession
     {
         private readonly ISession _session;
 
-        public SessionWrapper(ISession session)
+        public StatefulSessionWrapper(ISession session)
         {
             this._session = session;
         }

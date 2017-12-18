@@ -6,32 +6,17 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _ListMap()
         {
-            Table("`Hangfire_List`");
+            Table("Hangfire_List".WrapObjectName());
         }
 
-        protected override int? ValueLength
-        {
-            get { return Constants.VarcharMaxLength; }
-        }
+        protected override int? ValueLength => Constants.VarcharMaxLength;
 
-        protected override bool HasUniqueKey
-        {
-            get { return false; }
-        }
+        protected override bool HasUniqueKey => false;
 
-        protected override string KeyObjectName
-        {
-            get { return "IX_LIST_KEY"; }
-        }
+        protected override string KeyObjectName => "IX_LIST_KEY";
 
-        protected override string TableName
-        {
-            get { return "`List`"; }
-        }
+        protected override string TableName => "List".WrapObjectName();
 
-        protected override bool ValueNullable
-        {
-            get { return true; }
-        }
+        protected override bool ValueNullable => true;
     }
 }

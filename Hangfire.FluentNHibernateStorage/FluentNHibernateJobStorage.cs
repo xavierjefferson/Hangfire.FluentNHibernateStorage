@@ -16,9 +16,9 @@ using NHibernate.Tool.hbm2ddl;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class FluentNHibernateStorage : JobStorage, IDisposable
+    public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateStorage));
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
 
         private static readonly object mutex = new object();
         private readonly FluentNHibernateStorageOptions _options;
@@ -32,12 +32,12 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly ExpirationManager _expirationManager;
 
 
-        public FluentNHibernateStorage(IPersistenceConfigurer pcf)
+        public FluentNHibernateJobStorage(IPersistenceConfigurer pcf)
             : this(pcf, new FluentNHibernateStorageOptions())
         {
         }
 
-        public FluentNHibernateStorage(IPersistenceConfigurer pcf, FluentNHibernateStorageOptions options)
+        public FluentNHibernateJobStorage(IPersistenceConfigurer pcf, FluentNHibernateStorageOptions options)
         {
             ConfigurerFunc = () => { return pcf; };
 
@@ -217,7 +217,7 @@ namespace Hangfire.FluentNHibernateStorage
                     TryBuildSchema();
                 }
             }
-            return new SessionWrapper(GetSessionFactory(GetConfigurer()).OpenSession());
+            return new StatefulSessionWrapper(GetSessionFactory(GetConfigurer()).OpenSession());
         }
 
         internal IWrappedSession GetStatelessSession()

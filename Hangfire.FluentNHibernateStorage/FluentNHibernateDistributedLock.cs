@@ -5,7 +5,7 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateDistributedLock : FluentNHibernateDistributedLockBase, IDisposable, IComparable
     {
-        public FluentNHibernateDistributedLock(FluentNHibernateStorage storage, string resource, TimeSpan timeout,
+        public FluentNHibernateDistributedLock(FluentNHibernateJobStorage storage, string resource, TimeSpan timeout,
             CancellationToken? cancellationToken = null) : base(storage, resource, timeout, cancellationToken)
         {
             Session = storage.GetStatefulSession();

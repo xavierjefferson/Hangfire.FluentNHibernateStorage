@@ -63,7 +63,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             try
             {
                 return JsonConvert.DeserializeObject<Dictionary<PersistenceConfigurerEnum, string>>(a) ??
-                       new Dictionary<PersistenceConfigurerEnum, string>()
+                       new Dictionary<PersistenceConfigurerEnum, string>
                        {
                            {
                                PersistenceConfigurerEnum.MsSql2012,
@@ -85,27 +85,28 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void Form1_Load(object sender, EventArgs e1)
         {
-            var a = Enum.GetValues(typeof(PersistenceConfigurerEnum))
+            var persistenceConfigurerEnums = Enum.GetValues(typeof(PersistenceConfigurerEnum))
                 .Cast<PersistenceConfigurerEnum>()
                 .Where(i => i != PersistenceConfigurerEnum.None)
                 .OrderBy(i => i.ToString())
                 .ToList();
-            DataProviderComboBox.DataSource = a;
+            DataProviderComboBox.DataSource = persistenceConfigurerEnums;
             DataProviderComboBox.SelectedIndexChanged += DataProviderComboBox_SelectedIndexChanged;
 
 
-            PersistenceConfigurerEnum b;
-            PersistenceConfigurerType = Enum.TryParse(Settings.Default.DataSource, out b)
-                ? b
+            PersistenceConfigurerEnum persistenceConfigurerEnum;
+            PersistenceConfigurerType = Enum.TryParse(Settings.Default.DataSource, out persistenceConfigurerEnum)
+                ? persistenceConfigurerEnum
                 : PersistenceConfigurerEnum.MsSql2012;
-           
+
 
             TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
         }
 
         private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            ConnectionStringTextBox.Text = LoadConnectionString((PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem);
+            ConnectionStringTextBox.Text =
+                LoadConnectionString((PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem);
         }
 
 
@@ -114,8 +115,11 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             var connectionString = ConnectionStringTextBox.Text;
             SaveConnectionString(PersistenceConfigurerType, connectionString);
 
+            Settings.Default.DataSource = PersistenceConfigurerType.ToString();
+            Settings.Default.Save();
+
             //THIS LINE GETS THE STORAGE PROVIDER
-            FluentNHibernateStorage.FluentNHibernateStorage storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString);
+            var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString);
             if (storage != null)
             {
                 //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
@@ -123,11 +127,9 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     .UseStorage(storage);
                 try
                 {
-                    
-
                     _timer = new Timer(60000);
                     _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
-
+                    _timer.Start();
                     /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());

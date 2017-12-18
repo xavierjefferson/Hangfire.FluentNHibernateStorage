@@ -6,8 +6,8 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _DistributedLockMap()
         {
-            Table("`Hangfire_DistributedLock`");
-            Map(i => i.Resource).Column("`Resource`").Length(100).Not.Nullable();
+            Table("Hangfire_DistributedLock".WrapObjectName());
+            Map(i => i.Resource).Column("Resource".WrapObjectName()).Length(100).Not.Nullable();
             Map(i => i.CreatedAt).Column(Constants.CreatedAt).Not.Nullable();
         }
     }
