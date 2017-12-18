@@ -24,7 +24,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         protected TimeSpan Timeout;
 
-        protected FluentNHibernateDistributedLockBase(FluentNHibernateStorage storage, string resource,
+        protected FluentNHibernateDistributedLockBase(FluentNHibernateJobStorage storage, string resource,
             TimeSpan timeout,
             CancellationToken? cancellationToken = null)
         {

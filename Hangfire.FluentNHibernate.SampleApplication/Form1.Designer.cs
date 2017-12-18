@@ -30,21 +30,17 @@
         {
             this.label1 = new System.Windows.Forms.Label();
             this.ConnectionStringTextBox = new System.Windows.Forms.TextBox();
-            this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.PostgreSQLRadioButton = new System.Windows.Forms.RadioButton();
-            this.MySqlButton = new System.Windows.Forms.RadioButton();
-            this.SqlServerButton = new System.Windows.Forms.RadioButton();
             this.StartButton = new System.Windows.Forms.Button();
             this.StopButton = new System.Windows.Forms.Button();
             this.LoggerTextBox = new System.Windows.Forms.TextBox();
-            this.SQLiteButton = new System.Windows.Forms.RadioButton();
-            this.groupBox1.SuspendLayout();
+            this.DataProviderComboBox = new System.Windows.Forms.ComboBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(20, 18);
+            this.label1.Location = new System.Drawing.Point(12, 43);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(91, 13);
             this.label1.TabIndex = 0;
@@ -52,57 +48,11 @@
             // 
             // ConnectionStringTextBox
             // 
-            this.ConnectionStringTextBox.Location = new System.Drawing.Point(135, 19);
+            this.ConnectionStringTextBox.Location = new System.Drawing.Point(134, 40);
             this.ConnectionStringTextBox.Multiline = true;
             this.ConnectionStringTextBox.Name = "ConnectionStringTextBox";
             this.ConnectionStringTextBox.Size = new System.Drawing.Size(342, 76);
             this.ConnectionStringTextBox.TabIndex = 1;
-            // 
-            // groupBox1
-            // 
-            this.groupBox1.Controls.Add(this.SQLiteButton);
-            this.groupBox1.Controls.Add(this.PostgreSQLRadioButton);
-            this.groupBox1.Controls.Add(this.MySqlButton);
-            this.groupBox1.Controls.Add(this.SqlServerButton);
-            this.groupBox1.Location = new System.Drawing.Point(26, 106);
-            this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(450, 71);
-            this.groupBox1.TabIndex = 2;
-            this.groupBox1.TabStop = false;
-            this.groupBox1.Text = "Data Source";
-            // 
-            // PostgreSQLRadioButton
-            // 
-            this.PostgreSQLRadioButton.AutoSize = true;
-            this.PostgreSQLRadioButton.Location = new System.Drawing.Point(233, 19);
-            this.PostgreSQLRadioButton.Name = "PostgreSQLRadioButton";
-            this.PostgreSQLRadioButton.Size = new System.Drawing.Size(74, 17);
-            this.PostgreSQLRadioButton.TabIndex = 2;
-            this.PostgreSQLRadioButton.TabStop = true;
-            this.PostgreSQLRadioButton.Text = "Postgresql";
-            this.PostgreSQLRadioButton.UseVisualStyleBackColor = true;
-            // 
-            // MySqlButton
-            // 
-            this.MySqlButton.AutoSize = true;
-            this.MySqlButton.Location = new System.Drawing.Point(131, 19);
-            this.MySqlButton.Name = "MySqlButton";
-            this.MySqlButton.Size = new System.Drawing.Size(54, 17);
-            this.MySqlButton.TabIndex = 1;
-            this.MySqlButton.TabStop = true;
-            this.MySqlButton.Text = "MySql";
-            this.MySqlButton.UseVisualStyleBackColor = true;
-            // 
-            // SqlServerButton
-            // 
-            this.SqlServerButton.AutoSize = true;
-            this.SqlServerButton.Location = new System.Drawing.Point(6, 19);
-            this.SqlServerButton.Name = "SqlServerButton";
-            this.SqlServerButton.Size = new System.Drawing.Size(74, 17);
-            this.SqlServerButton.TabIndex = 0;
-            this.SqlServerButton.TabStop = true;
-            this.SqlServerButton.Text = "Sql Server";
-            this.SqlServerButton.UseVisualStyleBackColor = true;
             // 
             // StartButton
             // 
@@ -134,36 +84,42 @@
             this.LoggerTextBox.Name = "LoggerTextBox";
             this.LoggerTextBox.ReadOnly = true;
             this.LoggerTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.LoggerTextBox.Size = new System.Drawing.Size(871, 206);
+            this.LoggerTextBox.Size = new System.Drawing.Size(677, 206);
             this.LoggerTextBox.TabIndex = 5;
             // 
-            // SQLiteButton
+            // DataProviderComboBox
             // 
-            this.SQLiteButton.AutoSize = true;
-            this.SQLiteButton.Location = new System.Drawing.Point(329, 19);
-            this.SQLiteButton.Name = "SQLiteButton";
-            this.SQLiteButton.Size = new System.Drawing.Size(57, 17);
-            this.SQLiteButton.TabIndex = 3;
-            this.SQLiteButton.TabStop = true;
-            this.SQLiteButton.Text = "SQLite";
-            this.SQLiteButton.UseVisualStyleBackColor = true;
+            this.DataProviderComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.DataProviderComboBox.FormattingEnabled = true;
+            this.DataProviderComboBox.Location = new System.Drawing.Point(134, 13);
+            this.DataProviderComboBox.Name = "DataProviderComboBox";
+            this.DataProviderComboBox.Size = new System.Drawing.Size(342, 21);
+            this.DataProviderComboBox.TabIndex = 6;
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(12, 13);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(72, 13);
+            this.label2.TabIndex = 7;
+            this.label2.Text = "Data Provider";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(914, 425);
+            this.ClientSize = new System.Drawing.Size(749, 425);
+            this.Controls.Add(this.label2);
+            this.Controls.Add(this.DataProviderComboBox);
             this.Controls.Add(this.LoggerTextBox);
             this.Controls.Add(this.StopButton);
             this.Controls.Add(this.StartButton);
-            this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.ConnectionStringTextBox);
             this.Controls.Add(this.label1);
             this.Name = "Form1";
             this.Text = "Hangfire Background Server";
             this.Load += new System.EventHandler(this.Form1_Load);
-            this.groupBox1.ResumeLayout(false);
-            this.groupBox1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -173,14 +129,11 @@
 
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox ConnectionStringTextBox;
-        private System.Windows.Forms.GroupBox groupBox1;
-        private System.Windows.Forms.RadioButton PostgreSQLRadioButton;
-        private System.Windows.Forms.RadioButton MySqlButton;
-        private System.Windows.Forms.RadioButton SqlServerButton;
         private System.Windows.Forms.Button StartButton;
         private System.Windows.Forms.Button StopButton;
         private System.Windows.Forms.TextBox LoggerTextBox;
-        private System.Windows.Forms.RadioButton SQLiteButton;
+        private System.Windows.Forms.ComboBox DataProviderComboBox;
+        private System.Windows.Forms.Label label2;
     }
 }
 

@@ -72,6 +72,7 @@
     <Compile Include="IWrappedSession.cs" />
     <Compile Include="Maps\Constants.cs" />
     <Compile Include="Maps\IntIdMap.cs" />
+    <Compile Include="Maps\ObjectHelper.cs" />
     <Compile Include="Maps\_DistributedLockMap.cs" />
     <Compile Include="Entities\_AggregatedCounter.cs" />
     <Compile Include="Maps\_AggregatedCounterMap.cs" />
@@ -112,15 +113,15 @@
     <Compile Include="Entities\_Server.cs" />
     <Compile Include="FluentNHibernateDistributedLock.cs" />
     <Compile Include="FluentNHibernateDistributedLockException.cs" />
-    <Compile Include="FluentNHibernateStorage.cs" />
+    <Compile Include="FluentNHibernateJobStorage.cs" />
     <Compile Include="FluentNHibernateStorageConnection.cs" />
     <Compile Include="FluentNHibernateStorageOptions.cs" />
     <Compile Include="FluentNHibernateWriteOnlyTransaction.cs" />
     <Compile Include="JobQueue\PersistentJobQueueProviderCollection.cs" />
+    <Compile Include="PersistenceConfigurerEnum.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Entities\ServerData.cs" />
-    <Compile Include="Helper2.cs" />
-    <Compile Include="SessionWrapper.cs" />
+    <Compile Include="StatefulSessionWrapper.cs" />
     <Compile Include="StatelessSessionWrapper.cs" />
   </ItemGroup>
   <ItemGroup>

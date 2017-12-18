@@ -6,15 +6,21 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobMap()
         {
-            Table("`Hangfire_Job`");
+            Table("Hangfire_Job".WrapObjectName());
             LazyLoad();
-            Map(i => i.InvocationData).Column("`InvocationData`").Length(Constants.VarcharMaxLength).Not.Nullable();
-            Map(i => i.Arguments).Column("`Arguments`").Length(Constants.VarcharMaxLength).Not.Nullable();
-            Map(i => i.CreatedAt).Column(Constants.CreatedAtColumnName).Not.Nullable();
-            Map(i => i.ExpireAt).Column("`ExpireAt`").Nullable();
-            HasMany(i => i.Parameters).KeyColumn(Constants.JobIdColumnName).Cascade.Delete();
-            HasMany(i => i.History).KeyColumn(Constants.JobIdColumnName).Cascade.Delete();
-            References(i => i.CurrentState).Column("`StateId`").Cascade.None().Nullable();
+            Map(i => i.InvocationData)
+                .Column("InvocationData".WrapObjectName())
+                .Length(Constants.VarcharMaxLength)
+                .Not.Nullable();
+            Map(i => i.Arguments)
+                .Column("Arguments".WrapObjectName())
+                .Length(Constants.VarcharMaxLength)
+                .Not.Nullable();
+            Map(i => i.CreatedAt).Column(Constants.CreatedAt).Not.Nullable();
+            Map(i => i.ExpireAt).Column("ExpireAt".WrapObjectName()).Nullable();
+            HasMany(i => i.Parameters).KeyColumn(Constants.JobId).Cascade.All();
+            HasMany(i => i.History).KeyColumn(Constants.JobId).Cascade.All();
+            References(i => i.CurrentState).Column("StateId".WrapObjectName()).Cascade.All().Nullable();
         }
     }
 }

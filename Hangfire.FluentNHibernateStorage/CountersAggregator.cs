@@ -21,9 +21,9 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly TimeSpan _interval;
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
 
-        public CountersAggregator(FluentNHibernateStorage storage, TimeSpan interval)
+        public CountersAggregator(FluentNHibernateJobStorage storage, TimeSpan interval)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
             _interval = interval;

@@ -4,29 +4,14 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 {
     internal class _CounterMap : EntityBase1Map<_Counter, long>
     {
-        protected override bool HasUniqueKey
-        {
-            get { return false; }
-        }
+        protected override bool HasUniqueKey => false;
 
-        protected override string KeyObjectName
-        {
-            get { return "IX_Counter_Key"; }
-        }
+        protected override string KeyObjectName => "IX_Counter_Key";
 
-        protected override string TableName
-        {
-            get { return "`Hangfire_Counter`"; }
-        }
+        protected override string TableName => "Hangfire_Counter".WrapObjectName();
 
-        protected override bool ValueNullable
-        {
-            get { return false; }
-        }
+        protected override bool ValueNullable => false;
 
-        protected override int? ValueLength
-        {
-            get { return null; }
-        }
+        protected override int? ValueLength => null;
     }
 }

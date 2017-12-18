@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Transactions;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Cfg.Db;
 using Hangfire.Annotations;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
-using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.Logging;
 using Hangfire.Server;
@@ -18,40 +16,39 @@ using NHibernate.Tool.hbm2ddl;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class FluentNHibernateStorage : JobStorage, IDisposable
+    public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateStorage));
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
 
-        private static readonly object Mutex = new object();
-        private readonly CountersAggregator _countersAggregator;
-
-        private readonly ExpirationManager _expirationManager;
+        private static readonly object mutex = new object();
         private readonly FluentNHibernateStorageOptions _options;
 
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
 
-        protected readonly IPersistenceConfigurer PersistenceConfigurer;
+        protected IPersistenceConfigurer _configurer;
+        private readonly CountersAggregator _countersAggregator;
+
+        private readonly ExpirationManager _expirationManager;
 
 
-        public FluentNHibernateStorage(IPersistenceConfigurer persistenceConfigurer)
-            : this(persistenceConfigurer, new FluentNHibernateStorageOptions())
+        public FluentNHibernateJobStorage(IPersistenceConfigurer pcf)
+            : this(pcf, new FluentNHibernateStorageOptions())
         {
         }
 
-        public FluentNHibernateStorage(IPersistenceConfigurer persistenceConfigurer, FluentNHibernateStorageOptions options)
+        public FluentNHibernateJobStorage(IPersistenceConfigurer pcf, FluentNHibernateStorageOptions options)
         {
-           
-            PersistenceConfigurer = persistenceConfigurer;
+            ConfigurerFunc = () => { return pcf; };
+
 
             _options = options ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
             _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
             _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
-
-           
         }
+
 
         internal virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
@@ -61,7 +58,6 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
-       
 
         private void InitializeQueueProviders()
         {
@@ -184,7 +180,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private ISessionFactory GetSessionFactory(IPersistenceConfigurer configurer)
         {
-            lock (Mutex)
+            lock (mutex)
             {
                 //SINGLETON!
                 if (_sessionFactories.ContainsKey(configurer) && _sessionFactories[configurer] != null)
@@ -202,37 +198,47 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
+        private IPersistenceConfigurer GetConfigurer()
+        {
+            if (_configurer == null)
+            {
+                _configurer = ConfigurerFunc();
+            }
+            return _configurer;
+        }
+
+
         internal IWrappedSession GetStatefulSession()
         {
-            lock (Mutex)
+            lock (mutex)
             {
                 if (_options.PrepareSchemaIfNecessary)
                 {
                     TryBuildSchema();
                 }
             }
-            return new SessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), PersistenceConfigurer);
+            return new StatefulSessionWrapper(GetSessionFactory(GetConfigurer()).OpenSession());
         }
 
         internal IWrappedSession GetStatelessSession()
         {
-            lock (Mutex)
+            lock (mutex)
             {
                 if (_options.PrepareSchemaIfNecessary)
                 {
                     TryBuildSchema();
                 }
             }
-            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession(), PersistenceConfigurer);
+            return new StatelessSessionWrapper(GetSessionFactory(GetConfigurer()).OpenStatelessSession());
         }
 
         private void TryBuildSchema()
         {
-            lock (Mutex)
+            lock (mutex)
             {
                 Logger.Info("Start installing Hangfire SQL object check...");
                 Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>())
-                    .Database(PersistenceConfigurer)
+                    .Database(GetConfigurer())
                     .ExposeConfiguration(cfg =>
                     {
                         var schemaUpdate = new SchemaUpdate(cfg);

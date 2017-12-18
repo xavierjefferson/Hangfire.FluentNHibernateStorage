@@ -30,9 +30,9 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(_Server),
             nameof(_Server.LastHeartbeat), Helper.ValueParameterName);
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
 
-        public FluentNHibernateStorageConnection(FluentNHibernateStorage storage)
+        public FluentNHibernateStorageConnection(FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
         }

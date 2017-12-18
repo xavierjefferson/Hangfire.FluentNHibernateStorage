@@ -15,9 +15,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         private readonly FluentNHibernateStorageOptions _options;
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
 
-        public FluentNHibernateJobQueue(FluentNHibernateStorage storage, FluentNHibernateStorageOptions options)
+        public FluentNHibernateJobQueue(FluentNHibernateJobStorage storage, FluentNHibernateStorageOptions options)
         {
             Logger.Info("Job queue initialized");
             _storage = storage ?? throw new ArgumentNullException("storage");

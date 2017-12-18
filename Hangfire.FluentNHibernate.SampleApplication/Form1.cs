@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using Hangfire.FluentNHibernate.SampleApplication.Properties;
 using Hangfire.FluentNHibernateStorage;
 using log4net;
+using Newtonsoft.Json;
 using Timer = System.Timers.Timer;
 
 namespace Hangfire.FluentNHibernate.SampleApplication
@@ -15,31 +16,23 @@ namespace Hangfire.FluentNHibernate.SampleApplication
     {
         private static readonly ILog loggerNew = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
-        private static FluentNHibernateStorage.FluentNHibernateStorage storage;
         private BackgroundJobServer _backgroundJobServer;
 
-        private RadioButton[] radioButtons;
-        private Timer t;
+        private Timer _timer;
 
 
         public Form1()
         {
-            InitializeComponent();   radioButtons = new[] {SqlServerButton, MySqlButton, PostgreSQLRadioButton, SQLiteButton};
-             SQLiteButton.Tag =  DataSourceEnum.SQLIte;
-            SqlServerButton.Tag = DataSourceEnum.SqlServer;
-            MySqlButton.Tag = DataSourceEnum.Mysql;
-            PostgreSQLRadioButton.Tag = DataSourceEnum.Postgresl;
+            InitializeComponent();
         }
 
-        private DataSourceEnum DataSource
+        private PersistenceConfigurerEnum PersistenceConfigurerType
         {
-            get { return (DataSourceEnum) radioButtons.FirstOrDefault(i => i.Checked).Tag; }
+            get => (PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem;
             set
             {
-                foreach (var radioButton in radioButtons)
-                {
-                    radioButton.Checked = value == (DataSourceEnum) radioButton.Tag;
-                }
+                ConnectionStringTextBox.Text = LoadConnectionString(value);
+                DataProviderComboBox.SelectedItem = value;
             }
         }
 
@@ -64,87 +57,114 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             base.OnClosing(e);
         }
 
+        private Dictionary<PersistenceConfigurerEnum, string> GetSettings()
+        {
+            var a = Settings.Default.ConnectionStrings;
+            try
+            {
+                return JsonConvert.DeserializeObject<Dictionary<PersistenceConfigurerEnum, string>>(a) ??
+                       new Dictionary<PersistenceConfigurerEnum, string>
+                       {
+                           {
+                               PersistenceConfigurerEnum.MsSql2012,
+                               "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"
+                           }
+                       };
+            }
+            catch
+            {
+                return new Dictionary<PersistenceConfigurerEnum, string>();
+            }
+        }
+
+        private string LoadConnectionString(PersistenceConfigurerEnum persistenceConfigurer)
+        {
+            var settings = GetSettings();
+            return settings.ContainsKey(persistenceConfigurer) ? settings[persistenceConfigurer] : string.Empty;
+        }
+
         private void Form1_Load(object sender, EventArgs e1)
         {
-         
-           SqlServerButton.Click += SqlServerButton_Click;
-            MySqlButton.Click += SqlServerButton_Click;
-            PostgreSQLRadioButton.Click += SqlServerButton_Click;
+            var persistenceConfigurerEnums = Enum.GetValues(typeof(PersistenceConfigurerEnum))
+                .Cast<PersistenceConfigurerEnum>()
+                .Where(i => i != PersistenceConfigurerEnum.None)
+                .OrderBy(i => i.ToString())
+                .ToList();
+            DataProviderComboBox.DataSource = persistenceConfigurerEnums;
+            DataProviderComboBox.SelectedIndexChanged += DataProviderComboBox_SelectedIndexChanged;
 
-            ConnectionStringTextBox.Text = Settings.Default.ConnectionString;
-            DataSourceEnum e;
-            if (Enum.TryParse(Settings.Default.DataSource, out e))
-            {
-                DataSource = e;
-            }
-            else
-            {
-                DataSource = DataSourceEnum.SqlServer;
-            }
+
+            PersistenceConfigurerEnum persistenceConfigurerEnum;
+            PersistenceConfigurerType = Enum.TryParse(Settings.Default.DataSource, out persistenceConfigurerEnum)
+                ? persistenceConfigurerEnum
+                : PersistenceConfigurerEnum.MsSql2012;
+
+
             TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
         }
 
-        private void SqlServerButton_Click(object sender, EventArgs e)
+        private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            ConnectionStringTextBox.Text =
+                LoadConnectionString((PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem);
         }
+
 
         private void StartButton_Click(object sender, EventArgs e)
         {
             var connectionString = ConnectionStringTextBox.Text;
-            
-            switch (DataSource)
-            {
-                case DataSourceEnum.SQLIte:
-                    storage = FluentNHibernateStorageFactory.ForSQLite(connectionString);
-                    break;
-                case DataSourceEnum.SqlServer:
-                    storage = FluentNHibernateStorageFactory.ForMsSql2012(connectionString);
-                    break;
-                case DataSourceEnum.Mysql:
-                    storage = FluentNHibernateStorageFactory.ForMySQL(connectionString);
-                    break;
-                case DataSourceEnum.Postgresl:
-                    storage = FluentNHibernateStorageFactory.ForPostgreSQL(connectionString);
-                    break;
-            }
+            SaveConnectionString(PersistenceConfigurerType, connectionString);
+
+            Settings.Default.DataSource = PersistenceConfigurerType.ToString();
+            Settings.Default.Save();
+
+            //THIS LINE GETS THE STORAGE PROVIDER
+            var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString);
             if (storage != null)
             {
+                //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
                 GlobalConfiguration.Configuration.UseLog4NetLogProvider()
                     .UseStorage(storage);
                 try
-                {   Settings.Default.DataSource = DataSource.ToString();
-                    Settings.Default.ConnectionString = ConnectionStringTextBox.Text;
-                    Settings.Default.Save();
-
-                    t = new Timer(60000);
-                    t.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
-
+                {
+                    _timer = new Timer(60000);
+                    _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
+                    _timer.Start();
+                    /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());
 
+                    /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
                     RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
                     RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
                     loggerNew.Info("Background server started");
                     StartButton.Enabled = false;
                     StopButton.Enabled = true;
-                 
                 }
                 catch (Exception ex)
                 {
-                    loggerNew.Error("Server start failed",ex);
-                   StopButton_Click(null,new EventArgs());
+                    loggerNew.Error("Server start failed", ex);
+                    StopButton_Click(null, new EventArgs());
                 }
             }
+        }
+
+        private void SaveConnectionString(PersistenceConfigurerEnum persistenceConfigurerType, string connectionString)
+        {
+            var dictionary = GetSettings();
+            dictionary[persistenceConfigurerType] = connectionString;
+            Settings.Default.ConnectionStrings = JsonConvert.SerializeObject(dictionary);
+            Settings.Default.Save();
         }
 
         private void StopButton_Click(object sender, EventArgs e)
         {
             try
             {
-                if (t != null)
+                if (_timer != null)
                 {
-                    t.Stop();
-                    t = null;
+                    _timer.Stop();
+                    _timer = null;
                 }
                 if (_backgroundJobServer != null)
                 {
@@ -157,15 +177,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             }
             catch (Exception ex)
             {
-                loggerNew.Error("Error during stop",ex);
+                loggerNew.Error("Error during stop", ex);
             }
-        }
-
-        private enum DataSourceEnum
-        {
-            SqlServer = 0,
-            Mysql = 1,
-            Postgresl = 2,SQLIte=3
         }
     }
 }

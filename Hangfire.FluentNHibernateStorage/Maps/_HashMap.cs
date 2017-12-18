@@ -8,32 +8,17 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         public _HashMap()
         {
-            Map(i => i.Field).Column("`Field`").Length(40).Not.Nullable().UniqueKey(UniqueIndexName);
+            Map(i => i.Field).Column("Field".WrapObjectName()).Length(40).Not.Nullable().UniqueKey(UniqueIndexName);
         }
 
-        protected override bool HasUniqueKey
-        {
-            get { return true; }
-        }
+        protected override bool HasUniqueKey => true;
 
-        protected override string KeyObjectName
-        {
-            get { return UniqueIndexName; }
-        }
+        protected override string KeyObjectName => UniqueIndexName;
 
-        protected override string TableName
-        {
-            get { return "`Hangfire_Hash`"; }
-        }
+        protected override string TableName => "Hangfire_Hash".WrapObjectName();
 
-        protected override bool ValueNullable
-        {
-            get { return true; }
-        }
+        protected override bool ValueNullable => true;
 
-        protected override int? ValueLength
-        {
-            get { return Constants.VarcharMaxLength; }
-        }
+        protected override int? ValueLength => Constants.VarcharMaxLength;
     }
 }

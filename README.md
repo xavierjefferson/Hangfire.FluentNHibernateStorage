@@ -3,7 +3,7 @@
 
 FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
 
-**Some features of FluentNHibernate storage implementation is under development!**
+This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  I've added hooks for the serverless databases, which are MS SQL Compact Edition, SQLite, and Jet (Access), but as the SQLite implementation quickly falls on its face, I wouldn't advise use of any of these three.
 
 ## Installation
  
@@ -15,27 +15,48 @@ Install-Package Hangfire.FluentNHibernateStorage
 ```
 
 ## Usage
+```
+using System;
+using System.Configuration;
+using System.Transactions;
+using Hangfire.FluentNHibernateStorage;
 
-Use one the following ways to initialize `FluentNHibernateStorage`: 
-- Call one of the static methods of class FluentNHibernateStorageFactory (respective to your database provider) with ConnectionString parameter and pass it to `Configuration` with `UseStorage` method:
-```
-  GlobalConfiguration.Configuration.UseStorage(
-    FluentNHibernateStorageFactory.ForMySQL(connectionString));
-```
-```
-GlobalConfiguration.Configuration.UseStorage(
-    FluentNHibernateStorageFactory.ForMySQL(
-        connectionString, 
-        new FluentNHibernateStorageOptions
+namespace Hangfire.FluentNHibernate.SampleApplication
+{
+    public class DemoClass
+    {
+        private static BackgroundJobServer _backgroundJobServer;
+
+        private static void Main(string[] args)
         {
-            TransactionIsolationLevel = IsolationLevel.ReadCommitted,
-            QueuePollInterval = TimeSpan.FromSeconds(15),
-            JobExpirationCheckInterval = TimeSpan.FromHours(1),
-            CountersAggregateInterval = TimeSpan.FromMinutes(5),
-            PrepareSchemaIfNecessary = true,
-            DashboardJobListLimit = 50000,
-            TransactionTimeout = TimeSpan.FromMinutes(1),
-        }));
+            //Configure properties (this is optional)
+            var options = new FluentNHibernateStorageOptions
+            {
+                TransactionIsolationLevel = IsolationLevel.ReadCommitted,
+                QueuePollInterval = TimeSpan.FromSeconds(15),
+                JobExpirationCheckInterval = TimeSpan.FromHours(1),
+                CountersAggregateInterval = TimeSpan.FromMinutes(5),
+                PrepareSchemaIfNecessary = true,
+                DashboardJobListLimit = 50000,
+                TransactionTimeout = TimeSpan.FromMinutes(1),
+            };
+
+            //THIS SECTION GETS THE STORAGE PROVIDER
+            var PersistenceConfigurerType = PersistenceConfigurerEnum.MsSql2012;
+            var connectionString = ConfigurationManager.ConnectionStrings["someConnectionString"].ConnectionString;
+            var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString, options);
+
+            //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
+            GlobalConfiguration.Configuration.UseStorage(storage);
+            /*THIS LINE STARTS THE BACKGROUND SERVER*/
+            _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
+                storage.GetBackgroundProcesses());
+            /*AND... DONE.*/
+            Console.WriteLine("Background job server is running.  Press [ENTER] to quit.");
+            Console.ReadLine();
+        }
+    }
+}
 ```
 Description of optional parameters:
 - `TransactionIsolationLevel` - transaction isolation level. Default is read committed.

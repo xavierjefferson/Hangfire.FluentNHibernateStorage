@@ -20,13 +20,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         private readonly int _id;
 
 
-        private readonly FluentNHibernateStorage _storage;
+        private readonly FluentNHibernateJobStorage _storage;
         private bool _disposed;
         private bool _removedFromQueue;
         private bool _requeued;
 
         public FluentNHibernateFetchedJob(
-            FluentNHibernateStorage storage,
+            FluentNHibernateJobStorage storage,
             FetchedJob fetchedJob)
         {
             _storage = storage ?? throw new ArgumentNullException("storage");
