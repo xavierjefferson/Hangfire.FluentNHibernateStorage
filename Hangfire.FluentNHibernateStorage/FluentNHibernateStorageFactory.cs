@@ -5,66 +5,99 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public sealed class FluentNHibernateStorageFactory
     {
+        private static IPersistenceConfigurer ConfigureProvider<T, U>(Func<PersistenceConfiguration<T, U>> createFunc,
+            string connectionString, FluentNHibernateStorageOptions options) where T : PersistenceConfiguration<T, U>
+            where U : ConnectionStringBuilder, new()
+        {
+            var provider = createFunc().ConnectionString(connectionString);
+
+            if (!string.IsNullOrWhiteSpace(options.DefaultSchema))
+            {
+                provider.DefaultSchema(options.DefaultSchema);
+            }
+            return provider;
+        }
+
         public static FluentNHibernateJobStorage For(PersistenceConfigurerEnum type, string connectionString,
             FluentNHibernateStorageOptions options = null)
         {
+            options = options ?? new FluentNHibernateStorageOptions();
+
             IPersistenceConfigurer configurer;
             switch (type)
             {
                 case PersistenceConfigurerEnum.MsSqlCeStandard:
-                    configurer = MsSqlCeConfiguration.Standard.ConnectionString(connectionString);
+
+                    configurer = ConfigureProvider(() => MsSqlCeConfiguration.Standard, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MsSqlCe40:
-                    configurer = MsSqlCeConfiguration.MsSqlCe40.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MsSqlCeConfiguration.MsSqlCe40, connectionString, options);
                     break;
                 case PersistenceConfigurerEnum.JetDriver:
-                    configurer = JetDriverConfiguration.Standard.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => JetDriverConfiguration.Standard, connectionString, options);
                     break;
                 case PersistenceConfigurerEnum.OracleClient10:
-                    configurer = OracleClientConfiguration.Oracle10.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.OracleClient9:
-                    configurer = OracleClientConfiguration.Oracle9.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options);
                     break;
                 case PersistenceConfigurerEnum.PostgreSQLStandard:
-                    configurer = PostgreSQLConfiguration.Standard.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => PostgreSQLConfiguration.Standard, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.PostgreSQL81:
-                    configurer = PostgreSQLConfiguration.PostgreSQL81.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => PostgreSQLConfiguration.PostgreSQL81, connectionString,
+                        options);
+
                     break;
                 case PersistenceConfigurerEnum.PostgreSQL82:
-                    configurer = PostgreSQLConfiguration.PostgreSQL82.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => PostgreSQLConfiguration.PostgreSQL82, connectionString,
+                        options);
+
                     break;
                 case PersistenceConfigurerEnum.Firebird:
-                    configurer = new FirebirdConfiguration().ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => new FirebirdConfiguration(), connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.SQLite:
-                    configurer = SQLiteConfiguration.Standard.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => SQLiteConfiguration.Standard, connectionString, options);
+               
                     break;
                 case PersistenceConfigurerEnum.Db2Informix1150:
-                    configurer = DB2Configuration.Informix1150.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => DB2Configuration.Informix1150, connectionString, options);
+              
                     break;
                 case PersistenceConfigurerEnum.Db2Standard:
-                    configurer = DB2Configuration.Standard.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => DB2Configuration.Standard, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MySql:
-                    configurer = MySQLConfiguration.Standard.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MySQLConfiguration.Standard, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MsSql2008:
-                    configurer = MsSqlConfiguration.MsSql2008.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2008, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MsSql2012:
-                    configurer = MsSqlConfiguration.MsSql2012.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2012, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MsSql2005:
-                    configurer = MsSqlConfiguration.MsSql2005.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2005, connectionString, options);
+
                     break;
                 case PersistenceConfigurerEnum.MsSql2000:
-                    configurer = MsSqlConfiguration.MsSql2000.ConnectionString(connectionString);
+                    configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2000, connectionString, options);
+
                     break;
                 default:
                     throw new ArgumentException("type");
             }
+
             return new FluentNHibernateJobStorage(configurer, options);
         }
     }

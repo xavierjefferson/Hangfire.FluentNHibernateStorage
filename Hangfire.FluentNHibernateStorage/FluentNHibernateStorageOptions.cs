@@ -43,6 +43,8 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
+        public string DefaultSchema { get; set; }
+
         public bool PrepareSchemaIfNecessary { get; set; }
 
         public TimeSpan JobExpirationCheckInterval { get; set; }
