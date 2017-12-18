@@ -74,7 +74,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DemoClass.cs" />
     <Compile Include="TextBoxAppender.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
