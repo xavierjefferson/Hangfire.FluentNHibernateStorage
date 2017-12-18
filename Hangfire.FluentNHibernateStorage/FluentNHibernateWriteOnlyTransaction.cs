@@ -120,7 +120,7 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
             QueueCommand(session =>
             {
-                var job = session.Query<_Job>().FirstOrDefault(i => i.Id == int.Parse(jobId));
+                var job = session.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
                 if (job != null)
                 {
                     var sqlState = new _JobState

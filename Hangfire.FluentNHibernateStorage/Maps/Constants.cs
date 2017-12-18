@@ -3,9 +3,9 @@
     internal class Constants
     {
         public const int VarcharMaxLength = 4001;
-        public const string JobId = "`JobId`";
-        public const string Id = "`Id`";
-        public const string Data = "`Data`";
-        public const string CreatedAt = "`CreatedAt`";
+        public const string JobIdColumnName = "`JobId`";
+        public const string IdColumnName = "`Id`";
+        public const string DataColumnName = "`Data`";
+        public const string CreatedAtColumnName = "`CreatedAt`";
     }
 }

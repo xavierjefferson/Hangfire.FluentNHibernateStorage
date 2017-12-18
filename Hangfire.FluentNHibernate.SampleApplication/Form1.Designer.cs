@@ -37,6 +37,7 @@
             this.StartButton = new System.Windows.Forms.Button();
             this.StopButton = new System.Windows.Forms.Button();
             this.LoggerTextBox = new System.Windows.Forms.TextBox();
+            this.SQLiteButton = new System.Windows.Forms.RadioButton();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -59,6 +60,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.SQLiteButton);
             this.groupBox1.Controls.Add(this.PostgreSQLRadioButton);
             this.groupBox1.Controls.Add(this.MySqlButton);
             this.groupBox1.Controls.Add(this.SqlServerButton);
@@ -132,14 +134,25 @@
             this.LoggerTextBox.Name = "LoggerTextBox";
             this.LoggerTextBox.ReadOnly = true;
             this.LoggerTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.LoggerTextBox.Size = new System.Drawing.Size(677, 206);
+            this.LoggerTextBox.Size = new System.Drawing.Size(871, 206);
             this.LoggerTextBox.TabIndex = 5;
+            // 
+            // SQLiteButton
+            // 
+            this.SQLiteButton.AutoSize = true;
+            this.SQLiteButton.Location = new System.Drawing.Point(329, 19);
+            this.SQLiteButton.Name = "SQLiteButton";
+            this.SQLiteButton.Size = new System.Drawing.Size(57, 17);
+            this.SQLiteButton.TabIndex = 3;
+            this.SQLiteButton.TabStop = true;
+            this.SQLiteButton.Text = "SQLite";
+            this.SQLiteButton.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(749, 425);
+            this.ClientSize = new System.Drawing.Size(914, 425);
             this.Controls.Add(this.LoggerTextBox);
             this.Controls.Add(this.StopButton);
             this.Controls.Add(this.StartButton);
@@ -167,6 +180,7 @@
         private System.Windows.Forms.Button StartButton;
         private System.Windows.Forms.Button StopButton;
         private System.Windows.Forms.TextBox LoggerTextBox;
+        private System.Windows.Forms.RadioButton SQLiteButton;
     }
 }
 

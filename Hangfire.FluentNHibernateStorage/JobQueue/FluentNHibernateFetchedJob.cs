@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
             using (var session = _storage.GetStatefulSession())
             {
-                //todo: unit test
+               
                 session.CreateQuery(DeleteJobQueueSql).SetParameter(Helper.IdParameterName, _id).ExecuteUpdate();
             }
             _removedFromQueue = true;
@@ -67,7 +67,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("Requeue JobId={0}", JobId);
             using (var session = _storage.GetStatefulSession())
             {
-                //todo: unit test
+           
                 session.CreateQuery(UpdateJobQueueSql).SetParameter(Helper.ValueParameterName, null)
                     .SetParameter(Helper.IdParameterName, _id)
                     .ExecuteUpdate();

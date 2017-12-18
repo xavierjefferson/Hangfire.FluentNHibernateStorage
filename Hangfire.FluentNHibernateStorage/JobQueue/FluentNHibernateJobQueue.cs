@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
+using NHibernate.Exceptions;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
@@ -37,7 +39,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 try
                 {
                     using (var distributedLock =
-                        new FluentNHibernateStatelessDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(30)).Acquire())
+                        new FluentNHibernateStatelessDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(60))
+                            .Acquire())
                     {
                         var token = Guid.NewGuid().ToString();
 
@@ -46,7 +49,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                             var jobQueueFetchedAt = DateTime.UtcNow;
                             var next = jobQueueFetchedAt.AddSeconds(
                                 _options.InvisibilityTimeout.Negate().TotalSeconds);
-                            using (var transaction = distributedLock.Session.BeginTransaction())
+                            using (var transaction =
+                                distributedLock.Session.BeginTransaction(IsolationLevel.Serializable))
                             {
                                 var jobQueue = distributedLock.Session.Query<_JobQueue>().FirstOrDefault(i =>
                                     (i.FetchedAt == null
@@ -59,7 +63,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                     distributedLock.Session.Flush();
 
                                     transaction.Commit();
-                                    Logger.InfoFormat("Dequeued job id {0} for queue {1}", jobQueue.Job.Id, jobQueue.Queue);
+                                    Logger.InfoFormat("Dequeued job id {0} for queue {1}", jobQueue.Job.Id,
+                                        jobQueue.Queue);
                                     var fetchedJob = new FetchedJob
                                     {
                                         Id = jobQueue.Id,
@@ -72,6 +77,10 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         }
                     }
                 }
+                catch (GenericADOException ex)
+                {
+                    //do nothing
+                }
                 catch (Exception ex)
                 {
                     Logger.ErrorException(ex.Message, ex);
@@ -81,16 +90,14 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                 cancellationToken.WaitHandle.WaitOne(_options.QueuePollInterval);
                 cancellationToken.ThrowIfCancellationRequested();
-            } 
+            }
         }
 
         public void Enqueue(IWrappedSession connection, string queue, string jobId)
         {
-            
-            
             connection.Insert(new _JobQueue
             {
-                Job = connection.Query<_Job>().FirstOrDefault(i => i.Id == int.Parse(jobId)),
+                Job = connection.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId)),
                 Queue = queue
             });
             connection.Flush();

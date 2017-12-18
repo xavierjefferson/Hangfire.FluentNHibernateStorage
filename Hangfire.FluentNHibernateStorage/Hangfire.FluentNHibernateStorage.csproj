@@ -61,6 +61,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CountersAggregator.cs" />
+    <Compile Include="DateHelper.cs" />
     <Compile Include="Entities\EntityBase0.cs" />
     <Compile Include="Entities\IInt32Id.cs" />
     <Compile Include="Entities\IKeyWithStringValue.cs" />

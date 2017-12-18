@@ -18,11 +18,11 @@ namespace Hangfire.FluentNHibernateStorage
             Helper.GetSingleFieldUpdateSql(nameof(_JobParameter), nameof(_JobParameter.Value),
                 nameof(_JobParameter.Id));
 
-        private static readonly string deleteServerSql =
+        private static readonly string DeleteServerByNameSql =
             string.Format("delete from {0} where {1}=:{2}", nameof(_Server), nameof(_Server.Id),
                 Helper.IdParameterName);
 
-        private static readonly string updateServerLastHeartBeatSql =
+        private static readonly string UpdateServerLastHeartbeatStatement =
             Helper.GetSingleFieldUpdateSql(nameof(_Server), nameof(_Server.LastHeartbeat), nameof(_Server.Id));
 
         private static readonly string DeleteServerByLastHeartbeatSql = string.Format(
@@ -150,7 +150,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 var jobData =
                     session
-                        .Query<_Job>().FirstOrDefault(i => i.Id == int.Parse(jobId));
+                        .Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
 
                 if (jobData == null) return null;
 
@@ -186,7 +186,7 @@ namespace Hangfire.FluentNHibernateStorage
             return _storage.UseStatelessSession(session =>
             {
                 var jobState = session.Query<_Job>().Where(i => i.Id == int.Parse(jobId)).Select(i => i.CurrentState)
-                    .FirstOrDefault();
+                    .SingleOrDefault();
                 if (jobState == null)
                 {
                     return null;
@@ -233,7 +233,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             _storage.UseStatelessSession(session =>
             {
-                session.CreateQuery(deleteServerSql).SetParameter(Helper.IdParameterName, serverId).ExecuteUpdate();
+                session.CreateQuery(DeleteServerByNameSql).SetParameter(Helper.IdParameterName, serverId).ExecuteUpdate();
             });
         }
 
@@ -243,7 +243,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             _storage.UseStatelessSession(session =>
             {
-                session.CreateQuery(updateServerLastHeartBeatSql)
+                session.CreateQuery(UpdateServerLastHeartbeatStatement)
                     .SetParameter(Helper.ValueParameterName, DateTime.UtcNow)
                     .SetParameter(Helper.IdParameterName, serverId)
                     .ExecuteUpdate();
@@ -362,7 +362,7 @@ namespace Hangfire.FluentNHibernateStorage
                 _storage
                     .UseStatelessSession(session =>
                         session.Query<_Hash>().Where(i => i.Key == key && i.Field == name).Select(i => i.Value)
-                            .FirstOrDefault());
+                            .SingleOrDefault());
         }
 
         public override List<string> GetRangeFromList(string key, int startingFrom, int endingAt)

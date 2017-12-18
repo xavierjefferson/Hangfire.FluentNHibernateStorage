@@ -24,7 +24,11 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         public Form1()
         {
-            InitializeComponent();
+            InitializeComponent();   radioButtons = new[] {SqlServerButton, MySqlButton, PostgreSQLRadioButton, SQLiteButton};
+             SQLiteButton.Tag =  DataSourceEnum.SQLIte;
+            SqlServerButton.Tag = DataSourceEnum.SqlServer;
+            MySqlButton.Tag = DataSourceEnum.Mysql;
+            PostgreSQLRadioButton.Tag = DataSourceEnum.Postgresl;
         }
 
         private DataSourceEnum DataSource
@@ -62,11 +66,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void Form1_Load(object sender, EventArgs e1)
         {
-            SqlServerButton.Tag = DataSourceEnum.SqlServer;
-            MySqlButton.Tag = DataSourceEnum.Mysql;
-            PostgreSQLRadioButton.Tag = DataSourceEnum.Postgresl;
-            radioButtons = new[] {SqlServerButton, MySqlButton, PostgreSQLRadioButton};
-            SqlServerButton.Click += SqlServerButton_Click;
+         
+           SqlServerButton.Click += SqlServerButton_Click;
             MySqlButton.Click += SqlServerButton_Click;
             PostgreSQLRadioButton.Click += SqlServerButton_Click;
 
@@ -93,6 +94,9 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             
             switch (DataSource)
             {
+                case DataSourceEnum.SQLIte:
+                    storage = FluentNHibernateStorageFactory.ForSQLite(connectionString);
+                    break;
                 case DataSourceEnum.SqlServer:
                     storage = FluentNHibernateStorageFactory.ForMsSql2012(connectionString);
                     break;
@@ -161,7 +165,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         {
             SqlServer = 0,
             Mysql = 1,
-            Postgresl = 2
+            Postgresl = 2,SQLIte=3
         }
     }
 }

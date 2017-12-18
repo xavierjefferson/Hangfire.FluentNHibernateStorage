@@ -3,20 +3,6 @@ using System.Collections.Generic;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    /*
-     * 
-     * CREATE TABLE `Job` (
-  `Id` int(11) NOT NULL AUTO_INCREMENT,
-  `StateId` int(11) DEFAULT NULL,
- 
-  
-  
-  
-  
-  
-  KEY `IX_Job_StateName` (`StateName`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-*/
     public class _Job : IExpirableWithId
     {
         public _Job()

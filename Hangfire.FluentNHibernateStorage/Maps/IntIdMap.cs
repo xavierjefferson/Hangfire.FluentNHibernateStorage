@@ -8,7 +8,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
         protected IntIdMap()
         {
             LazyLoad();
-            Id(i => i.Id).Column(Constants.Id).GeneratedBy.Identity();
+            Id(i => i.Id).Column(Constants.IdColumnName).GeneratedBy.Identity();
         }
     }
 }

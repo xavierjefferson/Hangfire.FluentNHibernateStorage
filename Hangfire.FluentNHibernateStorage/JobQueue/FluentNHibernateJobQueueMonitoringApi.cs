@@ -8,7 +8,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     public class FluentNHibernateJobQueueMonitoringApi : IPersistentJobQueueMonitoringApi
     {
         private static readonly TimeSpan QueuesCacheTimeout = TimeSpan.FromSeconds(5);
-        private readonly object _cacheLock = new object();
+        private readonly object Mutex = new object();
 
         private readonly FluentNHibernateStorage _storage;
         private DateTime _cacheUpdated;
@@ -21,7 +21,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public IEnumerable<string> GetQueues()
         {
-            lock (_cacheLock)
+            lock (Mutex)
             {
                 if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < DateTime.UtcNow)
                 {

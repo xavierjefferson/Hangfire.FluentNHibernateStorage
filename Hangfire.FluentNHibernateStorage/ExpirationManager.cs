@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -34,18 +35,68 @@ namespace Hangfire.FluentNHibernateStorage
         public void Execute(BackgroundProcessContext context)
         {
             var cancellationToken = context.CancellationToken;
-            Execute<_AggregatedCounter>(cancellationToken);
-            Execute<_Job>(cancellationToken);
-            Execute<_List>(cancellationToken);
-            Execute<_Set>(cancellationToken);
-            Execute<_Hash>(cancellationToken);
+            var baseDate = DateTime.UtcNow;
+            BatchDelete<_Job>(cancellationToken, (session, baseDate2) =>
+            {
+                var idList = session.Query<_Job>().Where(i => i.ExpireAt < baseDate && i.CurrentState != null)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+                if (!idList.Any())
+                {
+                    return 0;
+                }
+                var sql = Helper.GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.CurrentState), nameof(_Job.Id));
+
+                var r = session.CreateQuery(sql).SetParameter(Helper.ValueParameterName, null)
+                    .SetParameterList(Helper.IdParameterName, idList).ExecuteUpdate();
+
+                return r;
+            }, baseDate);
+            BatchDelete<_JobState>(cancellationToken, (session, baseDate2) =>
+            {
+                var idList = session.Query<_JobState>().Where(i => i.Job.ExpireAt < baseDate)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+                return session.DeleteByInt32Id<_JobState>(idList);
+            }, baseDate);
+            BatchDelete<_JobQueue>(cancellationToken, (session, baseDate2) =>
+            {
+                var idList = session.Query<_JobQueue>().Where(i => i.Job.ExpireAt < baseDate)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+                return session.DeleteByInt32Id<_JobState>(idList);
+            }, baseDate);
+            BatchDelete<_JobParameter>(cancellationToken, (session, baseDate2) =>
+            {
+                var idList = session.Query<_JobParameter>().Where(i => i.Job.ExpireAt < baseDate)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+                return session.DeleteByInt32Id<_JobParameter>(idList);
+            }, baseDate);
+            BatchDelete<_AggregatedCounter>(cancellationToken, DeleteExpirableWithId<_AggregatedCounter>, baseDate);
+            BatchDelete<_Job>(cancellationToken, DeleteExpirableWithId<_Job>, baseDate);
+            BatchDelete<_List>(cancellationToken, DeleteExpirableWithId<_List>, baseDate);
+            BatchDelete<_Set>(cancellationToken, DeleteExpirableWithId<_Set>, baseDate);
+            BatchDelete<_Hash>(cancellationToken, DeleteExpirableWithId<_Hash>, baseDate);
 
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
 
-         
+        private long DeleteExpirableWithId<T>(IWrappedSession session, DateTime baseDate) where T : IExpirableWithId
 
-        private void Execute<T>(CancellationToken cancellationToken) where T : IExpirableWithId
+        {
+            List<int> ids;
+            if (typeof(T) == typeof(_Job))
+            {
+                ids = session.Query<_Job>().Where(i => i.ExpireAt < baseDate && i.CurrentState == null)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+            }
+            else
+                ids = session.Query<T>().Where(i => i.ExpireAt < baseDate)
+                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
+            return session.DeleteByInt32Id<T>(ids);
+        }
+
+
+        private void BatchDelete<T>(CancellationToken cancellationToken,
+            Func<IWrappedSession, DateTime, long> deleteFunc, DateTime baseDate)
+
         {
             var entityName = typeof(T).Name;
             Logger.InfoFormat("Removing outdated records from table '{0}'...", entityName);
@@ -60,9 +111,7 @@ namespace Hangfire.FluentNHibernateStorage
                         new FluentNHibernateStatelessDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
                             cancellationToken).Acquire())
                     {
-                        var idList = distributedLock.Session.Query<T>().Where(i => i.ExpireAt < DateTime.UtcNow)
-                            .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
-                        removedCount = distributedLock.Session.DeleteByInt32Id<T>(idList);
+                        removedCount = deleteFunc(distributedLock.Session, baseDate);
                     }
 
                     Logger.InfoFormat("removed records count={0}", removedCount);

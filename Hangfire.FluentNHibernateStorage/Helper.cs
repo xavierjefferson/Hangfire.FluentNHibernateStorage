@@ -21,7 +21,7 @@ namespace Hangfire.FluentNHibernateStorage
             Action<T> changeFunc,
             Action<T> keysetAction) where T : new()
         {
-            var entity = session.Query<T>().FirstOrDefault(matchFunc);
+            var entity = session.Query<T>().SingleOrDefault(matchFunc);
             if (entity == null)
             {
                 entity = new T();

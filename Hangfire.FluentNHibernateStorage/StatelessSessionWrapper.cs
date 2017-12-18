@@ -1,16 +1,28 @@
-﻿using System.Linq;
+﻿using System.Data;
+using System.Linq;
+using FluentNHibernate.Cfg.Db;
 using NHibernate;
 using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class StatelessSessionWrapper :  IWrappedSession
+    public class StatelessSessionWrapper : IWrappedSession
     {
         private readonly IStatelessSession _session;
 
-        public StatelessSessionWrapper(IStatelessSession s)
+        public StatelessSessionWrapper(IStatelessSession s, IPersistenceConfigurer cfg) : base(cfg)
         {
-            this._session = s;
+            _session = s;
+        }
+
+        public ITransaction BeginTransaction(IsolationLevel iso)
+        {
+            return _session.BeginTransaction(iso);
+        }
+
+        public ISQLQuery CreateSqlQuery(string queryString)
+        {
+            return _session.CreateSQLQuery(queryString);
         }
 
         public ITransaction BeginTransaction()
@@ -45,7 +57,6 @@ namespace Hangfire.FluentNHibernateStorage
         public void Dispose()
         {
             _session?.Dispose();
-           
         }
     }
 }

@@ -1,8 +1,11 @@
 using System;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
+using NHibernate;
+using NHibernate.Exceptions;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -15,9 +18,11 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(_DistributedLock),
             nameof(_DistributedLock.Resource), Helper.IdParameterName);
 
-        protected CancellationToken _cancellationToken;
-        protected DateTime _start;
-        protected TimeSpan _timeout;
+        private bool _acquired;
+
+        protected CancellationToken CancellationToken;
+
+        protected TimeSpan Timeout;
 
         protected FluentNHibernateDistributedLockBase(FluentNHibernateStorage storage, string resource,
             TimeSpan timeout,
@@ -26,12 +31,11 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("{2} resource={0}, timeout={1}", resource, timeout, GetType().Name);
 
             Resource = resource;
-            _timeout = timeout;
-
-            _cancellationToken = cancellationToken ?? new CancellationToken();
-            _start = DateTime.UtcNow;
-            Session = storage.GetStatelessSession();
+            Timeout = timeout;
+            CancellationToken = cancellationToken ?? new CancellationToken();
+            Session = storage.GetStatefulSession();
         }
+
 
         internal IWrappedSession Session { get; set; }
         public string Resource { get; protected set; }
@@ -50,64 +54,90 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Dispose()
         {
-            if (Session != null)
+            if (Session == null)
+            {
+                return;
+            }
+            if (_acquired)
             {
                 Release();
-                Session.Flush();
-                Session.Dispose();
-                Session = null;
             }
+            Session.Flush();
+            Session.Dispose();
+            Session = null;
         }
 
-        private bool AcquireLock(string resource, TimeSpan timeout)
+        private bool Acquire(long expired, long now)
         {
-            using (var transaction = Session.BeginTransaction())
+            var resource = Resource;
+            try
             {
-                if (!Session.Query<_DistributedLock>().Any(i =>
-                    i.Resource == resource && i.CreatedAt > DateTime.UtcNow.Add(timeout.Negate())))
+                using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
                 {
-                    Session.Insert(new _DistributedLock {CreatedAt = DateTime.UtcNow, Resource = resource});
-                    Session.Flush();
-                    transaction.Commit();
-                    return true;
+                    if (!Session.Query<_DistributedLock>().Any(i =>
+                        i.Resource == resource && i.CreatedAt > expired))
+                    {
+                        Session.Insert(new _DistributedLock
+                        {
+                            CreatedAt = now,
+                            Resource = resource,
+                            Id = Guid.NewGuid().ToString()
+                        });
+                        Session.Flush();
+                        transaction.Commit();
+                        return true;
+                    }
                 }
-                return false;
             }
+            catch (TransactionException tx)
+            {
+                //do nothing
+            }
+            catch (GenericADOException gx)
+            {
+                //do nothing
+            }
+
+            return false;
         }
 
         internal FluentNHibernateDistributedLockBase Acquire()
         {
-            Logger.TraceFormat("Acquire resource={0}, timeout={1}", Resource, _timeout);
-
-            bool acquiredLock;
-            do
+            Logger.TraceFormat("Acquire resource={0}, timeout={1}", Resource, Timeout);
+            var start = DateTime.UtcNow;
+            var finish = start.Add(Timeout);
+            Session.Flush();
+            while (true)
             {
-                _cancellationToken.ThrowIfCancellationRequested();
+                CancellationToken.ThrowIfCancellationRequested();
+                var now = DateTime.UtcNow.ToUnixDate();
+                var expired = DateTime.UtcNow.Subtract(Timeout).ToUnixDate();
 
-                acquiredLock = AcquireLock(Resource, _timeout);
-
-                if (ContinueCondition(acquiredLock))
+                if (Acquire(expired, now))
                 {
-                    _cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
-                    _cancellationToken.ThrowIfCancellationRequested();
+                    Logger.InfoFormat("Granted distributed lock for {0}", Resource);
+                    _acquired = true;
+                    return this;
                 }
-            } while (ContinueCondition(acquiredLock));
 
-            if (!acquiredLock)
-            {
-                throw new FluentNHibernateDistributedLockException("cannot acquire lock");
+                if (finish > DateTime.UtcNow)
+                {
+                    CancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
+
+                    start = DateTime.UtcNow;
+                    finish = start.Add(Timeout);
+                }
+                else
+                {
+                    throw new FluentNHibernateDistributedLockException("cannot acquire lock");
+                }
             }
-            return this;
-        }
-
-        private bool ContinueCondition(bool acquiredLock)
-        {
-            return !acquiredLock && _start.Add(_timeout) > DateTime.UtcNow;
         }
 
         internal void Release()
         {
             Logger.TraceFormat("Release resource={0}", Resource);
+            Logger.InfoFormat("Released distributed lock for {0}", Resource);
 
             Session.CreateQuery(DeleteDistributedLockSql).SetParameter(Helper.IdParameterName, Resource)
                 .ExecuteUpdate();
