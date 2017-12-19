@@ -9,10 +9,13 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private readonly IStatelessSession _session;
 
-        public StatelessSessionWrapper(IStatelessSession s)
+        public StatelessSessionWrapper(IStatelessSession session, ProviderTypeEnum type)
         {
-            _session = s;
+            _session = session;
+            ProviderType = type;
         }
+
+        public ProviderTypeEnum ProviderType { get; }
 
         public ITransaction BeginTransaction(IsolationLevel level)
         {

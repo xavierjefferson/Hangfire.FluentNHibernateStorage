@@ -1,11 +1,11 @@
 ﻿namespace Hangfire.FluentNHibernateStorage
 {
-    public enum PersistenceConfigurerEnum
+    public enum ProviderTypeEnum
     {
         None,
         MsSqlCeStandard,
         MsSqlCe40,
-        JetDriver,
+        
         OracleClient10,
         OracleClient9,
         PostgreSQLStandard,
@@ -13,9 +13,9 @@
         PostgreSQL82,
         Firebird,
         SQLite,
-        Db2Informix1150,
-        Db2Standard,
-        MySql,
+        DB2Informix1150,
+        DB2Standard,
+        MySQL,
         MsSql2008,
         MsSql2012,
         MsSql2005,

@@ -36,8 +36,15 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
         public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
-            FluentNHibernateStorageOptions options)
+            FluentNHibernateStorageOptions options) : this(persistenceConfigurer, options,
+            InferProviderType(persistenceConfigurer))
         {
+        }
+
+        internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
+            FluentNHibernateStorageOptions options, ProviderTypeEnum type)
+        {
+            Type = type;
             PersistenceConfigurer = persistenceConfigurer;
 
 
@@ -55,8 +62,47 @@ namespace Hangfire.FluentNHibernateStorage
 
         public Func<IPersistenceConfigurer> ConfigurerFunc { get; set; }
 
+        public ProviderTypeEnum Type { get; } = ProviderTypeEnum.None;
+
         public void Dispose()
         {
+        }
+
+        private static ProviderTypeEnum InferProviderType(IPersistenceConfigurer config)
+        {
+            if (config is MsSqlCeConfiguration)
+            {
+                return ProviderTypeEnum.MsSqlCeStandard;
+            }
+            if (config is MsSqlConfiguration)
+            {
+                return ProviderTypeEnum.MsSql2000;
+            }
+            if (config is PostgreSQLConfiguration)
+            {
+                return ProviderTypeEnum.PostgreSQLStandard;
+            }
+            if (config is JetDriverConfiguration)
+            {
+                throw new ArgumentException("Jet driver is explicitly not supported.");
+            }
+            if (config is DB2Configuration)
+            {
+                return ProviderTypeEnum.DB2Standard;
+            }
+            if (config is OracleClientConfiguration)
+            {
+                return ProviderTypeEnum.OracleClient9;
+            }
+            if (config is SQLiteConfiguration)
+            {
+                return ProviderTypeEnum.SQLite;
+            }
+            if (config is FirebirdConfiguration)
+            {
+                return ProviderTypeEnum.Firebird;
+            }
+            return ProviderTypeEnum.None;
         }
 
 
@@ -209,7 +255,7 @@ namespace Hangfire.FluentNHibernateStorage
                     TryBuildSchema();
                 }
             }
-            return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession());
+            return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type);
         }
 
         internal IWrappedSession GetStatelessSession()
@@ -221,7 +267,7 @@ namespace Hangfire.FluentNHibernateStorage
                     TryBuildSchema();
                 }
             }
-            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession());
+            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession(), Type);
         }
 
         private void TryBuildSchema()

@@ -18,79 +18,77 @@ namespace Hangfire.FluentNHibernateStorage
             return provider;
         }
 
-        public static FluentNHibernateJobStorage For(PersistenceConfigurerEnum type, string connectionString,
+        public static FluentNHibernateJobStorage For(ProviderTypeEnum providerType, string connectionString,
             FluentNHibernateStorageOptions options = null)
         {
             options = options ?? new FluentNHibernateStorageOptions();
 
             IPersistenceConfigurer configurer;
-            switch (type)
+            switch (providerType)
             {
-                case PersistenceConfigurerEnum.MsSqlCeStandard:
+                case ProviderTypeEnum.MsSqlCeStandard:
 
                     configurer = ConfigureProvider(() => MsSqlCeConfiguration.Standard, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MsSqlCe40:
+                case ProviderTypeEnum.MsSqlCe40:
                     configurer = ConfigureProvider(() => MsSqlCeConfiguration.MsSqlCe40, connectionString, options);
                     break;
-                case PersistenceConfigurerEnum.JetDriver:
-                    configurer = ConfigureProvider(() => JetDriverConfiguration.Standard, connectionString, options);
-                    break;
-                case PersistenceConfigurerEnum.OracleClient10:
+ 
+                case ProviderTypeEnum.OracleClient10:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.OracleClient9:
+                case ProviderTypeEnum.OracleClient9:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options);
                     break;
-                case PersistenceConfigurerEnum.PostgreSQLStandard:
+                case ProviderTypeEnum.PostgreSQLStandard:
                     configurer = ConfigureProvider(() => PostgreSQLConfiguration.Standard, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.PostgreSQL81:
+                case ProviderTypeEnum.PostgreSQL81:
                     configurer = ConfigureProvider(() => PostgreSQLConfiguration.PostgreSQL81, connectionString,
                         options);
 
                     break;
-                case PersistenceConfigurerEnum.PostgreSQL82:
+                case ProviderTypeEnum.PostgreSQL82:
                     configurer = ConfigureProvider(() => PostgreSQLConfiguration.PostgreSQL82, connectionString,
                         options);
 
                     break;
-                case PersistenceConfigurerEnum.Firebird:
+                case ProviderTypeEnum.Firebird:
                     configurer = ConfigureProvider(() => new FirebirdConfiguration(), connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.SQLite:
+                case ProviderTypeEnum.SQLite:
                     configurer = ConfigureProvider(() => SQLiteConfiguration.Standard, connectionString, options);
                
                     break;
-                case PersistenceConfigurerEnum.Db2Informix1150:
+                case ProviderTypeEnum.DB2Informix1150:
                     configurer = ConfigureProvider(() => DB2Configuration.Informix1150, connectionString, options);
               
                     break;
-                case PersistenceConfigurerEnum.Db2Standard:
+                case ProviderTypeEnum.DB2Standard:
                     configurer = ConfigureProvider(() => DB2Configuration.Standard, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MySql:
+                case ProviderTypeEnum.MySQL:
                     configurer = ConfigureProvider(() => MySQLConfiguration.Standard, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MsSql2008:
+                case ProviderTypeEnum.MsSql2008:
                     configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2008, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MsSql2012:
+                case ProviderTypeEnum.MsSql2012:
                     configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2012, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MsSql2005:
+                case ProviderTypeEnum.MsSql2005:
                     configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2005, connectionString, options);
 
                     break;
-                case PersistenceConfigurerEnum.MsSql2000:
+                case ProviderTypeEnum.MsSql2000:
                     configurer = ConfigureProvider(() => MsSqlConfiguration.MsSql2000, connectionString, options);
 
                     break;
@@ -98,7 +96,7 @@ namespace Hangfire.FluentNHibernateStorage
                     throw new ArgumentException("type");
             }
 
-            return new FluentNHibernateJobStorage(configurer, options);
+            return new FluentNHibernateJobStorage(configurer, options, providerType);
         }
     }
 }

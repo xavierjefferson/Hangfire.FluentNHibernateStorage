@@ -26,9 +26,9 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             InitializeComponent();
         }
 
-        private PersistenceConfigurerEnum PersistenceConfigurerType
+        private ProviderTypeEnum ProviderType
         {
-            get => (PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem;
+            get => (ProviderTypeEnum) DataProviderComboBox.SelectedItem;
             set
             {
                 ConnectionStringTextBox.Text = LoadConnectionString(value);
@@ -57,27 +57,27 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             base.OnClosing(e);
         }
 
-        private Dictionary<PersistenceConfigurerEnum, string> GetSettings()
+        private Dictionary<ProviderTypeEnum, string> GetSettings()
         {
             var a = Settings.Default.ConnectionStrings;
             try
             {
-                return JsonConvert.DeserializeObject<Dictionary<PersistenceConfigurerEnum, string>>(a) ??
-                       new Dictionary<PersistenceConfigurerEnum, string>
+                return JsonConvert.DeserializeObject<Dictionary<ProviderTypeEnum, string>>(a) ??
+                       new Dictionary<ProviderTypeEnum, string>
                        {
                            {
-                               PersistenceConfigurerEnum.MsSql2012,
+                               ProviderTypeEnum.MsSql2012,
                                "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"
                            }
                        };
             }
             catch
             {
-                return new Dictionary<PersistenceConfigurerEnum, string>();
+                return new Dictionary<ProviderTypeEnum, string>();
             }
         }
 
-        private string LoadConnectionString(PersistenceConfigurerEnum persistenceConfigurer)
+        private string LoadConnectionString(ProviderTypeEnum persistenceConfigurer)
         {
             var settings = GetSettings();
             return settings.ContainsKey(persistenceConfigurer) ? settings[persistenceConfigurer] : string.Empty;
@@ -85,19 +85,19 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void Form1_Load(object sender, EventArgs e1)
         {
-            var persistenceConfigurerEnums = Enum.GetValues(typeof(PersistenceConfigurerEnum))
-                .Cast<PersistenceConfigurerEnum>()
-                .Where(i => i != PersistenceConfigurerEnum.None)
+            var persistenceConfigurerEnums = Enum.GetValues(typeof(ProviderTypeEnum))
+                .Cast<ProviderTypeEnum>()
+                .Where(i => i != ProviderTypeEnum.None)
                 .OrderBy(i => i.ToString())
                 .ToList();
             DataProviderComboBox.DataSource = persistenceConfigurerEnums;
             DataProviderComboBox.SelectedIndexChanged += DataProviderComboBox_SelectedIndexChanged;
 
 
-            PersistenceConfigurerEnum persistenceConfigurerEnum;
-            PersistenceConfigurerType = Enum.TryParse(Settings.Default.DataSource, out persistenceConfigurerEnum)
-                ? persistenceConfigurerEnum
-                : PersistenceConfigurerEnum.MsSql2012;
+            ProviderTypeEnum type;
+            ProviderType = Enum.TryParse(Settings.Default.DataSource, out type)
+                ? type
+                : ProviderTypeEnum.MsSql2012;
 
 
             TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
@@ -106,20 +106,20 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             ConnectionStringTextBox.Text =
-                LoadConnectionString((PersistenceConfigurerEnum) DataProviderComboBox.SelectedItem);
+                LoadConnectionString((ProviderTypeEnum) DataProviderComboBox.SelectedItem);
         }
 
 
         private void StartButton_Click(object sender, EventArgs e)
         {
             var connectionString = ConnectionStringTextBox.Text;
-            SaveConnectionString(PersistenceConfigurerType, connectionString);
+            SaveConnectionString(ProviderType, connectionString);
 
-            Settings.Default.DataSource = PersistenceConfigurerType.ToString();
+            Settings.Default.DataSource = ProviderType.ToString();
             Settings.Default.Save();
 
             //THIS LINE GETS THE STORAGE PROVIDER
-            var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString);
+            var storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
             if (storage != null)
             {
                 //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
@@ -149,10 +149,10 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             }
         }
 
-        private void SaveConnectionString(PersistenceConfigurerEnum persistenceConfigurerType, string connectionString)
+        private void SaveConnectionString(ProviderTypeEnum providerType, string connectionString)
         {
             var dictionary = GetSettings();
-            dictionary[persistenceConfigurerType] = connectionString;
+            dictionary[providerType] = connectionString;
             Settings.Default.ConnectionStrings = JsonConvert.SerializeObject(dictionary);
             Settings.Default.Save();
         }
