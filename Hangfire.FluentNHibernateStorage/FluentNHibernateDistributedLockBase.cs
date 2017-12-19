@@ -63,29 +63,6 @@ namespace Hangfire.FluentNHibernateStorage
             Session = null;
         }
 
-        private bool Acquire(long expired, long now)
-        {
-            return SQLHelper.WrapForTransaction(() =>
-            {
-                using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
-                {
-                    if (!Session.Query<_DistributedLock>()
-                        .Any(i => i.Resource == Resource && i.CreatedAt > expired))
-                    {
-                        Session.Insert(new _DistributedLock
-                        {
-                            CreatedAt = now,
-                            Resource = Resource
-                        });
-                        Session.Flush();
-                        transaction.Commit();
-                        return true;
-                    }
-                }
-                return false;
-            });
-        }
-
         internal FluentNHibernateDistributedLockBase Acquire()
         {
             var start = DateTime.UtcNow;
@@ -97,7 +74,25 @@ namespace Hangfire.FluentNHibernateStorage
                 var now = DateTime.UtcNow.ToUnixDate();
                 var expired = DateTime.UtcNow.Subtract(Timeout).ToUnixDate();
 
-                if (Acquire(expired, now))
+                if (SQLHelper.WrapForTransaction(() =>
+                {
+                    using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
+                    {
+                        if (!Session.Query<_DistributedLock>()
+                            .Any(i => i.Resource == Resource && i.CreatedAt > expired))
+                        {
+                            Session.Insert(new _DistributedLock
+                            {
+                                CreatedAt = now,
+                                Resource = Resource
+                            });
+                            Session.Flush();
+                            transaction.Commit();
+                            return true;
+                        }
+                    }
+                    return false;
+                }))
                 {
                     Logger.DebugFormat("Granted distributed lock for {0}", Resource);
                     _acquired = true;
