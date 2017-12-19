@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
             History = new List<_JobState>();
         }
 
-        public virtual _JobState CurrentState { get; set; }
+       // public virtual _JobState CurrentState { get; set; }
         public virtual string InvocationData { get; set; }
         public virtual string Arguments { get; set; }
         public virtual DateTime CreatedAt { get; set; }
@@ -23,5 +23,9 @@ namespace Hangfire.FluentNHibernateStorage.Entities
 
         public virtual int Id { get; set; }
         public virtual DateTime? ExpireAt { get; set; }
+        public virtual string StateName { get; set; }
+        public virtual string StateReason { get; set; }
+        public virtual DateTime? LastStateChangedAt { get; set; }
+        public virtual string StateData { get; set; }
     }
 }

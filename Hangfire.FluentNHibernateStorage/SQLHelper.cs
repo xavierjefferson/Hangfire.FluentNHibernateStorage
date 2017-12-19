@@ -33,9 +33,7 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(_Server).WrapObjectName(),
             nameof(_Server.LastHeartbeat).WrapObjectName(), ValueParameterName);
 
-        internal static string UpdateJobCurrentStateStatement =
-            GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.CurrentState), nameof(_Job.Id));
-
+       
         internal static readonly string UpdateJobExpireAtStatement =
             GetSingleFieldUpdateSql(nameof(_Job), nameof(_Job.ExpireAt), nameof(_Job.Id));
 

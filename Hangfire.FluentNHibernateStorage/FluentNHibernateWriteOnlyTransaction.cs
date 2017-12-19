@@ -90,7 +90,11 @@ namespace Hangfire.FluentNHibernateStorage
                     session.Insert(sqlState);
                     session.Flush();
 
-                    job.CurrentState = sqlState;
+                    job.StateData = sqlState.Data;
+                    job.StateReason = sqlState.Reason;
+                    job.StateName = sqlState.Name;
+                    job.LastStateChangedAt = DateTime.UtcNow;
+
                     session.Update(job);
                     session.Flush();
                 }

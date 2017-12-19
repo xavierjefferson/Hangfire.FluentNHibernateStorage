@@ -157,7 +157,7 @@ namespace Hangfire.FluentNHibernateStorage
                 return new JobData
                 {
                     Job = job,
-                    State = jobData.CurrentState?.Name,
+                    State = jobData.StateName,
                     CreatedAt = jobData.CreatedAt,
                     LoadException = loadException
                 };
@@ -170,23 +170,21 @@ namespace Hangfire.FluentNHibernateStorage
 
             return _storage.UseStatelessSession(session =>
             {
-                var jobState = session.Query<_Job>().Where(i => i.Id == int.Parse(jobId)).Select(i => i.CurrentState)
+                var job = session.Query<_Job>().Where(i => i.Id == int.Parse(jobId)).Select(i=>new {i.StateName, i.StateData, i.StateReason})
                     .SingleOrDefault();
-                if (jobState == null)
+                if (job == null)
                 {
                     return null;
                 }
 
 
-                var data = new Dictionary<string, string>(
-                    JobHelper.FromJson<Dictionary<string, string>>(jobState.Data),
-                    StringComparer.OrdinalIgnoreCase);
-
                 return new StateData
                 {
-                    Name = jobState.Name,
-                    Reason = jobState.Reason,
-                    Data = data
+                    Name = job.StateName,
+                    Reason = job.StateReason,
+                    Data = new Dictionary<string, string>(
+                        JobHelper.FromJson<Dictionary<string, string>>(job.StateData),
+                        StringComparer.OrdinalIgnoreCase)
                 };
             });
         }

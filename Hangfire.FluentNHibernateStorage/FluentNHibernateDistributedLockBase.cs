@@ -77,14 +77,18 @@ namespace Hangfire.FluentNHibernateStorage
                         Session.Insert(new _DistributedLock
                         {
                             CreatedAt = now,
-                            Resource = resource 
-                            
+                            Resource = resource
+
                         });
                         Session.Flush();
                         transaction.Commit();
                         return true;
                     }
                 }
+            }
+            catch (AssertionFailure)
+            {
+                //do nothing
             }
             catch (TransactionException)
             {

@@ -36,20 +36,6 @@ namespace Hangfire.FluentNHibernateStorage
         {
             var cancellationToken = context.CancellationToken;
             var baseDate = DateTime.UtcNow;
-            BatchDelete<_Job>(cancellationToken, (session, baseDate2) =>
-            {
-                var idList = session.Query<_Job>().Where(i => i.ExpireAt < baseDate && i.CurrentState != null)
-                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
-                if (!idList.Any())
-                {
-                    return 0;
-                }
-
-                var r = session.CreateQuery(SQLHelper.UpdateJobCurrentStateStatement).SetParameter(SQLHelper.ValueParameterName, null)
-                    .SetParameterList(SQLHelper.IdParameterName, idList).ExecuteUpdate();
-
-                return r;
-            }, baseDate);
             BatchDelete<_JobState>(cancellationToken, (session, baseDate2) =>
             {
                 var idList = session.Query<_JobState>().Where(i => i.Job.ExpireAt < baseDate)
@@ -81,12 +67,6 @@ namespace Hangfire.FluentNHibernateStorage
 
         {
             List<int> ids;
-            if (typeof(T) == typeof(_Job))
-            {
-                ids = session.Query<_Job>().Where(i => i.ExpireAt < baseDate && i.CurrentState == null)
-                    .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
-            }
-            else
                 ids = session.Query<T>().Where(i => i.ExpireAt < baseDate)
                     .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
             return session.DeleteByInt32Id<T>(ids);
