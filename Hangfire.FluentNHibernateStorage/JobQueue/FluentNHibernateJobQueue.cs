@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             if (queues == null) throw new ArgumentNullException("queues");
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
-            Logger.Info("Attempting to dequeue");
+            Logger.Debug("Attempting to dequeue");
 
 
             while (true)
@@ -42,44 +42,49 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         new FluentNHibernateStatelessDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(60))
                             .Acquire())
                     {
-                        var token = Guid.NewGuid().ToString();
-
-                        if (queues.Any())
+                        var fluentNHibernateFetchedJob = SQLHelper.WrapForTransaction(() =>
                         {
-                            var jobQueueFetchedAt = DateTime.UtcNow;
-                            var next = jobQueueFetchedAt.AddSeconds(
-                                _options.InvisibilityTimeout.Negate().TotalSeconds);
-                            using (var transaction =
-                                distributedLock.Session.BeginTransaction(IsolationLevel.Serializable))
-                            {
-                                var jobQueue = distributedLock.Session.Query<_JobQueue>().FirstOrDefault(i =>
-                                    (i.FetchedAt == null
-                                     || i.FetchedAt < next) && queues.Contains(i.Queue));
-                                if (jobQueue != null)
-                                {
-                                    jobQueue.FetchedAt = jobQueueFetchedAt;
-                                    jobQueue.FetchToken = token;
-                                    distributedLock.Session.Update(jobQueue);
-                                    distributedLock.Session.Flush();
+                            var token = Guid.NewGuid().ToString();
 
-                                    transaction.Commit();
-                                    Logger.InfoFormat("Dequeued job id {0} for queue {1}", jobQueue.Job.Id,
-                                        jobQueue.Queue);
-                                    var fetchedJob = new FetchedJob
+                            if (queues.Any())
+                            {
+                                var jobQueueFetchedAt = DateTime.UtcNow;
+                                var next = jobQueueFetchedAt.AddSeconds(
+                                    _options.InvisibilityTimeout.Negate().TotalSeconds);
+                                using (var transaction =
+                                    distributedLock.Session.BeginTransaction(IsolationLevel.Serializable))
+                                {
+                                    var jobQueue = distributedLock.Session.Query<_JobQueue>()
+                                        .FirstOrDefault(i =>
+                                            (i.FetchedAt == null
+                                             || i.FetchedAt < next) && queues.Contains(i.Queue));
+                                    if (jobQueue != null)
                                     {
-                                        Id = jobQueue.Id,
-                                        JobId = jobQueue.Job.Id,
-                                        Queue = jobQueue.Queue
-                                    };
-                                    return new FluentNHibernateFetchedJob(_storage, fetchedJob);
+                                        jobQueue.FetchedAt = jobQueueFetchedAt;
+                                        jobQueue.FetchToken = token;
+                                        distributedLock.Session.Update(jobQueue);
+                                        distributedLock.Session.Flush();
+
+                                        transaction.Commit();
+                                        Logger.DebugFormat("Dequeued job id {0} from queue {1}", jobQueue.Job.Id,
+                                            jobQueue.Queue);
+                                        var fetchedJob = new FetchedJob
+                                        {
+                                            Id = jobQueue.Id,
+                                            JobId = jobQueue.Job.Id,
+                                            Queue = jobQueue.Queue
+                                        };
+                                        return new FluentNHibernateFetchedJob(_storage, fetchedJob);
+                                    }
                                 }
                             }
+                            return null;
+                        });
+                        if (fluentNHibernateFetchedJob != null)
+                        {
+                            return fluentNHibernateFetchedJob;
                         }
                     }
-                }
-                catch (GenericADOException)
-                {
-                    //do nothing
                 }
                 catch (Exception ex)
                 {
@@ -92,14 +97,14 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             }
         }
 
-        public void Enqueue(IWrappedSession connection, string queue, string jobId)
+        public void Enqueue(IWrappedSession session, string queue, string jobId)
         {
-            connection.Insert(new _JobQueue
+            session.Insert(new _JobQueue
             {
-                Job = connection.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId)),
+                Job = session.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId)),
                 Queue = queue
             });
-            connection.Flush();
+            session.Flush();
             Logger.InfoFormat("Enqueued JobId={0} Queue={1}", jobId, queue);
         }
     }

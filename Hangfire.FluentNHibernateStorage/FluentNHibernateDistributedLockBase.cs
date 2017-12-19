@@ -3,7 +3,6 @@ using System.Data;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using NHibernate;
 using NHibernate.Exceptions;
@@ -66,45 +65,29 @@ namespace Hangfire.FluentNHibernateStorage
 
         private bool Acquire(long expired, long now)
         {
-            var resource = Resource;
-            try
+            return SQLHelper.WrapForTransaction(() =>
             {
                 using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
                 {
-                    if (!Session.Query<_DistributedLock>().Any(i =>
-                        i.Resource == resource && i.CreatedAt > expired))
+                    if (!Session.Query<_DistributedLock>()
+                        .Any(i => i.Resource == Resource && i.CreatedAt > expired))
                     {
                         Session.Insert(new _DistributedLock
                         {
                             CreatedAt = now,
-                            Resource = resource
-
+                            Resource = Resource
                         });
                         Session.Flush();
                         transaction.Commit();
                         return true;
                     }
                 }
-            }
-            catch (AssertionFailure)
-            {
-                //do nothing
-            }
-            catch (TransactionException)
-            {
-                //do nothing
-            }
-            catch (GenericADOException)
-            {
-                //do nothing
-            }
-
-            return false;
+                return false;
+            });
         }
 
         internal FluentNHibernateDistributedLockBase Acquire()
         {
-            Logger.TraceFormat("Acquire resource={0}, timeout={1}", Resource, Timeout);
             var start = DateTime.UtcNow;
             var finish = start.Add(Timeout);
             Session.Flush();
@@ -116,7 +99,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                 if (Acquire(expired, now))
                 {
-                    Logger.InfoFormat("Granted distributed lock for {0}", Resource);
+                    Logger.DebugFormat("Granted distributed lock for {0}", Resource);
                     _acquired = true;
                     return this;
                 }
@@ -124,9 +107,6 @@ namespace Hangfire.FluentNHibernateStorage
                 if (finish > DateTime.UtcNow)
                 {
                     CancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
-
-                    start = DateTime.UtcNow;
-                    finish = start.Add(Timeout);
                 }
                 else
                 {
@@ -137,11 +117,13 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal void Release()
         {
-            Logger.TraceFormat("Release resource={0}", Resource);
-            Logger.InfoFormat("Released distributed lock for {0}", Resource);
-
-            Session.CreateQuery(SQLHelper.DeleteDistributedLockSql).SetParameter(SQLHelper.IdParameterName, Resource)
-                .ExecuteUpdate();
+            SQLHelper.WrapForTransaction(() =>
+            {
+                Session.CreateQuery(SQLHelper.DeleteDistributedLockSql)
+                    .SetParameter(SQLHelper.IdParameterName, Resource)
+                    .ExecuteUpdate();
+                Logger.DebugFormat("Released distributed lock for {0}", Resource);
+            });
         }
     }
 }

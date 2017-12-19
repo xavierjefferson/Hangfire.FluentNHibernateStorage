@@ -43,11 +43,11 @@ namespace Hangfire.FluentNHibernateStorage
 
             do
             {
-                _storage.UseStatelessSession(connection =>
+                _storage.UseStatelessSession(session =>
                 {
-                    using (var transaction = connection.BeginTransaction())
+                    using (var transaction = session.BeginTransaction())
                     {
-                        var counters = connection.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
+                        var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
                         var countersByName = counters.GroupBy(counter => counter.Key).Select(i =>
                             new
                             {
@@ -55,7 +55,8 @@ namespace Hangfire.FluentNHibernateStorage
                                 value = i.Sum(counter => counter.Value),
                                 expireAt = i.Max(counter => counter.ExpireAt)
                             }).ToList();
-                        var query = connection.CreateQuery(SQLHelper.UpdateAggregateCounterSql);
+                        var query = session.CreateQuery(SQLHelper.UpdateAggregateCounterSql);
+
                         foreach (var item in countersByName)
                         {
                             if (item.expireAt.HasValue)
@@ -70,7 +71,7 @@ namespace Hangfire.FluentNHibernateStorage
                                     .SetParameter(SQLHelper.ValueParameterName, item.value)
                                     .ExecuteUpdate() == 0)
                             {
-                                connection.Insert(new _AggregatedCounter
+                                session.Insert(new _AggregatedCounter
                                 {
                                     Key = item.Key,
                                     Value = item.value,
@@ -79,7 +80,7 @@ namespace Hangfire.FluentNHibernateStorage
                             }
                             ;
                         }
-                        removedCount = connection.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
+                        removedCount = session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
                         transaction.Commit();
                     }
