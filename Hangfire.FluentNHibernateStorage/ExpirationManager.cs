@@ -35,36 +35,37 @@ namespace Hangfire.FluentNHibernateStorage
         public void Execute(BackgroundProcessContext context)
         {
             var cancellationToken = context.CancellationToken;
-            var baseDate = DateTime.UtcNow;
+        
             BatchDelete<_JobState>(cancellationToken, (session, baseDate2) =>
             {
-                var idList = session.Query<_JobState>().Where(i => i.Job.ExpireAt < baseDate)
+
+                var idList = session.Query<_JobState>().Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
                     .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
                 return session.DeleteByInt32Id<_JobState>(idList);
-            }, baseDate);
+            });
             BatchDelete<_JobQueue>(cancellationToken, (session, baseDate2) =>
             {
-                var idList = session.Query<_JobQueue>().Where(i => i.Job.ExpireAt < baseDate)
+                var idList = session.Query<_JobQueue>().Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
                     .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
                 return session.DeleteByInt32Id<_JobState>(idList);
-            }, baseDate);
+            });
             BatchDelete<_JobParameter>(cancellationToken, (session, baseDate2) =>
             {
-                var idList = session.Query<_JobParameter>().Where(i => i.Job.ExpireAt < baseDate)
+                var idList = session.Query<_JobParameter>().Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
                     .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
                 return session.DeleteByInt32Id<_JobParameter>(idList);
-            }, baseDate);
+            });
             BatchDelete<_DistributedLock>(cancellationToken, (session, baseDate2) =>
             {
-                var idList = session.Query<_DistributedLock>().Where(i => i.ExpireAtAsLong < baseDate.ToUnixDate())
+                var idList = session.Query<_DistributedLock>().Where(i => i.ExpireAtAsLong < session.Storage.UtcNow.ToUnixDate())
                     .Take(NumberOfRecordsInSinglePass).Select(i => i.Id).ToList();
                 return session.DeleteByInt32Id<_DistributedLock>(idList);
-            }, baseDate);
-            BatchDelete<_AggregatedCounter>(cancellationToken, DeleteExpirableWithId<_AggregatedCounter>, baseDate);
-            BatchDelete<_Job>(cancellationToken, DeleteExpirableWithId<_Job>, baseDate);
-            BatchDelete<_List>(cancellationToken, DeleteExpirableWithId<_List>, baseDate);
-            BatchDelete<_Set>(cancellationToken, DeleteExpirableWithId<_Set>, baseDate);
-            BatchDelete<_Hash>(cancellationToken, DeleteExpirableWithId<_Hash>, baseDate);
+            });
+            BatchDelete<_AggregatedCounter>(cancellationToken, DeleteExpirableWithId<_AggregatedCounter>);
+            BatchDelete<_Job>(cancellationToken, DeleteExpirableWithId<_Job>);
+            BatchDelete<_List>(cancellationToken, DeleteExpirableWithId<_List>);
+            BatchDelete<_Set>(cancellationToken, DeleteExpirableWithId<_Set>);
+            BatchDelete<_Hash>(cancellationToken, DeleteExpirableWithId<_Hash>);
 
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
@@ -80,7 +81,7 @@ namespace Hangfire.FluentNHibernateStorage
 
 
         private void BatchDelete<T>(CancellationToken cancellationToken,
-            Func<IWrappedSession, DateTime, long> deleteFunc, DateTime baseDate)
+            Func<IWrappedSession, DateTime, long> deleteFunc)
 
         {
             var entityName = typeof(T).Name;
@@ -96,7 +97,7 @@ namespace Hangfire.FluentNHibernateStorage
                         new FluentNHibernateStatelessDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
                             cancellationToken).Acquire())
                     {
-                        removedCount = deleteFunc(distributedLock.Session, baseDate);
+                        removedCount = deleteFunc(distributedLock.Session, _storage.UtcNow);
                     }
 
                     Logger.InfoFormat("removed records count={0}", removedCount);

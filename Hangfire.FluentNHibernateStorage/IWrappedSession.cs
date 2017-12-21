@@ -8,6 +8,7 @@ namespace Hangfire.FluentNHibernateStorage
     public interface IWrappedSession : IDisposable
     {
         ProviderTypeEnum ProviderType { get; }
+        FluentNHibernateJobStorage Storage { get; }
         ITransaction BeginTransaction(IsolationLevel level);
         ITransaction BeginTransaction();
         IQueryable<T> Query<T>();
@@ -16,6 +17,5 @@ namespace Hangfire.FluentNHibernateStorage
         void Insert(object x);
         void Update(object x);
         void Flush();
-         
     }
 }

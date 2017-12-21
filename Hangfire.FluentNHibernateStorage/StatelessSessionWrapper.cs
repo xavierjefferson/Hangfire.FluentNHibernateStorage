@@ -7,13 +7,19 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class StatelessSessionWrapper : IWrappedSession
     {
+       
         private readonly IStatelessSession _session;
 
-        public StatelessSessionWrapper(IStatelessSession session, ProviderTypeEnum type)
+        public StatelessSessionWrapper(IStatelessSession session, ProviderTypeEnum type,
+            FluentNHibernateJobStorage storage)
         {
+           
             _session = session;
             ProviderType = type;
+            Storage = storage;
         }
+
+        public FluentNHibernateJobStorage Storage { get; }
 
         public ProviderTypeEnum ProviderType { get; }
 

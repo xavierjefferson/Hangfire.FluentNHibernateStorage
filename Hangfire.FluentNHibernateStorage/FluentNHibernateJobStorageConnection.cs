@@ -203,9 +203,9 @@ namespace Hangfire.FluentNHibernateStorage
                         {
                             WorkerCount = context.WorkerCount,
                             Queues = context.Queues,
-                            StartedAt = DateTime.UtcNow
+                            StartedAt = session.Storage.UtcNow
                         });
-                        i.LastHeartbeat = DateTime.UtcNow;
+                        i.LastHeartbeat = session.Storage.UtcNow;
                     }, i => { i.Id = serverId; });
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
@@ -227,7 +227,7 @@ namespace Hangfire.FluentNHibernateStorage
             _storage.UseSession(session =>
             {
                 session.CreateQuery(SQLHelper.UpdateServerLastHeartbeatStatement)
-                    .SetParameter(SQLHelper.ValueParameterName, DateTime.UtcNow)
+                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow)
                     .SetParameter(SQLHelper.IdParameterName, serverId)
                     .ExecuteUpdate();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
@@ -243,7 +243,7 @@ namespace Hangfire.FluentNHibernateStorage
             return
                 _storage.UseSession(session =>
                     session.CreateQuery(SQLHelper.DeleteServerByLastHeartbeatStatement)
-                        .SetParameter(SQLHelper.ValueParameterName, DateTime.UtcNow.Add(timeOut.Negate()))
+                        .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(timeOut.Negate()))
                         .ExecuteUpdate(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -350,8 +350,6 @@ namespace Hangfire.FluentNHibernateStorage
                 return
                     session.Query<_List>().OrderByDescending(i => i.Id).Where(i => i.Key == key)
                         .Select(i => i.Value).Skip(startingFrom).Take(endingAt - startingFrom + 1).ToList();
-
-                ;
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -380,7 +378,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     return TimeSpan.FromSeconds(-1);
                 }
-                return item.Value - DateTime.UtcNow;
+                return item.Value - session.Storage.UtcNow;
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 

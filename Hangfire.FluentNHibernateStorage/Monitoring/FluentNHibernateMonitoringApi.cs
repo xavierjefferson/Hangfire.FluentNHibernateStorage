@@ -395,7 +395,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             IWrappedSession session,
             string type)
         {
-            var endDate = DateTime.UtcNow.Date;
+            var endDate = session.Storage.UtcNow.Date;
             var dates = new List<DateTime>();
             for (var i = 0; i < 7; i++)
             {
@@ -472,7 +472,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             IWrappedSession session,
             string type)
         {
-            var endDate = DateTime.UtcNow;
+            var endDate = session.Storage.UtcNow;
             var dates = new List<DateTime>();
             for (var i = 0; i < 24; i++)
             {

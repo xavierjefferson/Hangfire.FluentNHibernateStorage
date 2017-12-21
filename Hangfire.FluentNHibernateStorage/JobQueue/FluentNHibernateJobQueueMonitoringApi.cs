@@ -23,7 +23,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             lock (Mutex)
             {
-                if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < DateTime.UtcNow)
+                if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < _storage.UtcNow)
                 {
                     var result = _storage.UseSession(session =>
                     {
@@ -31,7 +31,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
 
                     _queuesCache = result;
-                    _cacheUpdated = DateTime.UtcNow;
+                    _cacheUpdated = _storage.UtcNow;
                 }
 
                 return _queuesCache.ToList();

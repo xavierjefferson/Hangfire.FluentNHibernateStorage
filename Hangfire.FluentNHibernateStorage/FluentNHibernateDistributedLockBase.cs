@@ -61,9 +61,9 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal FluentNHibernateDistributedLockBase Acquire()
         {
-            var realNow = DateTime.UtcNow;
-            var start = realNow;
-            var finish = start.Add(Timeout);
+
+
+            var finish = DateTime.Now.Add(Timeout);
             Session.Flush();
             while (true)
             {
@@ -74,11 +74,12 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
                     {
+                        var realnow1 = Session.Storage.UtcNow;
                         var count = Session.CreateQuery(SQLHelper.GetCreateDistributedLockStatement())
                             .SetParameter(SQLHelper.ResourceParameterName, Resource)
-                            .SetParameter(SQLHelper.ExpireAtAsLongParameterName, realNow.Add(Timeout).ToUnixDate())
-                            .SetParameter(SQLHelper.NowParameterName, realNow)
-                            .SetParameter(SQLHelper.NowAsLongParameterName, realNow.ToUnixDate());
+                            .SetParameter(SQLHelper.ExpireAtAsLongParameterName, realnow1.Add(Timeout).ToUnixDate())
+                            .SetParameter(SQLHelper.NowParameterName, realnow1)
+                            .SetParameter(SQLHelper.NowAsLongParameterName, realnow1.ToUnixDate());
 
 
                         if (count.ExecuteUpdate() > 0)
@@ -95,7 +96,7 @@ namespace Hangfire.FluentNHibernateStorage
                     return this;
                 }
 
-                if (finish > realNow)
+                if (finish > DateTime.Now)
                 {
                     CancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
                 }

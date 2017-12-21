@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Transactions;
@@ -27,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly ExpirationManager _expirationManager;
         private readonly FluentNHibernateStorageOptions _options;
-
+        private TimeSpan _dateOffset = TimeSpan.Zero;
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
 
@@ -57,6 +58,21 @@ namespace Hangfire.FluentNHibernateStorage
             _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
 
             EnsureDualHasOneRow();
+            GetDateOffset();
+        }
+
+        private void GetDateOffset()
+        {
+            using (var session = GetStatefulSession())
+            {
+                var query = session.CreateQuery(string.Format("select current_timestamp() from {0}", nameof(_Dual)));
+                var stopwatch = new Stopwatch();
+                DateTime current = session.Storage.UtcNow;
+                stopwatch.Start();
+                var serverUtc = (DateTime) query.UniqueResult();
+                stopwatch.Stop();
+                _dateOffset = serverUtc.Subtract(current).Subtract(stopwatch.Elapsed);
+            }
         }
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
@@ -101,6 +117,15 @@ namespace Hangfire.FluentNHibernateStorage
             catch (Exception ex)
             {
                 Logger.WarnException("Issue with dual table", ex);
+            }
+        }
+
+        public DateTime UtcNow
+        {
+            get
+            {
+                var utcNow = DateTime.UtcNow.Add(_dateOffset);
+                return utcNow;
             }
         }
 
@@ -289,7 +314,7 @@ namespace Hangfire.FluentNHibernateStorage
                     TryBuildSchema();
                 }
             }
-            return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type);
+            return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type, this);
         }
 
         public IWrappedSession GetStatelessSession()
@@ -301,7 +326,7 @@ namespace Hangfire.FluentNHibernateStorage
                     TryBuildSchema();
                 }
             }
-            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession(), Type);
+            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession(), Type, this);
         }
 
         private void TryBuildSchema()

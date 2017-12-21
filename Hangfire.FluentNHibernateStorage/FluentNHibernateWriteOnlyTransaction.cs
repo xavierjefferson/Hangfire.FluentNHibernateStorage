@@ -53,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             QueueCommand(session =>
                 session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement).SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
-                    .SetParameter(SQLHelper.ValueParameterName, DateTime.UtcNow.Add(expireIn)).ExecuteUpdate());
+                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(expireIn)).ExecuteUpdate());
         }
 
         public override void PersistJob(string jobId)
@@ -84,7 +84,7 @@ namespace Hangfire.FluentNHibernateStorage
                         Job = job,
                         Reason = state.Reason,
                         Name = state.Name,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = session.Storage.UtcNow,
                         Data = JobHelper.ToJson(state.SerializeData())
                     };
                     session.Insert(sqlState);
@@ -93,7 +93,7 @@ namespace Hangfire.FluentNHibernateStorage
                     job.StateData = sqlState.Data;
                     job.StateReason = sqlState.Reason;
                     job.StateName = sqlState.Name;
-                    job.LastStateChangedAt = DateTime.UtcNow;
+                    job.LastStateChangedAt = session.Storage.UtcNow;
 
                     session.Update(job);
                     session.Flush();
@@ -113,7 +113,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Job = new _Job {Id = int.Parse(jobId)},
                     Name = state.Name,
                     Reason = state.Reason,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = session.Storage.UtcNow,
                     Data = JobHelper.ToJson(state.SerializeData())
                 });
             });
@@ -150,7 +150,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     Key = key,
                     Value = value,
-                    ExpireAt = expireIn == null ? (DateTime?) null : DateTime.UtcNow.Add(expireIn.Value)
+                    ExpireAt = expireIn == null ? (DateTime?) null : session.Storage.UtcNow.Add(expireIn.Value)
                 }));
         }
 
@@ -217,7 +217,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireSetLock();
-            QueueCommand(session => { SetExpireAt<_Set>(key, DateTime.UtcNow.Add(expireIn), session); });
+            QueueCommand(session => { SetExpireAt<_Set>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void InsertToList(string key, string value)
@@ -236,7 +236,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.TraceFormat("ExpireList key={0} expirein={1}", key, expireIn);
 
             AcquireListLock();
-            QueueCommand(session => { SetExpireAt<_List>(key, DateTime.UtcNow.Add(expireIn), session); });
+            QueueCommand(session => { SetExpireAt<_List>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveFromList(string key, string value)
@@ -334,7 +334,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
 
             AcquireHashLock();
-            QueueCommand(session => { SetExpireAt<_Hash>(key, DateTime.UtcNow.Add(expireIn), session); });
+            QueueCommand(session => { SetExpireAt<_Hash>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveHash(string key)

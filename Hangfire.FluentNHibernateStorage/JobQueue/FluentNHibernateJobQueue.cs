@@ -5,7 +5,6 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
-using NHibernate.Exceptions;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
@@ -48,12 +47,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                             if (queues.Any())
                             {
-                                var jobQueueFetchedAt = DateTime.UtcNow;
-                                var next = jobQueueFetchedAt.AddSeconds(
-                                    _options.InvisibilityTimeout.Negate().TotalSeconds);
                                 using (var transaction =
                                     distributedLock.Session.BeginTransaction(IsolationLevel.Serializable))
                                 {
+                                    var jobQueueFetchedAt = _storage.UtcNow;
+                                    var next = jobQueueFetchedAt.AddSeconds(
+                                        _options.InvisibilityTimeout.Negate().TotalSeconds);
                                     var jobQueue = distributedLock.Session.Query<_JobQueue>()
                                         .FirstOrDefault(i =>
                                             (i.FetchedAt == null
