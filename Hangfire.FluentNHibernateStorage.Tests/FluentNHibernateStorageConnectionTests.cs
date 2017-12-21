@@ -33,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateStorageConnection(null));
+                () => new FluentNHibernateJobStorageConnection(null));
 
             Assert.Equal("storage", exception.ParamName);
         }
@@ -1426,26 +1426,26 @@ values (@key, @value, @expireAt, 0.0)";
             });
         }
 
-        private void UseConnections(Action<MySqlConnection, FluentNHibernateStorageConnection> action)
+        private void UseConnections(Action<MySqlConnection, FluentNHibernateJobStorageConnection> action)
         {
             using (var sqlConnection = ConnectionUtils.CreateConnection())
             {
                 var storage = new FluentNHibernateStorage(sqlConnection);
-                using (var connection = new FluentNHibernateStorageConnection(storage))
+                using (var connection = new FluentNHibernateJobStorageConnection(storage))
                 {
                     action(sqlConnection, connection);
                 }
             }
         }
 
-        private void UseConnection(Action<FluentNHibernateStorageConnection> action)
+        private void UseConnection(Action<FluentNHibernateJobStorageConnection> action)
         {
             using (var sql = ConnectionUtils.CreateConnection())
             {
                 var storage = new Mock<FluentNHibernateStorage>(sql);
                 storage.Setup(x => x.QueueProviders).Returns(_providers);
 
-                using (var connection = new FluentNHibernateStorageConnection(storage.Object))
+                using (var connection = new FluentNHibernateJobStorageConnection(storage.Object))
                 {
                     action(connection);
                 }

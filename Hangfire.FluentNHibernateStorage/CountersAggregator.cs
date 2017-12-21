@@ -43,7 +43,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             do
             {
-                _storage.UseStatelessSession(session =>
+                _storage.UseSession(session =>
                 {
                     using (var transaction = session.BeginTransaction())
                     {
@@ -84,7 +84,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                         transaction.Commit();
                     }
-                });
+                }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
 
                 if (removedCount >= NumberOfRecordsInSinglePass)
                 {

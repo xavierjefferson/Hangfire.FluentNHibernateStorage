@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Transactions;
 using FluentNHibernate.Cfg;
 using FluentNHibernate.Cfg.Db;
@@ -53,6 +55,8 @@ namespace Hangfire.FluentNHibernateStorage
             InitializeQueueProviders();
             _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
             _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
+
+            EnsureDualHasOneRow();
         }
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
@@ -66,6 +70,38 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Dispose()
         {
+        }
+
+        private void EnsureDualHasOneRow()
+        {
+            try
+            {
+                using (var session = GetStatelessSession())
+                {
+                    using (var tx = session.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                    {
+                        var count = session.Query<_Dual>().Count();
+                        switch (count)
+                        {
+                            case 1:
+                                return;
+                            case 0:
+                                session.Insert(new _Dual {Id = 1});
+                                session.Flush();
+                                break;
+                            default:
+                                session.DeleteByInt32Id<_Dual>(
+                                    session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
+                                break;
+                        }
+                        tx.Commit();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WarnException("Issue with dual table", ex);
+            }
         }
 
         private static ProviderTypeEnum InferProviderType(IPersistenceConfigurer config)
@@ -134,49 +170,41 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IStorageConnection GetConnection()
         {
-            return new FluentNHibernateStorageConnection(this);
+            return new FluentNHibernateJobStorageConnection(this);
         }
 
-        internal void UseTransactionStateless([InstantHandle] Action<IWrappedSession> action)
+
+        public IEnumerable ExecuteHqlQuery(string hql)
         {
-            UseTransactionStateless(session =>
+            using (var a = GetStatelessSession())
             {
-                action(session);
-                return true;
-            }, null);
+                return a.CreateQuery(hql).List();
+            }
         }
 
-        internal T UseTransactionStateless<T>(
-            [InstantHandle] Func<IWrappedSession, T> func, IsolationLevel? isolationLevel)
+        internal T UseTransaction<T>(
+            [InstantHandle] Func<IWrappedSession, T> func, IsolationLevel? isolationLevel,
+            FluentNHibernateJobStorageSessionStateEnum state)
         {
             using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
             {
-                var result = UseStatelessSession(func);
+                var result = UseSession(func,
+                    state);
                 transaction.Complete();
 
                 return result;
             }
         }
 
-        internal void UseStatefulTransaction([InstantHandle] Action<IWrappedSession> action)
+        internal void UseTransaction([InstantHandle] Action<IWrappedSession> action,
+            FluentNHibernateJobStorageSessionStateEnum state)
         {
-            UseStatefulTransaction(session =>
-            {
-                action(session);
-                return true;
-            }, null);
-        }
-
-        internal T UseStatefulTransaction<T>(
-            [InstantHandle] Func<IWrappedSession, T> func, IsolationLevel? isolationLevel)
-        {
-            using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
-            {
-                var result = UseSession(func);
-                transaction.Complete();
-
-                return result;
-            }
+            UseTransaction(session =>
+                {
+                    action(session);
+                    return true;
+                }, null,
+                state);
         }
 
         private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)
@@ -191,37 +219,43 @@ namespace Hangfire.FluentNHibernateStorage
                 : new TransactionScope();
         }
 
-        internal void UseStatelessSession([InstantHandle] Action<IWrappedSession> action)
+        internal void UseSession([InstantHandle] Action<IWrappedSession> action,
+            FluentNHibernateJobStorageSessionStateEnum state)
         {
-            using (var session = GetStatelessSession())
+            switch (state)
             {
-                action(session);
+                case FluentNHibernateJobStorageSessionStateEnum.Stateful:
+                    using (var session = GetStatefulSession())
+                    {
+                        action(session);
+                    }
+                    break;
+                default:
+                    using (var session = GetStatelessSession())
+                    {
+                        action(session);
+                    }
+                    break;
             }
         }
 
-        internal T UseStatelessSession<T>([InstantHandle] Func<IWrappedSession, T> func)
+        internal T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func,
+            FluentNHibernateJobStorageSessionStateEnum state)
         {
-            using (var session = GetStatelessSession())
+            switch (state)
             {
-                var result = func(session);
-
-                return result;
-            }
-        }
-
-        internal void UseSession([InstantHandle] Action<IWrappedSession> action)
-        {
-            using (var session = GetStatefulSession())
-            {
-                action(session);
-            }
-        }
-
-        internal T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func)
-        {
-            using (var session = GetStatefulSession())
-            {
-                return func(session);
+                case FluentNHibernateJobStorageSessionStateEnum.Stateful:
+                    using (var session = GetStatefulSession())
+                    {
+                        var result = func(session);
+                        return result;
+                    }
+                default:
+                    using (var session = GetStatelessSession())
+                    {
+                        var result = func(session);
+                        return result;
+                    }
             }
         }
 
@@ -246,7 +280,7 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 
-        internal IWrappedSession GetStatefulSession()
+        public IWrappedSession GetStatefulSession()
         {
             lock (mutex)
             {
@@ -258,7 +292,7 @@ namespace Hangfire.FluentNHibernateStorage
             return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type);
         }
 
-        internal IWrappedSession GetStatelessSession()
+        public IWrappedSession GetStatelessSession()
         {
             lock (mutex)
             {
@@ -305,5 +339,11 @@ namespace Hangfire.FluentNHibernateStorage
                 _options.PrepareSchemaIfNecessary = false;
             }
         }
+    }
+
+    public enum FluentNHibernateJobStorageSessionStateEnum
+    {
+        Stateful,
+        Stateless
     }
 }

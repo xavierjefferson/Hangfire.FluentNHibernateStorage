@@ -1,4 +1,3 @@
-using FluentNHibernate.Mapping;
 using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps

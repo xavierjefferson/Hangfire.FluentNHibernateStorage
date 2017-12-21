@@ -25,10 +25,10 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < DateTime.UtcNow)
                 {
-                    var result = _storage.UseStatelessSession(session =>
+                    var result = _storage.UseSession(session =>
                     {
                         return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList();
-                    });
+                    }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
 
                     _queuesCache = result;
                     _cacheUpdated = DateTime.UtcNow;
@@ -40,12 +40,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public IEnumerable<int> GetEnqueuedJobIds(string queue, int from, int perPage)
         {
-            return _storage.UseStatelessSession(session =>
+            return _storage.UseSession(session =>
             {
                 return session.Query<_JobQueue>().OrderBy(i => i.Id).Where(i => i.Queue == queue)
-                    .Select(i => i.Job.Id).Skip(from)
+                    .Select(i => i.Job.Id).Skip(@from)
                     .Take(perPage).ToList();
-            });
+            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
 
@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public EnqueuedAndFetchedCountDto GetEnqueuedAndFetchedCount(string queue)
         {
-            return _storage.UseStatelessSession(session =>
+            return _storage.UseSession(session =>
             {
                 var result = session.Query<_JobQueue>().Count(i => i.Queue == queue);
 
@@ -64,7 +64,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 {
                     EnqueuedCount = result
                 };
-            });
+            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
     }
 }

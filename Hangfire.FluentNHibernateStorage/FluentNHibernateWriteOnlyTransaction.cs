@@ -349,14 +349,15 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void Commit()
         {
-            _storage.UseStatefulTransaction(session =>
-            {
-                foreach (var command in _commandQueue)
+            _storage.UseTransaction(session =>
                 {
-                    command(session);
-                    session.Flush();
-                }
-            });
+                    foreach (var command in _commandQueue)
+                    {
+                        command(session);
+                        session.Flush();
+                    }
+                }, 
+                FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
 
         internal void QueueCommand(Action<IWrappedSession> action)

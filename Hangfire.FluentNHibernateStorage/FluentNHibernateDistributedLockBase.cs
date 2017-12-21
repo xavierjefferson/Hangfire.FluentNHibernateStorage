@@ -78,18 +78,32 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
                     {
-                        if (!Session.Query<_DistributedLock>()
-                            .Any(i => i.Resource == Resource && i.CreatedAt > expired))
+                        var stmt =
+                            string.Format(@"insert into {0} ({2}, {1}, {3})
+                        select :resource, :createdAt, :expires from {4} where not exists(select Id from 
+                        {0} as d where d.{2} = :resource and d.{1} < :createdAt)",
+                        nameof(_DistributedLock), nameof(_DistributedLock.CreatedAt), nameof(_DistributedLock.Resource), nameof(_DistributedLock.ExpireAt), nameof(_Dual));
+                        var p = Session.CreateQuery(stmt).SetParameter("resource", Resource)
+                            .SetParameter("createdAt", expired)
+                            .SetParameter("expires", DateTime.UtcNow.AddDays(5));
+                        if (p.ExecuteUpdate() > 0)
                         {
-                            Session.Insert(new _DistributedLock
-                            {
-                                CreatedAt = now,
-                                Resource = Resource
-                            });
-                            Session.Flush();
                             transaction.Commit();
                             return true;
                         }
+
+                        //if (!Session.Query<_DistributedLock>()
+                        //    .Any(i => i.Resource == Resource && i.CreatedAt > expired))
+                        //{
+                        //    Session.Insert(new _DistributedLock
+                        //    {
+                        //        CreatedAt = now,
+                        //        Resource = Resource
+                        //    });
+                        //    Session.Flush();
+                        
+                        //    return true;
+                        //}
                     }
                     return false;
                 }))

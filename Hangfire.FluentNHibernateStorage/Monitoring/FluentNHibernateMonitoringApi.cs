@@ -319,7 +319,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private T UseStatefulTransaction<T>(Func<IWrappedSession, T> action)
         {
-            return _storage.UseStatefulTransaction(action, IsolationLevel.ReadUncommitted);
+            return _storage.UseTransaction(action, IsolationLevel.ReadUncommitted,
+                FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
 
         private long GetNumberOfJobsByStateName(IWrappedSession session, string stateName)

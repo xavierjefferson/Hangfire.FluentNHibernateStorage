@@ -26,6 +26,26 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             InitializeComponent();
         }
 
+        public enum StateEnum
+        {
+            Stopped=0,Starting,Started
+        }
+
+        private StateEnum _currentState;
+
+        private StateEnum State
+        {
+            get { return _currentState; }
+            set
+            {
+                _currentState = value;
+                StartButton.Enabled = value == StateEnum.Stopped;
+                ConnectionStringTextBox.Enabled = value == StateEnum.Stopped;
+                StopButton.Enabled = value == StateEnum.Started;
+                HQLButton.Enabled = value == StateEnum.Started;
+            }
+        }
+    
         private ProviderTypeEnum ProviderType
         {
             get => (ProviderTypeEnum) DataProviderComboBox.SelectedItem;
@@ -101,6 +121,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
 
             TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
+            State = StateEnum.Stopped;
         }
 
         private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -109,6 +130,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 LoadConnectionString((ProviderTypeEnum) DataProviderComboBox.SelectedItem);
         }
 
+        private FluentNHibernateJobStorage storage = null;
 
         private void StartButton_Click(object sender, EventArgs e)
         {
@@ -119,9 +141,10 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             Settings.Default.Save();
 
             //THIS LINE GETS THE STORAGE PROVIDER
-            var storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
+            storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
             if (storage != null)
             {
+                State = StateEnum.Starting;
                 //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
                 GlobalConfiguration.Configuration.UseLog4NetLogProvider()
                     .UseStorage(storage);
@@ -138,13 +161,16 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
                     RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
                     loggerNew.Info("Background server started");
-                    StartButton.Enabled = false;
-                    StopButton.Enabled = true;
+                    State = StateEnum.Started;
+
                 }
                 catch (Exception ex)
                 {
                     loggerNew.Error("Server start failed", ex);
                     StopButton_Click(null, new EventArgs());
+                    State = StateEnum.Stopped;
+                    storage?.Dispose();
+                    storage = null;
                 }
             }
         }
@@ -172,13 +198,18 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     _backgroundJobServer.Dispose();
                 }
                 _backgroundJobServer = null;
-                StartButton.Enabled = true;
-                StopButton.Enabled = false;
+                State = StateEnum.Stopped;
             }
             catch (Exception ex)
             {
                 loggerNew.Error("Error during stop", ex);
             }
+        }
+
+        private void HQLButton_Click(object sender, EventArgs e)
+        {
+            var f = new HQLForm(this.storage);
+            f.ShowDialog(this);
         }
     }
 }

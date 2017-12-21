@@ -66,6 +66,7 @@
     <Compile Include="Entities\IInt32Id.cs" />
     <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
+    <Compile Include="Entities\_Dual.cs" />
     <Compile Include="FluentNHibernateDistributedLockBase.cs" />
     <Compile Include="FluentNHibernateStatelessDistributedLock.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
@@ -84,6 +85,7 @@
     <Compile Include="Entities\IExpirableWithId.cs" />
     <Compile Include="Entities\IExpirableWithKey.cs" />
     <Compile Include="Entities\_JobParameter.cs" />
+    <Compile Include="Maps\_DualMap.cs" />
     <Compile Include="Maps\_JobParameterMap.cs" />
     <Compile Include="Maps\_ServerMap.cs" />
     <Compile Include="Entities\_Hash.cs" />
@@ -114,7 +116,7 @@
     <Compile Include="FluentNHibernateDistributedLock.cs" />
     <Compile Include="FluentNHibernateDistributedLockException.cs" />
     <Compile Include="FluentNHibernateJobStorage.cs" />
-    <Compile Include="FluentNHibernateStorageConnection.cs" />
+    <Compile Include="FluentNHibernateJobStorageConnection.cs" />
     <Compile Include="FluentNHibernateStorageOptions.cs" />
     <Compile Include="FluentNHibernateWriteOnlyTransaction.cs" />
     <Compile Include="JobQueue\PersistentJobQueueProviderCollection.cs" />

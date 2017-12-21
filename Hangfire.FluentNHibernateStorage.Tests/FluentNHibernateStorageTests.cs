@@ -49,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         public void GetConnection_ReturnsNonNullInstance()
         {
             var storage = CreateStorage();
-            using (var connection = (FluentNHibernateStorageConnection) storage.GetConnection())
+            using (var connection = (FluentNHibernateJobStorageConnection) storage.GetConnection())
             {
                 Assert.NotNull(connection);
             }

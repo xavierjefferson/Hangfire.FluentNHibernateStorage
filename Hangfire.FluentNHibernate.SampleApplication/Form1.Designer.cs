@@ -35,6 +35,7 @@
             this.LoggerTextBox = new System.Windows.Forms.TextBox();
             this.DataProviderComboBox = new System.Windows.Forms.ComboBox();
             this.label2 = new System.Windows.Forms.Label();
+            this.HQLButton = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // label1
@@ -105,11 +106,22 @@
             this.label2.TabIndex = 7;
             this.label2.Text = "Data Provider";
             // 
+            // HQLButton
+            // 
+            this.HQLButton.Location = new System.Drawing.Point(500, 92);
+            this.HQLButton.Name = "HQLButton";
+            this.HQLButton.Size = new System.Drawing.Size(79, 30);
+            this.HQLButton.TabIndex = 8;
+            this.HQLButton.Text = "HQL...";
+            this.HQLButton.UseVisualStyleBackColor = true;
+            this.HQLButton.Click += new System.EventHandler(this.HQLButton_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(749, 425);
+            this.Controls.Add(this.HQLButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.DataProviderComboBox);
             this.Controls.Add(this.LoggerTextBox);
@@ -134,6 +146,7 @@
         private System.Windows.Forms.TextBox LoggerTextBox;
         private System.Windows.Forms.ComboBox DataProviderComboBox;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Button HQLButton;
     }
 }
 
