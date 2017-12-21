@@ -1,11 +1,7 @@
 using System;
 using System.Data;
-using System.Linq;
 using System.Threading;
-using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
-using NHibernate;
-using NHibernate.Exceptions;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -65,45 +61,31 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal FluentNHibernateDistributedLockBase Acquire()
         {
-            var start = DateTime.UtcNow;
+            var realNow = DateTime.UtcNow;
+            var start = realNow;
             var finish = start.Add(Timeout);
             Session.Flush();
             while (true)
             {
                 CancellationToken.ThrowIfCancellationRequested();
-                var now = DateTime.UtcNow.ToUnixDate();
-                var expired = DateTime.UtcNow.Subtract(Timeout).ToUnixDate();
+
 
                 if (SQLHelper.WrapForTransaction(() =>
                 {
                     using (var transaction = Session.BeginTransaction(IsolationLevel.Serializable))
                     {
-                        var stmt =
-                            string.Format(@"insert into {0} ({2}, {1}, {3})
-                        select :resource, :createdAt, :expires from {4} where not exists(select Id from 
-                        {0} as d where d.{2} = :resource and d.{1} < :createdAt)",
-                        nameof(_DistributedLock), nameof(_DistributedLock.CreatedAt), nameof(_DistributedLock.Resource), nameof(_DistributedLock.ExpireAt), nameof(_Dual));
-                        var p = Session.CreateQuery(stmt).SetParameter("resource", Resource)
-                            .SetParameter("createdAt", expired)
-                            .SetParameter("expires", DateTime.UtcNow.AddDays(5));
-                        if (p.ExecuteUpdate() > 0)
+                        var count = Session.CreateQuery(SQLHelper.GetCreateDistributedLockStatement())
+                            .SetParameter(SQLHelper.ResourceParameterName, Resource)
+                            .SetParameter(SQLHelper.ExpireAtAsLongParameterName, realNow.Add(Timeout).ToUnixDate())
+                            .SetParameter(SQLHelper.NowParameterName, realNow)
+                            .SetParameter(SQLHelper.NowAsLongParameterName, realNow.ToUnixDate());
+
+
+                        if (count.ExecuteUpdate() > 0)
                         {
                             transaction.Commit();
                             return true;
                         }
-
-                        //if (!Session.Query<_DistributedLock>()
-                        //    .Any(i => i.Resource == Resource && i.CreatedAt > expired))
-                        //{
-                        //    Session.Insert(new _DistributedLock
-                        //    {
-                        //        CreatedAt = now,
-                        //        Resource = Resource
-                        //    });
-                        //    Session.Flush();
-                        
-                        //    return true;
-                        //}
                     }
                     return false;
                 }))
@@ -113,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage
                     return this;
                 }
 
-                if (finish > DateTime.UtcNow)
+                if (finish > realNow)
                 {
                     CancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
                 }

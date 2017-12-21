@@ -9,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Table("Hangfire_DistributedLock".WrapObjectName());
             Map(i => i.Resource).Column("Resource".WrapObjectName()).Length(100).Not.Nullable();
             Map(i => i.CreatedAt).Column(Constants.CreatedAt).Not.Nullable();
-            Map(i => i.ExpireAt).Column("`ExpireAt`").Nullable();
+            Map(i => i.ExpireAtAsLong).Column("`ExpireAtAsLong`").Not.Nullable();
         }
     }
 }
