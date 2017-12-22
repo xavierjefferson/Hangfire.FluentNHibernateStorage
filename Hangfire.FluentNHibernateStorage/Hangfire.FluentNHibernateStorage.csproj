@@ -68,6 +68,7 @@
     <Compile Include="Entities\_DistributedLock.cs" />
     <Compile Include="Entities\_Dual.cs" />
     <Compile Include="FluentNHibernateDistributedLockBase.cs" />
+    <Compile Include="FluentNHibernateJobStorageSessionStateEnum.cs" />
     <Compile Include="FluentNHibernateStatelessDistributedLock.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="IWrappedSession.cs" />
@@ -100,6 +101,7 @@
     <Compile Include="Entities\_JobState.cs" />
     <Compile Include="Maps\_JobStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
+    <Compile Include="ServerTimeSyncManager.cs" />
     <Compile Include="SQLHelper.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />

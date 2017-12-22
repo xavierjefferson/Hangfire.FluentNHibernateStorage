@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage
             GetSingleFieldUpdateSql(nameof(_JobParameter), nameof(_JobParameter.Value),
                 nameof(_JobParameter.Id));
 
-        internal static readonly string DeleteServerByNameStatement =
+        internal static readonly string DeleteServerByIdStatement =
             string.Format("delete from {0} where {1}=:{2}", nameof(_Server).WrapObjectName(),
                 nameof(_Server.Id).WrapObjectName(),
                 IdParameterName);

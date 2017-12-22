@@ -216,7 +216,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             _storage.UseSession(session =>
             {
-                session.CreateQuery(SQLHelper.DeleteServerByNameStatement).SetParameter(SQLHelper.IdParameterName, serverId).ExecuteUpdate();
+                session.CreateQuery(SQLHelper.DeleteServerByIdStatement).SetParameter(SQLHelper.IdParameterName, serverId).ExecuteUpdate();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -243,7 +243,7 @@ namespace Hangfire.FluentNHibernateStorage
             return
                 _storage.UseSession(session =>
                     session.CreateQuery(SQLHelper.DeleteServerByLastHeartbeatStatement)
-                        .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(timeOut.Negate()))
+                        .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Subtract(timeOut))
                         .ExecuteUpdate(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
