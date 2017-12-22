@@ -3,14 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using Hangfire.States;
 using Hangfire.Storage;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal class FluentNHibernateWriteOnlyTransaction : JobStorageTransaction
+    public class FluentNHibernateWriteOnlyTransaction : JobStorageTransaction
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
@@ -28,13 +27,16 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SQLHelper.SetExpireStatementDictionary[typeof(T)]).SetParameter(SQLHelper.ValueParameterName, expire)
-                .SetParameter(SQLHelper.IdParameterName, key).ExecuteUpdate();
+            session.CreateQuery(SQLHelper.SetExpireStatementDictionary[typeof(T)])
+                .SetParameter(SQLHelper.ValueParameterName, expire)
+                .SetParameter(SQLHelper.IdParameterName, key)
+                .ExecuteUpdate();
         }
 
         private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)]).SetParameter(SQLHelper.ValueParameterName, key)
+            session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)])
+                .SetParameter(SQLHelper.ValueParameterName, key)
                 .ExecuteUpdate();
         }
 
@@ -42,7 +44,8 @@ namespace Hangfire.FluentNHibernateStorage
         {
             session.CreateQuery(SQLHelper.DeleteByKeyValueStatementlDictionary[typeof(T)])
                 .SetParameter(SQLHelper.ValueParameterName, key)
-                .SetParameter(SQLHelper.ValueParameter2Name, value).ExecuteUpdate();
+                .SetParameter(SQLHelper.ValueParameter2Name, value)
+                .ExecuteUpdate();
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -52,8 +55,10 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement).SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
-                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(expireIn)).ExecuteUpdate());
+                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
+                    .SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
+                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(expireIn))
+                    .ExecuteUpdate());
         }
 
         public override void PersistJob(string jobId)
@@ -63,7 +68,8 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement).SetParameter(SQLHelper.ValueParameterName, null)
+                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
+                    .SetParameter(SQLHelper.ValueParameterName, null)
                     .SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
                     .ExecuteUpdate());
         }
@@ -254,11 +260,14 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireListLock();
             QueueCommand(session =>
             {
-                var idList = session.Query<_List>().OrderBy(i => i.Id).Where(i => i.Key == key)
+                var idList = session.Query<_List>()
+                    .OrderBy(i => i.Id)
+                    .Where(i => i.Key == key)
                     .Select((i, j) => new {index = j, id = i.Id});
                 var before = idList.Where(i => i.index < keepStartingFrom)
                     .Union(idList.Where(i => i.index > keepEndingAt))
-                    .Select(i => i.id).ToList();
+                    .Select(i => i.id)
+                    .ToList();
                 session.DeleteByInt32Id<_List>(before);
             });
         }
@@ -356,7 +365,7 @@ namespace Hangfire.FluentNHibernateStorage
                         command(session);
                         session.Flush();
                     }
-                }, 
+                },
                 FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
 

@@ -8,9 +8,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     public class FluentNHibernateJobQueueMonitoringApi : IPersistentJobQueueMonitoringApi
     {
         private static readonly TimeSpan QueuesCacheTimeout = TimeSpan.FromSeconds(5);
-        private readonly object Mutex = new object();
 
         private readonly FluentNHibernateJobStorage _storage;
+        private readonly object Mutex = new object();
         private DateTime _cacheUpdated;
         private List<string> _queuesCache = new List<string>();
 
@@ -25,10 +25,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < _storage.UtcNow)
                 {
-                    var result = _storage.UseSession(session =>
-                    {
-                        return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList();
-                    }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                    var result = _storage.UseSession(
+                        session => { return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList(); },
+                        FluentNHibernateJobStorageSessionStateEnum.Stateless);
 
                     _queuesCache = result;
                     _cacheUpdated = _storage.UtcNow;
@@ -42,9 +41,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             return _storage.UseSession(session =>
             {
-                return session.Query<_JobQueue>().OrderBy(i => i.Id).Where(i => i.Queue == queue)
-                    .Select(i => i.Job.Id).Skip(@from)
-                    .Take(perPage).ToList();
+                return session.Query<_JobQueue>()
+                    .OrderBy(i => i.Id)
+                    .Where(i => i.Queue == queue)
+                    .Select(i => i.Job.Id)
+                    .Skip(from)
+                    .Take(perPage)
+                    .ToList();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 

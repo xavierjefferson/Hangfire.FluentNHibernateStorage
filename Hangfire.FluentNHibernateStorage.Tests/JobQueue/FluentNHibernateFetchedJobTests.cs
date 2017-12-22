@@ -8,29 +8,35 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 {
     public class FluentNHibernateFetchedJobTests : IClassFixture<TestDatabaseFixture>
     {
+        public FluentNHibernateFetchedJobTests()
+        {
+            _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
+            _connection = new Mock<IDbConnection>();
+            var options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
+            _storage = new Mock<FluentNHibernateJobStorage>(ConnectionUtils.GetConnectionString(), options);
+        }
+
         private const int JobId = 1;
         private const string Queue = "queue";
 
         private readonly Mock<IDbConnection> _connection;
         private readonly FetchedJob _fetchedJob;
         private readonly int _id = 0;
-        private readonly Mock<FluentNHibernateStorage> _storage;
+        private readonly Mock<FluentNHibernateJobStorage> _storage;
 
-        public FluentNHibernateFetchedJobTests()
+        private FluentNHibernateFetchedJob CreateFetchedJob(int jobId, string queue)
         {
-            _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
-            _connection = new Mock<IDbConnection>();
-            var options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
-            _storage = new Mock<FluentNHibernateStorage>(ConnectionUtils.GetConnectionString(), options);
+            return new FluentNHibernateFetchedJob(_storage.Object,
+                new FetchedJob {JobId = jobId, Queue = queue, Id = _id});
         }
 
         [Fact]
-        public void Ctor_ThrowsAnException_WhenStorageIsNull()
+        public void Ctor_CorrectlySets_AllInstanceProperties()
         {
-            var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateFetchedJob(null, _fetchedJob));
+            var fetchedJob = new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob);
 
-            Assert.Equal("storage", exception.ParamName);
+            Assert.Equal(JobId.ToString(), fetchedJob.JobId);
+            Assert.Equal(Queue, fetchedJob.Queue);
         }
 
         [Fact]
@@ -43,18 +49,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         }
 
         [Fact]
-        public void Ctor_CorrectlySets_AllInstanceProperties()
+        public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
-            var fetchedJob = new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob);
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => new FluentNHibernateFetchedJob(null, _fetchedJob));
 
-            Assert.Equal(JobId.ToString(), fetchedJob.JobId);
-            Assert.Equal(Queue, fetchedJob.Queue);
-        }
-
-        private FluentNHibernateFetchedJob CreateFetchedJob(int jobId, string queue)
-        {
-            return new FluentNHibernateFetchedJob(_storage.Object,
-                new FetchedJob {JobId = jobId, Queue = queue, Id = _id});
+            Assert.Equal("storage", exception.ParamName);
         }
     }
 }

@@ -19,7 +19,7 @@ namespace Hangfire.FluentNHibernateStorage
         public const string NowParameterName = "now";
         public const string ResourceParameterName = "resource";
         public const string ExpireAtAsLongParameterName = "expireAtAsLong";
-         
+
 
         private static readonly Dictionary<Type, string> DeleteByIdCommands = new Dictionary<Type, string>();
         private static readonly object mutex = new object();
@@ -216,10 +216,12 @@ namespace Hangfire.FluentNHibernateStorage
                 var resourceColumnName = nameof(_DistributedLock.Resource).WrapObjectName();
                 var dualTableName = nameof(_Dual).WrapObjectName();
                 var expireAtAsLongColumnName = nameof(_DistributedLock.ExpireAtAsLong).WrapObjectName();
-          
+
 
                 _createDistributedLockStatement =
-                    $@"insert into {distributedLockTableName} ({resourceColumnName}, {createdAtColumnName}, {expireAtAsLongColumnName})
+                    $@"insert into {distributedLockTableName} ({resourceColumnName}, {createdAtColumnName}, {
+                            expireAtAsLongColumnName
+                        })
                         select :{ResourceParameterName}, :{NowParameterName},  
                         :{ExpireAtAsLongParameterName} from 
                         {dualTableName} where not exists (select {Constants.Id} from 

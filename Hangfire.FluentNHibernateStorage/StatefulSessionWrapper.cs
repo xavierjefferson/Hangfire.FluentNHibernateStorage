@@ -5,7 +5,7 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class StatefulSessionWrapper : IWrappedSession
+    public class StatefulSessionWrapper : SessionWrapperBase, IWrappedSession
     {
         private readonly ISession _session;
 
@@ -16,9 +16,6 @@ namespace Hangfire.FluentNHibernateStorage
             Storage = storage;
         }
 
-        public FluentNHibernateJobStorage Storage { get; }
-
-        public ProviderTypeEnum ProviderType { get; }
 
         public ITransaction BeginTransaction()
         {
@@ -35,7 +32,7 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.Query<T>();
         }
 
-        public IQuery CreateQuery(string queryString)
+        public override IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
         }

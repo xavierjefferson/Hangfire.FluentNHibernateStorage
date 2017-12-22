@@ -1,47 +1,26 @@
 ﻿using System;
 using System.Linq;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Moq;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 {
     public class PersistentJobQueueProviderCollectionTests
     {
-        private static readonly string[] _queues = {"default", "critical"};
-        private readonly Mock<IPersistentJobQueueProvider> _defaultProvider;
-        private readonly Mock<IPersistentJobQueueProvider> _provider;
-
         public PersistentJobQueueProviderCollectionTests()
         {
             _defaultProvider = new Mock<IPersistentJobQueueProvider>();
             _provider = new Mock<IPersistentJobQueueProvider>();
         }
 
-        [Fact]
-        public void Ctor_ThrowsAnException_WhenDefaultProviderIsNull()
+        private static readonly string[] _queues = {"default", "critical"};
+        private readonly Mock<IPersistentJobQueueProvider> _defaultProvider;
+        private readonly Mock<IPersistentJobQueueProvider> _provider;
+
+        private PersistentJobQueueProviderCollection CreateCollection()
         {
-            Assert.Throws<ArgumentNullException>(
-                () => new PersistentJobQueueProviderCollection(null));
-        }
-
-        [Fact]
-        public void Enumeration_IncludesTheDefaultProvider()
-        {
-            var collection = CreateCollection();
-
-            var result = collection.ToArray();
-
-            Assert.Equal(1, result.Length);
-            Assert.Same(_defaultProvider.Object, result[0]);
-        }
-
-        [Fact]
-        public void GetProvider_ReturnsTheDefaultProvider_WhenProviderCanNotBeResolvedByQueue()
-        {
-            var collection = CreateCollection();
-
-            var provider = collection.GetProvider("queue");
-
-            Assert.Same(_defaultProvider.Object, provider);
+            return new PersistentJobQueueProviderCollection(_defaultProvider.Object);
         }
 
         [Fact]
@@ -67,6 +46,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         }
 
         [Fact]
+        public void Ctor_ThrowsAnException_WhenDefaultProviderIsNull()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => new PersistentJobQueueProviderCollection(null));
+        }
+
+        [Fact]
         public void Enumeration_ContainsAddedProvider()
         {
             var collection = CreateCollection();
@@ -74,6 +60,17 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             collection.Add(_provider.Object, _queues);
 
             Assert.Contains(_provider.Object, collection);
+        }
+
+        [Fact]
+        public void Enumeration_IncludesTheDefaultProvider()
+        {
+            var collection = CreateCollection();
+
+            var result = collection.ToArray();
+
+            Assert.Equal(1, result.Length);
+            Assert.Same(_defaultProvider.Object, result[0]);
         }
 
         [Fact]
@@ -89,9 +86,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             Assert.Same(provider1, provider2);
         }
 
-        private PersistentJobQueueProviderCollection CreateCollection()
+        [Fact]
+        public void GetProvider_ReturnsTheDefaultProvider_WhenProviderCanNotBeResolvedByQueue()
         {
-            return new PersistentJobQueueProviderCollection(_defaultProvider.Object);
+            var collection = CreateCollection();
+
+            var provider = collection.GetProvider("queue");
+
+            Assert.Same(_defaultProvider.Object, provider);
         }
     }
 }

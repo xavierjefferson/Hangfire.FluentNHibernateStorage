@@ -8,7 +8,7 @@ using Hangfire.Storage;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
-    internal class FluentNHibernateJobQueue : IPersistentJobQueue
+    public class FluentNHibernateJobQueue : IPersistentJobQueue
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobQueue));
 

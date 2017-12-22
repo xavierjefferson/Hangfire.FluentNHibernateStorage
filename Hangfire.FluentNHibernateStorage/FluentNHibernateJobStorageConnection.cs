@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
@@ -101,7 +100,8 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 var updated = session.CreateQuery(SQLHelper.UpdateJobParameterValueStatement)
                     .SetParameter(SQLHelper.ValueParameterName, value)
-                    .SetParameter(SQLHelper.IdParameterName, int.Parse(id)).ExecuteUpdate();
+                    .SetParameter(SQLHelper.IdParameterName, int.Parse(id))
+                    .ExecuteUpdate();
                 if (updated == 0)
                 {
                     var jobParameter = new _JobParameter
@@ -123,8 +123,10 @@ namespace Hangfire.FluentNHibernateStorage
             if (name == null) throw new ArgumentNullException("name");
 
             return _storage.UseSession(session =>
-                session.Query<_JobParameter>().Where(i => i.Job.Id == int.Parse(id) && i.Name == name)
-                    .Select(i => i.Value).SingleOrDefault(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                session.Query<_JobParameter>()
+                    .Where(i => i.Job.Id == int.Parse(id) && i.Name == name)
+                    .Select(i => i.Value)
+                    .SingleOrDefault(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
         public override JobData GetJobData(string jobId)
@@ -135,7 +137,8 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 var jobData =
                     session
-                        .Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
+                        .Query<_Job>()
+                        .SingleOrDefault(i => i.Id == int.Parse(jobId));
 
                 if (jobData == null) return null;
 
@@ -170,7 +173,9 @@ namespace Hangfire.FluentNHibernateStorage
 
             return _storage.UseSession(session =>
             {
-                var job = session.Query<_Job>().Where(i => i.Id == int.Parse(jobId)).Select(i=>new {i.StateName, i.StateData, i.StateReason})
+                var job = session.Query<_Job>()
+                    .Where(i => i.Id == int.Parse(jobId))
+                    .Select(i => new {i.StateName, i.StateData, i.StateReason})
                     .SingleOrDefault();
                 if (job == null)
                 {
@@ -214,10 +219,13 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (serverId == null) throw new ArgumentNullException("serverId");
 
-            _storage.UseSession(session =>
-            {
-                session.CreateQuery(SQLHelper.DeleteServerByIdStatement).SetParameter(SQLHelper.IdParameterName, serverId).ExecuteUpdate();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            _storage.UseSession(
+                session =>
+                {
+                    session.CreateQuery(SQLHelper.DeleteServerByIdStatement)
+                        .SetParameter(SQLHelper.IdParameterName, serverId)
+                        .ExecuteUpdate();
+                }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
         public override void Heartbeat(string serverId)
@@ -253,7 +261,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 _storage.UseSession(session =>
-                    session.Query<_Set>().Count(i => i.Key == key), FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                        session.Query<_Set>().Count(i => i.Key == key),
+                    FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
         public override List<string> GetRangeFromSet(string key, int startingFrom, int endingAt)
@@ -261,8 +270,12 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException("key");
             return _storage.UseSession(session =>
             {
-                return session.Query<_Set>().OrderBy(i => i.Id).Skip(startingFrom)
-                    .Take(endingAt - startingFrom + 1).Select(i => i.Value).ToList();
+                return session.Query<_Set>()
+                    .OrderBy(i => i.Id)
+                    .Skip(startingFrom)
+                    .Take(endingAt - startingFrom + 1)
+                    .Select(i => i.Value)
+                    .ToList();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -273,8 +286,11 @@ namespace Hangfire.FluentNHibernateStorage
             return
                 _storage.UseSession(session =>
                 {
-                    var result = session.Query<_Set>().Where(i => i.Key == key).OrderBy(i => i.Id)
-                        .Select(i => i.Value).ToList();
+                    var result = session.Query<_Set>()
+                        .Where(i => i.Key == key)
+                        .OrderBy(i => i.Id)
+                        .Select(i => i.Value)
+                        .ToList();
                     return new HashSet<string>(result);
                 }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
@@ -287,8 +303,10 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 _storage.UseSession(session =>
-                    session.Query<_Set>().OrderBy(i => i.Score)
-                        .Where(i => i.Key == key && i.Score >= fromScore && i.Score <= toScore).Select(i => i.Value)
+                    session.Query<_Set>()
+                        .OrderBy(i => i.Score)
+                        .Where(i => i.Key == key && i.Score >= fromScore && i.Score <= toScore)
+                        .Select(i => i.Value)
                         .SingleOrDefault(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -309,7 +327,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 _storage.UseSession(session =>
-                    session.Query<_Hash>().Count(i => i.Key == key), FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                        session.Query<_Hash>().Count(i => i.Key == key),
+                    FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
         public override TimeSpan GetHashTtl(string key)
@@ -323,7 +342,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 _storage.UseSession(session =>
-                    session.Query<_List>().Count(i => i.Key == key), FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                        session.Query<_List>().Count(i => i.Key == key),
+                    FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
         public override TimeSpan GetListTtl(string key)
@@ -338,7 +358,9 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 _storage.UseSession(session =>
-                    session.Query<_Hash>().Where(i => i.Key == key && i.Field == name).Select(i => i.Value)
+                    session.Query<_Hash>()
+                        .Where(i => i.Key == key && i.Field == name)
+                        .Select(i => i.Value)
                         .SingleOrDefault(), FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -348,8 +370,13 @@ namespace Hangfire.FluentNHibernateStorage
             return _storage.UseSession(session =>
             {
                 return
-                    session.Query<_List>().OrderByDescending(i => i.Id).Where(i => i.Key == key)
-                        .Select(i => i.Value).Skip(startingFrom).Take(endingAt - startingFrom + 1).ToList();
+                    session.Query<_List>()
+                        .OrderByDescending(i => i.Id)
+                        .Where(i => i.Key == key)
+                        .Select(i => i.Value)
+                        .Skip(startingFrom)
+                        .Take(endingAt - startingFrom + 1)
+                        .ToList();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
         }
 
@@ -360,8 +387,11 @@ namespace Hangfire.FluentNHibernateStorage
             return _storage.UseSession(session =>
             {
                 return
-                    session.Query<_List>().OrderByDescending(i => i.Id).Where(i => i.Key == key)
-                        .Select(i => i.Value).ToList();
+                    session.Query<_List>()
+                        .OrderByDescending(i => i.Id)
+                        .Where(i => i.Key == key)
+                        .Select(i => i.Value)
+                        .ToList();
 
                 ;
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
@@ -403,7 +433,7 @@ namespace Hangfire.FluentNHibernateStorage
                                 i.Field = keyValuePair.Key;
                             });
                     }
-                }, 
+                },
                 FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
 
@@ -413,7 +443,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return _storage.UseSession(session =>
             {
-                var result = session.Query<_Hash>().Where(i => i.Key == key)
+                var result = session.Query<_Hash>()
+                    .Where(i => i.Key == key)
                     .ToDictionary(i => i.Field, i => i.Value);
                 return result.Count != 0 ? result : null;
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);

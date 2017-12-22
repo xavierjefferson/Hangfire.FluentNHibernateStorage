@@ -24,7 +24,9 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             HasMany(i => i.History).KeyColumn(Constants.JobId).Cascade.All();
 
             Map(i => i.StateName).Column("StateName".WrapObjectName()).Length(_JobStateMap.stateNameLength).Nullable();
-            Map(i => i.StateReason).Column("StateReason".WrapObjectName()).Length(_JobStateMap.stateReasonLength)
+            Map(i => i.StateReason)
+                .Column("StateReason".WrapObjectName())
+                .Length(_JobStateMap.stateReasonLength)
                 .Nullable();
         }
     }

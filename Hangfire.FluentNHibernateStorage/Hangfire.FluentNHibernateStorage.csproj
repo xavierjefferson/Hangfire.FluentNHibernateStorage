@@ -102,6 +102,7 @@
     <Compile Include="Maps\_JobStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
     <Compile Include="ServerTimeSyncManager.cs" />
+    <Compile Include="SessionWrapperBase.cs" />
     <Compile Include="SQLHelper.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />

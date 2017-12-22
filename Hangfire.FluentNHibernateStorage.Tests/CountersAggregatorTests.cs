@@ -1,41 +1,38 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
-using MySql.Data.MySqlClient;
+using Hangfire.FluentNHibernateStorage;
+using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Tests;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateJobStorage.Tests
 {
     public class CountersAggregatorTests : IClassFixture<TestDatabaseFixture>, IDisposable
     {
-        private readonly MySqlConnection _connection;
-        private readonly FluentNHibernateStorage _storage;
-        private readonly CountersAggregator _sut;
-
         public CountersAggregatorTests()
         {
-            _connection = ConnectionUtils.CreateConnection();
-            _storage = new FluentNHibernateStorage(_connection);
+            _storage = ConnectionUtils.CreateStorage();
             _sut = new CountersAggregator(_storage, TimeSpan.Zero);
         }
 
         public void Dispose()
         {
-            _connection.Dispose();
             _storage.Dispose();
         }
+
+        private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
+        private readonly CountersAggregator _sut;
 
         [Fact]
         [CleanDatabase]
         public void CountersAggregatorExecutesProperly()
         {
-            const string createSql = @"
-insert into Counter (`Key`, Value, ExpireAt) 
-values ('key', 1, @expireAt)";
-
-            _storage.UseConnection(connection =>
+            _storage.UseSession(connection =>
             {
-                // Arrange
-                connection.Execute(createSql, new {expireAt = DateTime.UtcNow.AddHours(1)});
+                //Arrange
+                connection.Insert(new _Counter {Key = "key", Value = 1, ExpireAt = _storage.UtcNow.AddHours(1)});
+                connection.Flush();
 
                 var cts = new CancellationTokenSource();
                 cts.Cancel();
@@ -44,8 +41,8 @@ values ('key', 1, @expireAt)";
                 _sut.Execute(cts.Token);
 
                 // Assert
-                Assert.Equal(1, connection.Query<int>(@"select count(*) from AggregatedCounter").Single());
-            });
+                Assert.Equal(1, connection.Query<_AggregatedCounter>().Count());
+            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
     }
 }

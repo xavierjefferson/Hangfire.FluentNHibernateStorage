@@ -1,58 +1,33 @@
 using System;
-using System.Data;
 using System.Linq;
+using System.Transactions;
+using Hangfire.FluentNHibernateStorage;
+using Hangfire.FluentNHibernateStorage.Tests;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateJobStorage.Tests
 {
     public class FluentNHibernateStorageTests : IClassFixture<TestDatabaseFixture>
     {
-        private readonly FluentNHibernateStorageOptions _options;
-
         public FluentNHibernateStorageTests()
         {
             _options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
         }
 
+        private readonly FluentNHibernateStorageOptions _options;
+
+        private FluentNHibernateStorage.FluentNHibernateJobStorage CreateStorage()
+        {
+            return ConnectionUtils.CreateStorage(_options);
+        }
+
         [Fact]
-        public void Ctor_ThrowsAnException_WhenConnectionStringIsNull()
+        public void Ctor_ThrowsAnException_WhenPersistenceConfigurerIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateStorage(null));
+                () => new FluentNHibernateStorage.FluentNHibernateJobStorage(null));
 
             Assert.Equal("nameOrConnectionString", exception.ParamName);
-        }
-
-        [Fact]
-        public void Ctor_ThrowsAnException_WhenOptionsValueIsNull()
-        {
-            var exception = Assert.Throws<ArgumentNullException>(
-                () => FluentNHibernateStorageFactory.ForMySQL(System.Configuration.ConfigurationManager.ConnectionString["hello"]), null);
-
-            Assert.Equal("options", exception.ParamName);
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void Ctor_CanCreateSqlServerStorage_WithExistingConnection()
-        {
-            using (var connection = ConnectionUtils.CreateConnection())
-            {
-                var storage = new FluentNHibernateStorage(connection);
-
-                Assert.NotNull(storage);
-            }
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void GetConnection_ReturnsNonNullInstance()
-        {
-            var storage = CreateStorage();
-            using (var connection = (FluentNHibernateJobStorageConnection) storage.GetConnection())
-            {
-                Assert.NotNull(connection);
-            }
         }
 
         [Fact]
@@ -67,6 +42,18 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             Assert.Contains(typeof(ExpirationManager), componentTypes);
         }
 
+
+        [Fact]
+        [CleanDatabase]
+        public void GetConnection_ReturnsNonNullInstance()
+        {
+            var storage = CreateStorage();
+            using (var connection = (FluentNHibernateJobStorageConnection) storage.GetConnection())
+            {
+                Assert.NotNull(connection);
+            }
+        }
+
         [Fact]
         [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetMonitoringApi_ReturnsNonNullInstance()
@@ -74,13 +61,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             var storage = CreateStorage();
             var api = storage.GetMonitoringApi();
             Assert.NotNull(api);
-        }
-
-        private FluentNHibernateStorage CreateStorage()
-        {
-            return new FluentNHibernateStorage(
-                ConnectionUtils.GetConnectionString(),
-                _options);
         }
     }
 }

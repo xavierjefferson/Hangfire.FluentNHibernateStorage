@@ -23,7 +23,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public TimeSpan QueuePollInterval
         {
-            get { return _queuePollInterval; }
+            get => _queuePollInterval;
             set
             {
                 var message = string.Format(

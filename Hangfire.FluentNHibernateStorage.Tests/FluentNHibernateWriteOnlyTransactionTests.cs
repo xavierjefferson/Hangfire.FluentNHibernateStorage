@@ -1,20 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using Dapper;
+using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.States;
 using Moq;
-using MySql.Data.MySqlClient;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public class FluentNHibernateWriteOnlyTransactionTests : IClassFixture<TestDatabaseFixture>
     {
-        private readonly PersistentJobQueueProviderCollection _queueProviders;
-
         public FluentNHibernateWriteOnlyTransactionTests()
         {
             var defaultProvider = new Mock<IPersistentJobQueueProvider>();
@@ -24,115 +20,86 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             _queueProviders = new PersistentJobQueueProviderCollection(defaultProvider.Object);
         }
 
-        [Fact]
-        public void Ctor_ThrowsAnException_IfStorageIsNull()
-        {
-            var exception = Assert.Throws<ArgumentNullException>(
-                () => new MySqlWriteOnlyTransaction(null));
+        private readonly PersistentJobQueueProviderCollection _queueProviders;
 
-            Assert.Equal("storage", exception.ParamName);
+        private class InsertTwoJobsResult
+        {
+            public string JobId1 { get; set; }
+            public string JobId2 { get; set; }
         }
 
-        [Fact]
-        [CleanDatabase]
-        public void ExpireJob_SetsJobExpirationData()
+        private static InsertTwoJobsResult InsertTwoJobs(IWrappedSession session)
         {
-            const string arrangeSql = @"
-insert into Job (InvocationData, Arguments, CreatedAt)
-values ('', '', UTC_TIMESTAMP());
-select last_insert_id() as Id";
+            var insertTwoJobsResult = new InsertTwoJobsResult();
 
-            UseConnection(sql =>
+
+            for (var i = 0; i < 2; i++)
             {
-                var jobId = sql.Query(arrangeSql).Single().Id.ToString();
-                var anotherJobId = sql.Query(arrangeSql).Single().Id.ToString();
+                var newJob = new _Job
+                {
+                    InvocationData = string.Empty,
+                    Arguments = string.Empty,
+                    CreatedAt = session.Storage.UtcNow
+                };
+                session.Insert(newJob);
+                session.Flush();
 
-                Commit(sql, x => x.ExpireJob(jobId, TimeSpan.FromDays(1)));
-
-                var job = GetTestJob(sql, jobId);
-                Assert.True(DateTime.UtcNow.AddMinutes(-1) < job.ExpireAt &&
-                            job.ExpireAt <= DateTime.UtcNow.AddDays(1));
-
-                var anotherJob = GetTestJob(sql, anotherJobId);
-                Assert.Null(anotherJob.ExpireAt);
-            });
+                if (i == 0)
+                {
+                    insertTwoJobsResult.JobId1 = newJob.Id.ToString();
+                }
+                else
+                {
+                    insertTwoJobsResult.JobId2 = newJob.Id.ToString();
+                }
+            }
+            return insertTwoJobsResult;
         }
 
-        [Fact]
-        [CleanDatabase]
-        public void PersistJob_ClearsTheJobExpirationData()
+        private static dynamic GetTestJob(IWrappedSession connection, string jobId)
         {
-            const string arrangeSql = @"
-insert into Job (InvocationData, Arguments, CreatedAt, ExpireAt)
-values ('', '', UTC_TIMESTAMP(), UTC_TIMESTAMP());
-select last_insert_id() as Id";
-
-            UseConnection(sql =>
-            {
-                var jobId = sql.Query(arrangeSql).Single().Id.ToString();
-                var anotherJobId = sql.Query(arrangeSql).Single().Id.ToString();
-
-                Commit(sql, x => x.PersistJob(jobId));
-
-                var job = GetTestJob(sql, jobId);
-                Assert.Null(job.ExpireAt);
-
-                var anotherJob = GetTestJob(sql, anotherJobId);
-                Assert.NotNull(anotherJob.ExpireAt);
-            });
+            return connection.Query<_Job>().Single(i => i.Id == int.Parse(jobId));
         }
 
-        [Fact]
-        [CleanDatabase]
-        public void SetJobState_AppendsAStateAndSetItToTheJob()
+        private static void UseSession(Action<IWrappedSession> action)
         {
-            const string arrangeSql = @"
-insert into Job (InvocationData, Arguments, CreatedAt)
-values ('', '', UTC_TIMESTAMP());
-select last_insert_id() as Id";
-
-            UseConnection(sql =>
+            using (var storage = ConnectionUtils.CreateStorage())
             {
-                var jobId = sql.Query(arrangeSql).Single().Id.ToString();
-                var anotherJobId = sql.Query(arrangeSql).Single().Id.ToString();
+                action(storage.GetStatefulSession());
+            }
+        }
 
-                var state = new Mock<IState>();
-                state.Setup(x => x.Name).Returns("State");
-                state.Setup(x => x.Reason).Returns("Reason");
-                state.Setup(x => x.SerializeData())
-                    .Returns(new Dictionary<string, string> {{"Name", "Value"}});
+        private void Commit(
+            IWrappedSession connection,
+            Action<FluentNHibernateWriteOnlyTransaction> action)
+        {
+            var storage = new Mock<FluentNHibernateJobStorage>(connection);
+            storage.Setup(x => x.QueueProviders).Returns(_queueProviders);
 
-                Commit(sql, x => x.SetJobState(jobId, state.Object));
-
-                var job = GetTestJob(sql, jobId);
-                Assert.Equal("State", job.StateName);
-                Assert.NotNull(job.StateId);
-
-                var anotherJob = GetTestJob(sql, anotherJobId);
-                Assert.Null(anotherJob.StateName);
-                Assert.Null(anotherJob.StateId);
-
-                var jobState = sql.Query("select * from State").Single();
-                Assert.Equal((string) jobId, jobState.JobId.ToString());
-                Assert.Equal("State", jobState.Name);
-                Assert.Equal("Reason", jobState.Reason);
-                Assert.NotNull(jobState.CreatedAt);
-                Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
-            });
+            using (var transaction = new FluentNHibernateWriteOnlyTransaction(storage.Object))
+            {
+                action(transaction);
+                transaction.Commit();
+            }
         }
 
         [Fact]
         [CleanDatabase]
         public void AddJobState_JustAddsANewRecordInATable()
         {
-            const string arrangeSql = @"
-insert into Job (InvocationData, Arguments, CreatedAt)
-values ('', '', UTC_TIMESTAMP());
-select last_insert_id() as Id";
-
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                var jobId = sql.Query(arrangeSql).Single().Id.ToString();
+                //Arrange
+                var newJob = new _Job
+                {
+                    InvocationData = string.Empty,
+                    Arguments = string.Empty,
+                    CreatedAt = session.Storage.UtcNow
+                };
+                session.Insert(newJob);
+                session.Flush();
+
+                var jobId = newJob.Id;
 
                 var state = new Mock<IState>();
                 state.Setup(x => x.Name).Returns("State");
@@ -140,18 +107,59 @@ select last_insert_id() as Id";
                 state.Setup(x => x.SerializeData())
                     .Returns(new Dictionary<string, string> {{"Name", "Value"}});
 
-                Commit(sql, x => x.AddJobState(jobId, state.Object));
+                Commit(session, x => x.AddJobState(jobId.ToString(), state.Object));
 
-                var job = GetTestJob(sql, jobId);
+                var job = GetTestJob(session, jobId.ToString());
                 Assert.Null(job.StateName);
                 Assert.Null(job.StateId);
 
-                var jobState = sql.Query("select * from State").Single();
-                Assert.Equal((string) jobId, jobState.JobId.ToString());
+                var jobState = session.Query<_JobState>().Single();
+                Assert.Equal(jobId, jobState.Job.Id);
                 Assert.Equal("State", jobState.Name);
                 Assert.Equal("Reason", jobState.Reason);
                 Assert.NotNull(jobState.CreatedAt);
                 Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void AddRangeToSet_AddsAllItems_ToAGivenSet()
+        {
+            UseSession(session =>
+            {
+                var items = new List<string> {"1", "2", "3"};
+
+                Commit(session, x => x.AddRangeToSet("my-set", items));
+
+                var records = session.Query<_Set>().Where(i => i.Key == "my-set").Select(i => i.Value).ToList();
+                Assert.Equal(items, records);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void AddRangeToSet_ThrowsAnException_WhenItemsValueIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.AddRangeToSet("my-set", null)));
+
+                Assert.Equal("items", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void AddRangeToSet_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.AddRangeToSet(null, new List<string>())));
+
+                Assert.Equal("key", exception.ParamName);
             });
         }
 
@@ -166,128 +174,11 @@ select last_insert_id() as Id";
 
             _queueProviders.Add(correctProvider.Object, new[] {"default"});
 
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x => x.AddToQueue("default", "1"));
+                Commit(session, x => x.AddToQueue("default", "1"));
 
-                correctJobQueue.Verify(x => x.Enqueue(It.IsNotNull<IDbConnection>(), "default", "1"));
-            });
-        }
-
-        private static dynamic GetTestJob(IDbConnection connection, string jobId)
-        {
-            return connection
-                .Query("select * from Job where Id = @id", new {id = jobId})
-                .Single();
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void IncrementCounter_AddsRecordToCounterTable_WithPositiveValue()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.IncrementCounter("my-key"));
-
-                var record = sql.Query("select * from Counter").Single();
-
-                Assert.Equal("my-key", record.Key);
-                Assert.Equal(1, record.Value);
-                Assert.Equal((DateTime?) null, record.ExpireAt);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void IncrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.IncrementCounter("my-key", TimeSpan.FromDays(1)));
-
-                var record = sql.Query("select * from Counter").Single();
-
-                Assert.Equal("my-key", record.Key);
-                Assert.Equal(1, record.Value);
-                Assert.NotNull(record.ExpireAt);
-
-                var expireAt = (DateTime) record.ExpireAt;
-
-                Assert.True(DateTime.UtcNow.AddHours(23) < expireAt);
-                Assert.True(expireAt < DateTime.UtcNow.AddHours(25));
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void IncrementCounter_WithExistingKey_AddsAnotherRecord()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.IncrementCounter("my-key");
-                    x.IncrementCounter("my-key");
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from Counter").Single();
-
-                Assert.Equal(2, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void DecrementCounter_AddsRecordToCounterTable_WithNegativeValue()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.DecrementCounter("my-key"));
-
-                var record = sql.Query("select * from Counter").Single();
-
-                Assert.Equal("my-key", record.Key);
-                Assert.Equal(-1, record.Value);
-                Assert.Equal((DateTime?) null, record.ExpireAt);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void DecrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.DecrementCounter("my-key", TimeSpan.FromDays(1)));
-
-                var record = sql.Query("select * from Counter").Single();
-
-                Assert.Equal("my-key", record.Key);
-                Assert.Equal(-1, record.Value);
-                Assert.NotNull(record.ExpireAt);
-
-                var expireAt = (DateTime) record.ExpireAt;
-
-                Assert.True(DateTime.UtcNow.AddHours(23) < expireAt);
-                Assert.True(expireAt < DateTime.UtcNow.AddHours(25));
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void DecrementCounter_WithExistingKey_AddsAnotherRecord()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.DecrementCounter("my-key");
-                    x.DecrementCounter("my-key");
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from Counter").Single();
-
-                Assert.Equal(2, recordCount);
+                correctJobQueue.Verify(x => x.Enqueue(It.IsNotNull<IWrappedSession>(), "default", "1"));
             });
         }
 
@@ -295,11 +186,11 @@ select last_insert_id() as Id";
         [CleanDatabase]
         public void AddToSet_AddsARecord_IfThereIsNo_SuchKeyAndValue()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x => x.AddToSet("my-key", "my-value"));
+                Commit(session, x => x.AddToSet("my-key", "my-value"));
 
-                var record = sql.Query("select * from `Set`").Single();
+                var record = session.Query<_Set>().Single();
 
                 Assert.Equal("my-key", record.Key);
                 Assert.Equal("my-value", record.Value);
@@ -311,15 +202,15 @@ select last_insert_id() as Id";
         [CleanDatabase]
         public void AddToSet_AddsARecord_WhenKeyIsExists_ButValuesAreDifferent()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
+                Commit(session, x =>
                 {
                     x.AddToSet("my-key", "my-value");
                     x.AddToSet("my-key", "another-value");
                 });
 
-                var recordCount = sql.Query<int>("select count(*) from `Set`").Single();
+                var recordCount = session.Query<_Set>().Count();
 
                 Assert.Equal(2, recordCount);
             });
@@ -329,16 +220,15 @@ select last_insert_id() as Id";
         [CleanDatabase]
         public void AddToSet_DoesNotAddARecord_WhenBothKeyAndValueAreExist()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
+                Commit(session, x =>
                 {
                     x.AddToSet("my-key", "my-value");
                     x.AddToSet("my-key", "my-value");
                 });
 
-                var recordCount = sql.Query<int>("select count(*) from `Set`").Single();
-
+                var recordCount = session.Query<_Set>().Count();
                 Assert.Equal(1, recordCount);
             });
         }
@@ -347,11 +237,11 @@ select last_insert_id() as Id";
         [CleanDatabase]
         public void AddToSet_WithScore_AddsARecordWithScore_WhenBothKeyAndValueAreNotExist()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x => x.AddToSet("my-key", "my-value", 3.2));
+                Commit(session, x => x.AddToSet("my-key", "my-value", 3.2));
 
-                var record = sql.Query("select * from `Set`").Single();
+                var record = session.Query<_Set>().Single();
 
                 Assert.Equal("my-key", record.Key);
                 Assert.Equal("my-value", record.Value);
@@ -363,102 +253,59 @@ select last_insert_id() as Id";
         [CleanDatabase]
         public void AddToSet_WithScore_UpdatesAScore_WhenBothKeyAndValueAreExist()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
+                Commit(session, x =>
                 {
                     x.AddToSet("my-key", "my-value");
                     x.AddToSet("my-key", "my-value", 3.2);
                 });
 
-                var record = sql.Query("select * from `Set`").Single();
+                var record = session.Query<_Set>().Single();
 
                 Assert.Equal(3.2, record.Score, 3);
             });
         }
 
         [Fact]
-        [CleanDatabase]
-        public void RemoveFromSet_RemovesARecord_WithGivenKeyAndValue()
+        public void Ctor_ThrowsAnException_IfStorageIsNull()
         {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.AddToSet("my-key", "my-value");
-                    x.RemoveFromSet("my-key", "my-value");
-                });
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => new FluentNHibernateWriteOnlyTransaction(null));
 
-                var recordCount = sql.Query<int>("select count(*) from `Set`").Single();
-
-                Assert.Equal(0, recordCount);
-            });
+            Assert.Equal("storage", exception.ParamName);
         }
 
         [Fact]
         [CleanDatabase]
-        public void RemoveFromSet_DoesNotRemoveRecord_WithSameKey_AndDifferentValue()
+        public void DecrementCounter_AddsRecordToCounterTable_WithNegativeValue()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
-                {
-                    x.AddToSet("my-key", "my-value");
-                    x.RemoveFromSet("my-key", "different-value");
-                });
+                Commit(session, x => x.DecrementCounter("my-key"));
 
-                var recordCount = sql.Query<int>("select count(*) from `Set`").Single();
-
-                Assert.Equal(1, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveFromSet_DoesNotRemoveRecord_WithSameValue_AndDifferentKey()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.AddToSet("my-key", "my-value");
-                    x.RemoveFromSet("different-key", "my-value");
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from `Set`").Single();
-
-                Assert.Equal(1, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void InsertToList_AddsARecord_WithGivenValues()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.InsertToList("my-key", "my-value"));
-
-                var record = sql.Query("select * from List").Single();
+                var record = session.Query<_Counter>().Single();
 
                 Assert.Equal("my-key", record.Key);
-                Assert.Equal("my-value", record.Value);
+                Assert.Equal(-1, record.Value);
+                Assert.Equal(null, record.ExpireAt);
             });
         }
 
         [Fact]
         [CleanDatabase]
-        public void InsertToList_AddsAnotherRecord_WhenBothKeyAndValueAreExist()
+        public void DecrementCounter_WithExistingKey_AddsAnotherRecord()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
+                Commit(session, x =>
                 {
-                    x.InsertToList("my-key", "my-value");
-                    x.InsertToList("my-key", "my-value");
+                    x.DecrementCounter("my-key");
+                    x.DecrementCounter("my-key");
                 });
 
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
+
+                var recordCount = session.Query<_Counter>().Count();
 
                 Assert.Equal(2, recordCount);
             });
@@ -466,321 +313,22 @@ select last_insert_id() as Id";
 
         [Fact]
         [CleanDatabase]
-        public void RemoveFromList_RemovesAllRecords_WithGivenKeyAndValue()
+        public void DecrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "my-value");
-                    x.InsertToList("my-key", "my-value");
-                    x.RemoveFromList("my-key", "my-value");
-                });
+                Commit(session, x => x.DecrementCounter("my-key", TimeSpan.FromDays(1)));
 
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
+                var record = session.Query<_Counter>().Single();
 
-                Assert.Equal(0, recordCount);
-            });
-        }
+                Assert.Equal("my-key", record.Key);
+                Assert.Equal(-1, record.Value);
+                Assert.NotNull(record.ExpireAt);
 
-        [Fact]
-        [CleanDatabase]
-        public void RemoveFromList_DoesNotRemoveRecords_WithSameKey_ButDifferentValue()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "my-value");
-                    x.RemoveFromList("my-key", "different-value");
-                });
+                var expireAt = (DateTime) record.ExpireAt;
 
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(1, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveFromList_DoesNotRemoveRecords_WithSameValue_ButDifferentKey()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "my-value");
-                    x.RemoveFromList("different-key", "my-value");
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(1, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void TrimList_TrimsAList_ToASpecifiedRange()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "0");
-                    x.InsertToList("my-key", "1");
-                    x.InsertToList("my-key", "2");
-                    x.InsertToList("my-key", "3");
-                    x.TrimList("my-key", 1, 2);
-                });
-
-                var records = sql.Query("select * from List").ToArray();
-
-                Assert.Equal(2, records.Length);
-                Assert.Equal("1", records[0].Value);
-                Assert.Equal("2", records[1].Value);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void TrimList_RemovesRecordsToEnd_IfKeepAndingAt_GreaterThanMaxElementIndex()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "0");
-                    x.InsertToList("my-key", "1");
-                    x.InsertToList("my-key", "2");
-                    x.TrimList("my-key", 1, 100);
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(2, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void TrimList_RemovesAllRecords_WhenStartingFromValue_GreaterThanMaxElementIndex()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "0");
-                    x.TrimList("my-key", 1, 100);
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(0, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void TrimList_RemovesAllRecords_IfStartFromGreaterThanEndingAt()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "0");
-                    x.TrimList("my-key", 1, 0);
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(0, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void TrimList_RemovesRecords_OnlyOfAGivenKey()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x =>
-                {
-                    x.InsertToList("my-key", "0");
-                    x.TrimList("another-key", 1, 0);
-                });
-
-                var recordCount = sql.Query<int>("select count(*) from List").Single();
-
-                Assert.Equal(1, recordCount);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void SetRangeInHash_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.SetRangeInHash(null, new Dictionary<string, string>())));
-
-                Assert.Equal("key", exception.ParamName);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void SetRangeInHash_ThrowsAnException_WhenKeyValuePairsArgumentIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.SetRangeInHash("some-hash", null)));
-
-                Assert.Equal("keyValuePairs", exception.ParamName);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void SetRangeInHash_MergesAllRecords()
-        {
-            UseConnection(sql =>
-            {
-                Commit(sql, x => x.SetRangeInHash("some-hash", new Dictionary<string, string>
-                {
-                    {"Key1", "Value1"},
-                    {"Key2", "Value2"}
-                }));
-
-                var result = sql.Query(
-                        "select * from Hash where `Key` = @key",
-                        new {key = "some-hash"})
-                    .ToDictionary(x => (string) x.Field, x => (string) x.Value);
-
-                Assert.Equal("Value1", result["Key1"]);
-                Assert.Equal("Value2", result["Key2"]);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveHash_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.RemoveHash(null)));
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveHash_RemovesAllHashRecords()
-        {
-            UseConnection(sql =>
-            {
-                // Arrange
-                Commit(sql, x => x.SetRangeInHash("some-hash", new Dictionary<string, string>
-                {
-                    {"Key1", "Value1"},
-                    {"Key2", "Value2"}
-                }));
-
-                // Act
-                Commit(sql, x => x.RemoveHash("some-hash"));
-
-                // Assert
-                var count = sql.Query<int>("select count(*) from Hash").Single();
-                Assert.Equal(0, count);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void AddRangeToSet_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.AddRangeToSet(null, new List<string>())));
-
-                Assert.Equal("key", exception.ParamName);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void AddRangeToSet_ThrowsAnException_WhenItemsValueIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.AddRangeToSet("my-set", null)));
-
-                Assert.Equal("items", exception.ParamName);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void AddRangeToSet_AddsAllItems_ToAGivenSet()
-        {
-            UseConnection(sql =>
-            {
-                var items = new List<string> {"1", "2", "3"};
-
-                Commit(sql, x => x.AddRangeToSet("my-set", items));
-
-                var records = sql.Query<string>(@"select `Value` from `Set` where `Key` = N'my-set'");
-                Assert.Equal(items, records);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveSet_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.RemoveSet(null)));
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void RemoveSet_RemovesASet_WithAGivenKey()
-        {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, Score) values (@key, @value, 0.0)";
-
-            UseConnection(sql =>
-            {
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "set-1", value = "1"},
-                    new {key = "set-2", value = "1"}
-                });
-
-                Commit(sql, x => x.RemoveSet("set-1"));
-
-                var record = sql.Query("select * from `Set`").Single();
-                Assert.Equal("set-2", record.Key);
-            });
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void ExpireHash_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.ExpireHash(null, TimeSpan.FromMinutes(5))));
-
-                Assert.Equal("key", exception.ParamName);
+                Assert.True(DateTime.UtcNow.AddHours(23) < expireAt);
+                Assert.True(expireAt < DateTime.UtcNow.AddHours(25));
             });
         }
 
@@ -788,25 +336,19 @@ insert into `Set` (`Key`, `Value`, Score) values (@key, @value, 0.0)";
         [CleanDatabase]
         public void ExpireHash_SetsExpirationTimeOnAHash_WithGivenKey()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`)
-values (@key, @field)";
-
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "hash-1", field = "field"},
-                    new {key = "hash-2", field = "field"}
-                });
+                session.Insert(new _Hash {Key = "hash-1", Field = "field"});
+                session.Insert(new _Hash {Key = "hash-2", Field = "field"});
+                session.Flush();
 
                 // Act
-                Commit(sql, x => x.ExpireHash("hash-1", TimeSpan.FromMinutes(60)));
+                Commit(session, x => x.ExpireHash("hash-1", TimeSpan.FromMinutes(60)));
 
                 // Assert
-                var records = sql.Query("select * from Hash")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
+                var records = session.Query<_Hash>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.True(DateTime.UtcNow.AddMinutes(59) < records["hash-1"]);
                 Assert.True(records["hash-1"] < DateTime.UtcNow.AddMinutes(61));
                 Assert.Null(records["hash-2"]);
@@ -815,12 +357,12 @@ values (@key, @field)";
 
         [Fact]
         [CleanDatabase]
-        public void ExpireSet_ThrowsAnException_WhenKeyIsNull()
+        public void ExpireHash_ThrowsAnException_WhenKeyIsNull()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.ExpireSet(null, TimeSpan.FromSeconds(45))));
+                    () => Commit(session, x => x.ExpireHash(null, TimeSpan.FromMinutes(5))));
 
                 Assert.Equal("key", exception.ParamName);
             });
@@ -828,43 +370,20 @@ values (@key, @field)";
 
         [Fact]
         [CleanDatabase]
-        public void ExpireSet_SetsExpirationTime_OnASet_WithGivenKey()
+        public void ExpireJob_SetsJobExpirationData()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, Score)
-values (@key, @value, 0.0)";
-
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                // Arrange
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "set-1", value = "1"},
-                    new {key = "set-2", value = "1"}
-                });
+                var insertTwoResult = InsertTwoJobs(session);
 
-                // Act
-                Commit(sql, x => x.ExpireSet("set-1", TimeSpan.FromMinutes(60)));
+                Commit(session, x => x.ExpireJob(insertTwoResult.JobId1.ToString(), TimeSpan.FromDays(1)));
 
-                // Assert
-                var records = sql.Query("select * from `Set`")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
-                Assert.True(DateTime.UtcNow.AddMinutes(59) < records["set-1"]);
-                Assert.True(records["set-1"] < DateTime.UtcNow.AddMinutes(61));
-                Assert.Null(records["set-2"]);
-            });
-        }
+                var job = GetTestJob(session, insertTwoResult.JobId1.ToString());
+                Assert.True(DateTime.UtcNow.AddMinutes(-1) < job.ExpireAt &&
+                            job.ExpireAt <= DateTime.UtcNow.AddDays(1));
 
-        [Fact]
-        [CleanDatabase]
-        public void ExpireList_ThrowsAnException_WhenKeyIsNull()
-        {
-            UseConnection(sql =>
-            {
-                var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.ExpireList(null, TimeSpan.FromSeconds(45))));
-
-                Assert.Equal("key", exception.ParamName);
+                var anotherJob = GetTestJob(session, insertTwoResult.JobId2.ToString());
+                Assert.Null(anotherJob.ExpireAt);
             });
         }
 
@@ -875,21 +394,19 @@ values (@key, @value, 0.0)";
             const string arrangeSql = @"
 insert into List (`Key`) values (@key)";
 
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "list-1", value = "1"},
-                    new {key = "list-2", value = "1"}
-                });
+                session.Insert(new _List {Key = "list-1", Value = "1"});
+                session.Insert(new _List {Key = "list-2", Value = "1"});
+                session.Flush();
 
                 // Act
-                Commit(sql, x => x.ExpireList("list-1", TimeSpan.FromMinutes(60)));
+                Commit(session, x => x.ExpireList("list-1", TimeSpan.FromMinutes(60)));
 
                 // Assert
-                var records = sql.Query("select * from List")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
+                var records = session.Query<_List>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.True(DateTime.UtcNow.AddMinutes(59) < records["list-1"]);
                 Assert.True(records["list-1"] < DateTime.UtcNow.AddMinutes(61));
                 Assert.Null(records["list-2"]);
@@ -898,14 +415,139 @@ insert into List (`Key`) values (@key)";
 
         [Fact]
         [CleanDatabase]
-        public void PersistHash_ThrowsAnException_WhenKeyIsNull()
+        public void ExpireList_ThrowsAnException_WhenKeyIsNull()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.PersistHash(null)));
+                    () => Commit(session, x => x.ExpireList(null, TimeSpan.FromSeconds(45))));
 
                 Assert.Equal("key", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void ExpireSet_SetsExpirationTime_OnASet_WithGivenKey()
+        {
+            UseSession(session =>
+            {
+                // Arrange
+                session.Insert(new _Set {Key = "set-1", Value = "1"});
+                session.Insert(new _Set {Key = "set-2", Value = "1"});
+                session.Flush();
+
+                // Act
+                Commit(session, x => x.ExpireSet("set-1", TimeSpan.FromMinutes(60)));
+
+                // Assert
+                var records = session.Query<_Set>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
+                Assert.True(DateTime.UtcNow.AddMinutes(59) < records["set-1"]);
+                Assert.True(records["set-1"] < DateTime.UtcNow.AddMinutes(61));
+                Assert.Null(records["set-2"]);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void ExpireSet_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.ExpireSet(null, TimeSpan.FromSeconds(45))));
+
+                Assert.Equal("key", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void IncrementCounter_AddsRecordToCounterTable_WithPositiveValue()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x => x.IncrementCounter("my-key"));
+
+                var record = session.Query<_Counter>().Single();
+
+                Assert.Equal("my-key", record.Key);
+                Assert.Equal(1, record.Value);
+                Assert.Equal(null, record.ExpireAt);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void IncrementCounter_WithExistingKey_AddsAnotherRecord()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.IncrementCounter("my-key");
+                    x.IncrementCounter("my-key");
+                });
+
+                var recordCount = session.Query<_Counter>().Count();
+
+                Assert.Equal(2, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void IncrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x => x.IncrementCounter("my-key", TimeSpan.FromDays(1)));
+
+                var record = session.Query<_Counter>().Single();
+
+                Assert.Equal("my-key", record.Key);
+                Assert.Equal(1, record.Value);
+                Assert.NotNull(record.ExpireAt);
+
+                var expireAt = (DateTime) record.ExpireAt;
+
+                Assert.True(DateTime.UtcNow.AddHours(23) < expireAt);
+                Assert.True(expireAt < DateTime.UtcNow.AddHours(25));
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void InsertToList_AddsAnotherRecord_WhenBothKeyAndValueAreExist()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "my-value");
+                    x.InsertToList("my-key", "my-value");
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(2, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void InsertToList_AddsARecord_WithGivenValues()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x => x.InsertToList("my-key", "my-value"));
+
+                var record = session.Query<_List>().Single();
+
+
+                Assert.Equal("my-key", record.Key);
+                Assert.Equal("my-value", record.Value);
             });
         }
 
@@ -917,21 +559,20 @@ insert into List (`Key`) values (@key)";
 insert into Hash (`Key`, `Field`, ExpireAt)
 values (@key, @field, @expireAt)";
 
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "hash-1", field = "field", expireAt = DateTime.UtcNow.AddDays(1)},
-                    new {key = "hash-2", field = "field", expireAt = DateTime.UtcNow.AddDays(1)}
-                });
+                session.Insert(
+                    new _Hash {Key = "hash-1", Field = "field", ExpireAt = session.Storage.UtcNow.AddDays(1)});
+                session.Insert(
+                    new _Hash {Key = "hash-2", Field = "field", ExpireAt = session.Storage.UtcNow.AddDays(1)});
 
                 // Act
-                Commit(sql, x => x.PersistHash("hash-1"));
+                Commit(session, x => x.PersistHash("hash-1"));
 
                 // Assert
-                var records = sql.Query("select * from Hash")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
+                var records = session.Query<_Hash>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.Null(records["hash-1"]);
                 Assert.NotNull(records["hash-2"]);
             });
@@ -939,12 +580,64 @@ values (@key, @field, @expireAt)";
 
         [Fact]
         [CleanDatabase]
-        public void PersistSet_ThrowsAnException_WhenKeyIsNull()
+        public void PersistHash_ThrowsAnException_WhenKeyIsNull()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.PersistSet(null)));
+                    () => Commit(session, x => x.PersistHash(null)));
+
+                Assert.Equal("key", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void PersistJob_ClearsTheJobExpirationData()
+        {
+            UseSession(session =>
+            {
+                var insertTwoResult = InsertTwoJobs(session);
+
+                Commit(session, x => x.PersistJob(insertTwoResult.JobId1.ToString()));
+
+                var job = GetTestJob(session, insertTwoResult.JobId1.ToString());
+                Assert.Null(job.ExpireAt);
+
+                var anotherJob = GetTestJob(session, insertTwoResult.JobId2.ToString());
+                Assert.NotNull(anotherJob.ExpireAt);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void PersistList_ClearsExpirationTime_OnAGivenHash()
+        {
+            UseSession(session =>
+            {
+                // Arrange
+                session.Insert(new _List {Key = "list-1", ExpireAt = session.Storage.UtcNow.AddDays(-1)});
+                session.Insert(new _List {Key = "list-2", ExpireAt = session.Storage.UtcNow.AddDays(-1)});
+
+                // Act
+                Commit(session, x => x.PersistList("list-1"));
+
+                // Assert
+                var records = session.Query<_List>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
+                Assert.Null(records["list-1"]);
+                Assert.NotNull(records["list-2"]);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void PersistList_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.PersistList(null)));
 
                 Assert.Equal("key", exception.ParamName);
             });
@@ -954,25 +647,18 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void PersistSet_ClearsExpirationTime_OnAGivenHash()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, ExpireAt, Score)
-values (@key, @value, @expireAt, 0.0)";
-
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
-                {
-                    new {key = "set-1", value = "1", expireAt = DateTime.UtcNow.AddDays(1)},
-                    new {key = "set-2", value = "1", expireAt = DateTime.UtcNow.AddDays(1)}
-                });
+                session.Insert(new _Set {Key = "set-1", Value = "1", ExpireAt = session.Storage.UtcNow.AddDays(-1)});
+                session.Insert(new _Set {Key = "set-2", Value = "1", ExpireAt = session.Storage.UtcNow.AddDays(-1)});
 
                 // Act
-                Commit(sql, x => x.PersistSet("set-1"));
+                Commit(session, x => x.PersistSet("set-1"));
 
                 // Assert
-                var records = sql.Query("select * from `Set`")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
+                var records = session.Query<_Set>()
+                    .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.Null(records["set-1"]);
                 Assert.NotNull(records["set-2"]);
             });
@@ -980,12 +666,12 @@ values (@key, @value, @expireAt, 0.0)";
 
         [Fact]
         [CleanDatabase]
-        public void PersistList_ThrowsAnException_WhenKeyIsNull()
+        public void PersistSet_ThrowsAnException_WhenKeyIsNull()
         {
-            UseConnection(sql =>
+            UseSession(session =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => Commit(sql, x => x.PersistList(null)));
+                    () => Commit(session, x => x.PersistSet(null)));
 
                 Assert.Equal("key", exception.ParamName);
             });
@@ -993,52 +679,346 @@ values (@key, @value, @expireAt, 0.0)";
 
         [Fact]
         [CleanDatabase]
-        public void PersistList_ClearsExpirationTime_OnAGivenHash()
+        public void RemoveFromList_DoesNotRemoveRecords_WithSameKey_ButDifferentValue()
         {
-            const string arrangeSql = @"
-insert into List (`Key`, ExpireAt)
-values (@key, @expireAt)";
-
-            UseConnection(sql =>
+            UseSession(session =>
             {
-                // Arrange
-                sql.Execute(arrangeSql, new[]
+                Commit(session, x =>
                 {
-                    new {key = "list-1", expireAt = DateTime.UtcNow.AddDays(1)},
-                    new {key = "list-2", expireAt = DateTime.UtcNow.AddDays(1)}
+                    x.InsertToList("my-key", "my-value");
+                    x.RemoveFromList("my-key", "different-value");
                 });
 
-                // Act
-                Commit(sql, x => x.PersistList("list-1"));
+                var recordCount = session.Query<_List>().Count();
 
-                // Assert
-                var records = sql.Query("select * from List")
-                    .ToDictionary(x => (string) x.Key, x => (DateTime?) x.ExpireAt);
-                Assert.Null(records["list-1"]);
-                Assert.NotNull(records["list-2"]);
+                Assert.Equal(1, recordCount);
             });
         }
 
-        private static void UseConnection(Action<MySqlConnection> action)
+        [Fact]
+        [CleanDatabase]
+        public void RemoveFromList_DoesNotRemoveRecords_WithSameValue_ButDifferentKey()
         {
-            using (var connection = ConnectionUtils.CreateConnection())
+            UseSession(session =>
             {
-                action(connection);
-            }
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "my-value");
+                    x.RemoveFromList("different-key", "my-value");
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(1, recordCount);
+            });
         }
 
-        private void Commit(
-            MySqlConnection connection,
-            Action<Hangfire.FluentNHibernateStorage.MySqlWriteOnlyTransaction> action)
+        [Fact]
+        [CleanDatabase]
+        public void RemoveFromList_RemovesAllRecords_WithGivenKeyAndValue()
         {
-            var storage = new Mock<FluentNHibernateStorage>(connection);
-            storage.Setup(x => x.QueueProviders).Returns(_queueProviders);
-
-            using (var transaction = new MySqlWriteOnlyTransaction(storage.Object))
+            UseSession(session =>
             {
-                action(transaction);
-                transaction.Commit();
-            }
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "my-value");
+                    x.InsertToList("my-key", "my-value");
+                    x.RemoveFromList("my-key", "my-value");
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(0, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveFromSet_DoesNotRemoveRecord_WithSameKey_AndDifferentValue()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.AddToSet("my-key", "my-value");
+                    x.RemoveFromSet("my-key", "different-value");
+                });
+                var recordCount = session.Query<_Set>().Count();
+
+                Assert.Equal(1, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveFromSet_DoesNotRemoveRecord_WithSameValue_AndDifferentKey()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.AddToSet("my-key", "my-value");
+                    x.RemoveFromSet("different-key", "my-value");
+                });
+                var recordCount = session.Query<_Set>().Count();
+
+                Assert.Equal(1, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveFromSet_RemovesARecord_WithGivenKeyAndValue()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.AddToSet("my-key", "my-value");
+                    x.RemoveFromSet("my-key", "my-value");
+                });
+                var recordCount = session.Query<_Set>().Count();
+
+                Assert.Equal(0, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveHash_RemovesAllHashRecords()
+        {
+            UseSession(session =>
+            {
+                // Arrange
+                Commit(session, x => x.SetRangeInHash("some-hash", new Dictionary<string, string>
+                {
+                    {"Key1", "Value1"},
+                    {"Key2", "Value2"}
+                }));
+
+                // Act
+                Commit(session, x => x.RemoveHash("some-hash"));
+
+                // Assert
+                var count = session.Query<_Hash>().Count();
+                Assert.Equal(0, count);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveHash_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.RemoveHash(null)));
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveSet_RemovesASet_WithAGivenKey()
+        {
+            UseSession(session =>
+            {
+                session.Insert(new _Set {Key = "set-1", Value = "1"});
+                session.Insert(new _Set {Key = "set-2", Value = "1"});
+
+
+                Commit(session, x => x.RemoveSet("set-1"));
+
+                var record = session.Query<_Set>().Single();
+                Assert.Equal("set-2", record.Key);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void RemoveSet_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.RemoveSet(null)));
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void SetJobState_AppendsAStateAndSetItToTheJob()
+        {
+            UseSession(session =>
+            {
+                var insertTwoResult = InsertTwoJobs(session);
+
+                var state = new Mock<IState>();
+                state.Setup(x => x.Name).Returns("State");
+                state.Setup(x => x.Reason).Returns("Reason");
+                state.Setup(x => x.SerializeData())
+                    .Returns(new Dictionary<string, string> {{"Name", "Value"}});
+
+                Commit(session, x => x.SetJobState(insertTwoResult.JobId1, state.Object));
+
+                var job = GetTestJob(session, insertTwoResult.JobId1);
+                Assert.Equal("State", job.StateName);
+                Assert.NotNull(job.StateId);
+
+                var anotherJob = GetTestJob(session, insertTwoResult.JobId2);
+                Assert.Null(anotherJob.StateName);
+                Assert.Null(anotherJob.StateId);
+
+                var jobState = session.Query<_JobState>().Single();
+                Assert.Equal(insertTwoResult.JobId1, jobState.Job.Id.ToString());
+                Assert.Equal("State", jobState.Name);
+                Assert.Equal("Reason", jobState.Reason);
+                Assert.NotNull(jobState.CreatedAt);
+                Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void SetRangeInHash_MergesAllRecords()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x => x.SetRangeInHash("some-hash", new Dictionary<string, string>
+                {
+                    {"Key1", "Value1"},
+                    {"Key2", "Value2"}
+                }));
+
+                var result = session.Query<_Hash>()
+                    .Where(i => i.Key == "some-hash")
+                    .ToDictionary(x => x.Field, x => x.Value);
+
+                Assert.Equal("Value1", result["Key1"]);
+                Assert.Equal("Value2", result["Key2"]);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void SetRangeInHash_ThrowsAnException_WhenKeyIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.SetRangeInHash(null, new Dictionary<string, string>())));
+
+                Assert.Equal("key", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void SetRangeInHash_ThrowsAnException_WhenKeyValuePairsArgumentIsNull()
+        {
+            UseSession(session =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => Commit(session, x => x.SetRangeInHash("some-hash", null)));
+
+                Assert.Equal("keyValuePairs", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void TrimList_RemovesAllRecords_IfStartFromGreaterThanEndingAt()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "0");
+                    x.TrimList("my-key", 1, 0);
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(0, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void TrimList_RemovesAllRecords_WhenStartingFromValue_GreaterThanMaxElementIndex()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "0");
+                    x.TrimList("my-key", 1, 100);
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(0, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void TrimList_RemovesRecords_OnlyOfAGivenKey()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "0");
+                    x.TrimList("another-key", 1, 0);
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(1, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void TrimList_RemovesRecordsToEnd_IfKeepAndingAt_GreaterThanMaxElementIndex()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "0");
+                    x.InsertToList("my-key", "1");
+                    x.InsertToList("my-key", "2");
+                    x.TrimList("my-key", 1, 100);
+                });
+
+                var recordCount = session.Query<_List>().Count();
+
+                Assert.Equal(2, recordCount);
+            });
+        }
+
+        [Fact]
+        [CleanDatabase]
+        public void TrimList_TrimsAList_ToASpecifiedRange()
+        {
+            UseSession(session =>
+            {
+                Commit(session, x =>
+                {
+                    x.InsertToList("my-key", "0");
+                    x.InsertToList("my-key", "1");
+                    x.InsertToList("my-key", "2");
+                    x.InsertToList("my-key", "3");
+                    x.TrimList("my-key", 1, 2);
+                });
+
+                var records = session.Query<_List>().ToArray();
+
+                Assert.Equal(2, records.Length);
+                Assert.Equal("1", records[0].Value);
+                Assert.Equal("2", records[1].Value);
+            });
         }
     }
 }

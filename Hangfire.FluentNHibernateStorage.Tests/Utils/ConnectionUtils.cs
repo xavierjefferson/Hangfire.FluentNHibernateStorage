@@ -1,4 +1,5 @@
 ﻿using System;
+using FluentNHibernate.Cfg.Db;
 using MySql.Data.MySqlClient;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
@@ -37,7 +38,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                    ?? DefaultConnectionStringTemplate;
         }
 
-        public static MySqlConnection CreateConnection()
+        public static FluentNHibernateJobStorage CreateStorage(FluentNHibernateStorageOptions options = null)
+        {
+        }
+
+        public static IPersistenceConfigurer CreateConnection()
         {
             var connection = new MySqlConnection(GetConnectionString());
             connection.Open();

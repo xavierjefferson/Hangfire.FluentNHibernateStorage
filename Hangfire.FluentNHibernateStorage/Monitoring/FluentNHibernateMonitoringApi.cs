@@ -12,7 +12,7 @@ using Hangfire.Storage.Monitoring;
 
 namespace Hangfire.FluentNHibernateStorage.Monitoring
 {
-    internal class FluentNHibernateMonitoringApi : IMonitoringApi
+    public class FluentNHibernateMonitoringApi : IMonitoringApi
     {
         private readonly int? _jobListLimit;
         private readonly FluentNHibernateJobStorage _storage;
@@ -112,9 +112,11 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var statistics =
                 UseStatefulTransaction(session =>
                     {
-                        var statesDictionary = session.Query<_Job>().Where(i =>  i.StateName != null && i.StateName!=string.Empty)
+                        var statesDictionary = session.Query<_Job>()
+                            .Where(i => i.StateName != null && i.StateName != string.Empty)
                             .GroupBy(i => i.StateName)
-                            .Select(i => new {i.Key, c = i.Count()}).ToDictionary(i => i.Key, j => j.c);
+                            .Select(i => new {i.Key, c = i.Count()})
+                            .ToDictionary(i => i.Key, j => j.c);
 
                         int GetJobStatusCount(string b)
                         {
@@ -325,7 +327,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private long GetNumberOfJobsByStateName(IWrappedSession session, string stateName)
         {
-            var count = session.Query<_Job>().Count(i => i.StateName== stateName);
+            var count = session.Query<_Job>().Count(i => i.StateName == stateName);
             if (_jobListLimit.HasValue)
             {
                 return Math.Max(count, _jobListLimit.Value);
@@ -348,8 +350,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             string stateName,
             Func<_Job, Job, Dictionary<string, string>, TDto> selector)
         {
-            var a = session.Query<_Job>().OrderBy(i => i.Id).Where(i => i.StateName == stateName).Skip(from)
-                .Take(count).ToList();
+            var a = session.Query<_Job>()
+                .OrderBy(i => i.Id)
+                .Where(i => i.StateName == stateName)
+                .Skip(from)
+                .Take(count)
+                .ToList();
 
             return DeserializeJobs(a, selector);
         }
@@ -412,7 +418,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         private Dictionary<DateTime, long> GetTimelineStats(IWrappedSession session,
             IDictionary<string, DateTime> keyMaps)
         {
-            var valuesMap = session.Query<_AggregatedCounter>().Where(i => keyMaps.Keys.Contains(i.Key))
+            var valuesMap = session.Query<_AggregatedCounter>()
+                .Where(i => keyMaps.Keys.Contains(i.Key))
                 .ToDictionary(x => x.Key, x => x.Value);
 
             foreach (var key in keyMaps.Keys)

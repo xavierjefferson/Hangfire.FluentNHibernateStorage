@@ -1,16 +1,46 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
+using Hangfire.FluentNHibernateStorage;
+using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Tests;
+using Hangfire.Server;
+using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateJobStorage.Tests
 {
     public class ExpirationManagerTests : IClassFixture<TestDatabaseFixture>
     {
-        private readonly CancellationToken _token;
-
         public ExpirationManagerTests()
         {
+            _storage = ConnectionUtils.CreateStorage();
             var cts = new CancellationTokenSource();
-            _token = cts.Token;
+            _context = new BackgroundProcessContext("dummy", _storage, new Dictionary<string, object>(), cts.Token);
+        }
+
+        private readonly BackgroundProcessContext _context;
+        private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
+
+        private static int CreateExpirationEntry(IWrappedSession session, DateTime? expireAt)
+        {
+            session.Truncate<_AggregatedCounter>();
+            var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
+            session.Insert(a);
+            session.Flush();
+            return a.Id;
+        }
+
+        private static bool IsEntryExpired(IWrappedSession session, int entryId)
+        {
+            var count = session.Query<_AggregatedCounter>().Count(i => i.Id == entryId);
+
+            return count == 0;
+        }
+
+        private ExpirationManager CreateManager()
+        {
+            return new ExpirationManager(_storage, TimeSpan.Zero);
         }
 
         [Fact]
@@ -21,16 +51,19 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         [Fact]
         [CleanDatabase]
-        public void Execute_RemovesOutdatedRecords()
+        public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
         {
-            using (var connection = CreateConnection())
+            using (var session = _storage.GetStatefulSession())
             {
-                var entryId = CreateExpirationEntry(connection, DateTime.UtcNow.AddMonths(-1));
-                var manager = CreateManager(connection);
+                //Arrange
+                var entryId = CreateExpirationEntry(session, DateTime.UtcNow.AddMonths(1));
+                var manager = CreateManager();
 
-                manager.Execute(_token);
+                //Act
+                manager.Execute(_context);
 
-                Assert.True(IsEntryExpired(connection, entryId));
+                //Assert
+                Assert.False(IsEntryExpired(session, entryId));
             }
         }
 
@@ -38,29 +71,17 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithNoExpirationTimeSet()
         {
-            using (var connection = CreateConnection())
+            using (var session = _storage.GetStatefulSession())
             {
-                var entryId = CreateExpirationEntry(connection, null);
-                var manager = CreateManager(connection);
+                //Arrange
+                var entryId = CreateExpirationEntry(session, null);
+                var manager = CreateManager();
 
-                manager.Execute(_token);
+                //Act
+                manager.Execute(_context);
 
-                Assert.False(IsEntryExpired(connection, entryId));
-            }
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
-        {
-            using (var connection = CreateConnection())
-            {
-                var entryId = CreateExpirationEntry(connection, DateTime.UtcNow.AddMonths(1));
-                var manager = CreateManager(connection);
-
-                manager.Execute(_token);
-
-                Assert.False(IsEntryExpired(connection, entryId));
+                //Assert
+                Assert.False(IsEntryExpired(session, entryId));
             }
         }
 
@@ -68,85 +89,24 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_AggregatedCounterTable()
         {
-            using (var connection = CreateConnection())
+            using (var session = _storage.GetStatefulSession())
             {
                 // Arrange
-                connection
-                    .Execute(
-                        "insert into AggregatedCounter (`Key`, Value, ExpireAt) values ('key', 1, @expireAt)",
-                        new {expireAt = DateTime.UtcNow.AddMonths(-1)});
+                session.Insert(new _AggregatedCounter
+                {
+                    Key = "key",
+                    Value = 1,
+                    ExpireAt = session.Storage.UtcNow.AddMonths(-1)
+                });
+                session.Flush();
 
-                var manager = CreateManager(connection);
-
-                // Act
-                manager.Execute(_token);
-
-                // Assert
-                Assert.Equal(0, connection.Query<int>(@"select count(*) from Counter").Single());
-            }
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void Execute_Processes_JobTable()
-        {
-            using (var connection = CreateConnection())
-            {
-                // Arrange
-                connection.Execute(
-                    "insert into Job (InvocationData, Arguments, CreatedAt, ExpireAt) " +
-                    "values ('', '', UTC_TIMESTAMP(), @expireAt)",
-                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
-
-                var manager = CreateManager(connection);
+                var manager = CreateManager();
 
                 // Act
-                manager.Execute(_token);
+                manager.Execute(_context);
 
                 // Assert
-                Assert.Equal(0, connection.Query<int>(@"select count(*) from Job").Single());
-            }
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void Execute_Processes_ListTable()
-        {
-            using (var connection = CreateConnection())
-            {
-                // Arrange
-                connection.Execute(
-                    "insert into List (`Key`, ExpireAt) values ('key', @expireAt)",
-                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
-
-                var manager = CreateManager(connection);
-
-                // Act
-                manager.Execute(_token);
-
-                // Assert
-                Assert.Equal(0, connection.Query<int>(@"select count(*) from List").Single());
-            }
-        }
-
-        [Fact]
-        [CleanDatabase]
-        public void Execute_Processes_SetTable()
-        {
-            using (var connection = CreateConnection())
-            {
-                // Arrange
-                connection.Execute(
-                    "insert into `Set` (`Key`, Score, Value, ExpireAt) values ('key', 0, '', @expireAt)",
-                    new {expireAt = DateTime.UtcNow.AddMonths(-1)});
-
-                var manager = CreateManager(connection);
-
-                // Act
-                manager.Execute(_token);
-
-                // Assert
-                Assert.Equal(0, connection.Query<int>(@"select count(*) from `Set`").Single());
+                Assert.Equal(0, session.Query<_Counter>().Count());
             }
         }
 
@@ -154,54 +114,121 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_HashTable()
         {
-            using (var connection = CreateConnection())
+            using (var session = _storage.GetStatefulSession())
             {
                 // Arrange
-                const string createSql = @"
-insert into Hash (`Key`, Field, Value, ExpireAt) 
-values ('key1', 'field', '', @expireAt),
-       ('key2', 'field', '', @expireAt)";
-                connection.Execute(createSql, new {expireAt = DateTime.UtcNow.AddMonths(-1)});
-
-                var manager = CreateManager(connection);
+                session.Insert(new _Hash
+                {
+                    Key = "key1",
+                    Field = "field",
+                    Value = string.Empty,
+                    ExpireAt = session.Storage.UtcNow.AddMonths(-1)
+                });
+                session.Insert(new _Hash
+                {
+                    Key = "key2",
+                    Field = "field",
+                    Value = string.Empty,
+                    ExpireAt = session.Storage.UtcNow.AddMonths(-1)
+                });
+                session.Flush();
+                var manager = CreateManager();
 
                 // Act
-                manager.Execute(_token);
+                manager.Execute(_context);
 
                 // Assert
-                Assert.Equal(0, connection.Query<int>(@"select count(*) from Hash").Single());
+                Assert.Equal(0, session.Query<_Hash>().Count());
             }
         }
 
-        private static int CreateExpirationEntry(MySqlConnection connection, DateTime? expireAt)
+        [Fact]
+        [CleanDatabase]
+        public void Execute_Processes_JobTable()
         {
-            const string insertSql = @"
-delete from AggregatedCounter;
-insert into AggregatedCounter (`Key`, Value, ExpireAt)
-values ('key', 1, @expireAt);
-select last_insert_id() as Id";
+            using (var session = _storage.GetStatefulSession())
+            {
+                // Arrange
+                session.Insert(new _Job
+                {
+                    InvocationData = string.Empty,
+                    Arguments = string.Empty,
+                    CreatedAt = session.Storage.UtcNow,
+                    ExpireAt = session.Storage.UtcNow.AddMonths(-1)
+                });
+                session.Flush();
 
-            var id = connection.Query(insertSql, new {expireAt}).Single();
-            var recordId = (int) id.Id;
-            return recordId;
+
+                var manager = CreateManager();
+
+                // Act
+                manager.Execute(_context);
+
+                // Assert
+                Assert.Equal(0, session.Query<_Job>().Count());
+            }
         }
 
-        private static bool IsEntryExpired(MySqlConnection connection, int entryId)
+        [Fact]
+        [CleanDatabase]
+        public void Execute_Processes_ListTable()
         {
-            var count = connection.Query<int>(
-                "select count(*) from AggregatedCounter where Id = @id", new {id = entryId}).Single();
-            return count == 0;
+            using (var session = _storage.GetStatefulSession())
+            {
+                // Arrange
+                session.Insert(new _List {Key = "key", ExpireAt = session.Storage.UtcNow.AddMonths(-1)});
+                session.Flush();
+
+                var manager = CreateManager();
+
+                // Act
+                manager.Execute(_context);
+
+                // Assert
+                Assert.Equal(0, session.Query<_List>().Count());
+            }
         }
 
-        private MySqlConnection CreateConnection()
+        [Fact]
+        [CleanDatabase]
+        public void Execute_Processes_SetTable()
         {
-            return ConnectionUtils.CreateConnection();
+            using (var session = _storage.GetStatefulSession())
+            {
+                // Arrange
+                session.Insert(new _Set
+                {
+                    Key = "key",
+                    Score = 0,
+                    Value = string.Empty,
+                    ExpireAt = session.Storage.UtcNow.AddMonths(-1)
+                });
+                session.Flush();
+
+                var manager = CreateManager();
+
+                // Act
+                manager.Execute(_context);
+
+                // Assert
+                Assert.Equal(0, session.Query<_Set>().Count());
+            }
         }
 
-        private ExpirationManager CreateManager(MySqlConnection connection)
+        [Fact]
+        [CleanDatabase]
+        public void Execute_RemovesOutdatedRecords()
         {
-            var storage = new FluentNHibernateStorage(connection);
-            return new ExpirationManager(storage, TimeSpan.Zero);
+            using (var session = _storage.GetStatefulSession())
+            {
+                // Arrange
+                var entryId = CreateExpirationEntry(session, DateTime.UtcNow.AddMonths(-1));
+                var manager = CreateManager();
+                // Act
+                manager.Execute(_context);
+                //Assert
+                Assert.True(IsEntryExpired(session, entryId));
+            }
         }
     }
 }

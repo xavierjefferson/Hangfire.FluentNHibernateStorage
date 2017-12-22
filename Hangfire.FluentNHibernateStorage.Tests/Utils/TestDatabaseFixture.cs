@@ -32,8 +32,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             {
                 connection.Execute(recreateDatabaseSql);
             }
-
-            
         }
 
         private static void DropDatabase()

@@ -29,13 +29,13 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly ExpirationManager _expirationManager;
         private readonly FluentNHibernateStorageOptions _options;
 
+        private readonly ServerTimeSyncManager _serverTimeSyncManager;
+
         private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
 
         private TimeSpan _utcOffset = TimeSpan.Zero;
-
-        private readonly ServerTimeSyncManager _serverTimeSyncManager;
-
+       
 
         public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer)
             : this(persistenceConfigurer, new FluentNHibernateStorageOptions())
@@ -46,6 +46,7 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options) : this(persistenceConfigurer, options,
             InferProviderType(persistenceConfigurer))
         {
+         
         }
 
         internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
@@ -68,7 +69,7 @@ namespace Hangfire.FluentNHibernateStorage
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
 
 
-        internal virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
+        public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
         public Func<IPersistenceConfigurer> ConfigurerFunc { get; set; }
 
@@ -256,7 +257,7 @@ namespace Hangfire.FluentNHibernateStorage
                 : new TransactionScope();
         }
 
-        internal void UseSession([InstantHandle] Action<IWrappedSession> action,
+        public void UseSession([InstantHandle] Action<IWrappedSession> action,
             FluentNHibernateJobStorageSessionStateEnum state)
         {
             switch (state)
@@ -276,7 +277,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func,
+        public T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func,
             FluentNHibernateJobStorageSessionStateEnum state)
         {
             switch (state)

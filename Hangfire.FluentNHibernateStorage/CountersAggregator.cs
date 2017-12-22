@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using Hangfire.Server;
 
@@ -48,13 +47,15 @@ namespace Hangfire.FluentNHibernateStorage
                     using (var transaction = session.BeginTransaction())
                     {
                         var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
-                        var countersByName = counters.GroupBy(counter => counter.Key).Select(i =>
-                            new
-                            {
-                                i.Key,
-                                value = i.Sum(counter => counter.Value),
-                                expireAt = i.Max(counter => counter.ExpireAt)
-                            }).ToList();
+                        var countersByName = counters.GroupBy(counter => counter.Key)
+                            .Select(i =>
+                                new
+                                {
+                                    i.Key,
+                                    value = i.Sum(counter => counter.Value),
+                                    expireAt = i.Max(counter => counter.ExpireAt)
+                                })
+                            .ToList();
                         var query = session.CreateQuery(SQLHelper.UpdateAggregateCounterSql);
 
                         foreach (var item in countersByName)
@@ -80,7 +81,8 @@ namespace Hangfire.FluentNHibernateStorage
                             }
                             ;
                         }
-                        removedCount = session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
+                        removedCount =
+                            session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
                         transaction.Commit();
                     }

@@ -1,4 +1,6 @@
 ﻿using System.Reflection;
+using System.Transactions;
+using Xunit.Sdk;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {

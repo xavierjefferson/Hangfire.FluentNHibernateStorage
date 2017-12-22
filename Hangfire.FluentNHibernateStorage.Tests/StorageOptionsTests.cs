@@ -1,4 +1,5 @@
 ﻿using System;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
@@ -16,6 +17,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
+        public void Set_QueuePollInterval_SetsTheValue()
+        {
+            var options = new FluentNHibernateStorageOptions();
+            options.QueuePollInterval = TimeSpan.FromSeconds(1);
+            Assert.Equal(TimeSpan.FromSeconds(1), options.QueuePollInterval);
+        }
+
+        [Fact]
         public void Set_QueuePollInterval_ShouldThrowAnException_WhenGivenIntervalIsEqualToZero()
         {
             var options = new FluentNHibernateStorageOptions();
@@ -29,14 +38,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             var options = new FluentNHibernateStorageOptions();
             Assert.Throws<ArgumentException>(
                 () => options.QueuePollInterval = TimeSpan.FromSeconds(-1));
-        }
-
-        [Fact]
-        public void Set_QueuePollInterval_SetsTheValue()
-        {
-            var options = new FluentNHibernateStorageOptions();
-            options.QueuePollInterval = TimeSpan.FromSeconds(1);
-            Assert.Equal(TimeSpan.FromSeconds(1), options.QueuePollInterval);
         }
     }
 }

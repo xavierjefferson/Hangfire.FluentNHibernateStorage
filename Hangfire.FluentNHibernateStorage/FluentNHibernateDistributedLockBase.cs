@@ -61,8 +61,6 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal FluentNHibernateDistributedLockBase Acquire()
         {
-
-
             var finish = DateTime.Now.Add(Timeout);
             Session.Flush();
             while (true)

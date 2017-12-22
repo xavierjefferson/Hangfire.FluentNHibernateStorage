@@ -34,7 +34,7 @@ namespace Hangfire.FluentNHibernateStorage
                 case ProviderTypeEnum.MsSqlCe40:
                     configurer = ConfigureProvider(() => MsSqlCeConfiguration.MsSqlCe40, connectionString, options);
                     break;
- 
+
                 case ProviderTypeEnum.OracleClient10:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
 
@@ -62,11 +62,11 @@ namespace Hangfire.FluentNHibernateStorage
                     break;
                 case ProviderTypeEnum.SQLite:
                     configurer = ConfigureProvider(() => SQLiteConfiguration.Standard, connectionString, options);
-               
+
                     break;
                 case ProviderTypeEnum.DB2Informix1150:
                     configurer = ConfigureProvider(() => DB2Configuration.Informix1150, connectionString, options);
-              
+
                     break;
                 case ProviderTypeEnum.DB2Standard:
                     configurer = ConfigureProvider(() => DB2Configuration.Standard, connectionString, options);

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Globalization;
-using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
 
@@ -49,8 +48,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
             using (var session = _storage.GetStatefulSession())
             {
-               
-                session.CreateQuery(SQLHelper.DeleteJobQueueStatement).SetParameter(SQLHelper.IdParameterName, _id).ExecuteUpdate();
+                session.CreateQuery(SQLHelper.DeleteJobQueueStatement)
+                    .SetParameter(SQLHelper.IdParameterName, _id)
+                    .ExecuteUpdate();
             }
             _removedFromQueue = true;
         }
@@ -60,8 +60,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("Requeue JobId={0}", JobId);
             using (var session = _storage.GetStatefulSession())
             {
-           
-                session.CreateQuery(SQLHelper.UpdateJobQueueFetchedAtStatement).SetParameter(SQLHelper.ValueParameterName, null)
+                session.CreateQuery(SQLHelper.UpdateJobQueueFetchedAtStatement)
+                    .SetParameter(SQLHelper.ValueParameterName, null)
                     .SetParameter(SQLHelper.IdParameterName, _id)
                     .ExecuteUpdate();
             }

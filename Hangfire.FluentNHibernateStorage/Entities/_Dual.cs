@@ -2,6 +2,5 @@
 {
     public class _Dual : EntityBase0
     {
-        
     }
 }
