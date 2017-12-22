@@ -96,8 +96,10 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.Debug("Refreshing UTC offset");
             lock (mutex)
             {
+
                 using (var session = GetStatefulSession())
                 {
+                    
                     var query =
                         session.CreateQuery(string.Format("select current_timestamp() from {0}", nameof(_Dual)));
                     var stopwatch = new Stopwatch();
@@ -144,10 +146,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private static ProviderTypeEnum InferProviderType(IPersistenceConfigurer config)
         {
-            if (config is MsSqlCeConfiguration)
-            {
-                return ProviderTypeEnum.MsSqlCeStandard;
-            }
+            
             if (config is MsSqlConfiguration)
             {
                 return ProviderTypeEnum.MsSql2000;
@@ -168,10 +167,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return ProviderTypeEnum.OracleClient9;
             }
-            if (config is SQLiteConfiguration)
-            {
-                return ProviderTypeEnum.SQLite;
-            }
+           
             if (config is FirebirdConfiguration)
             {
                 return ProviderTypeEnum.Firebird;

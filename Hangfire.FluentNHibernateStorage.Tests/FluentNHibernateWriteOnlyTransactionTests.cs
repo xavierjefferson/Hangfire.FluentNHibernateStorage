@@ -35,14 +35,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
             for (var i = 0; i < 2; i++)
             {
-                var newJob = new _Job
-                {
-                    InvocationData = string.Empty,
-                    Arguments = string.Empty,
-                    CreatedAt = session.Storage.UtcNow
-                };
-                session.Insert(newJob);
-                session.Flush();
+                var newJob = InsertNewJob(session);
 
                 if (i == 0)
                 {
@@ -56,6 +49,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             return insertTwoJobsResult;
         }
 
+        public static _Job InsertNewJob(IWrappedSession session, Action<_Job> action = null)
+        {
+            var newJob = new _Job
+            {
+                InvocationData = string.Empty,
+                Arguments = string.Empty,
+                CreatedAt = session.Storage.UtcNow
+            };
+            action?.Invoke(newJob);
+            session.Insert(newJob);
+            session.Flush();
+            return newJob;
+        }
+
         private static dynamic GetTestJob(IWrappedSession connection, string jobId)
         {
             return connection.Query<_Job>().Single(i => i.Id == int.Parse(jobId));
@@ -63,7 +70,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         private static void UseSession(Action<IWrappedSession> action)
         {
-            using (var storage = ConnectionUtils.CreateStorage())
+            using (var storage = ConnectionUtils.GetStorage())
             {
                 action(storage.GetStatefulSession());
             }
@@ -90,14 +97,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             UseSession(session =>
             {
                 //Arrange
-                var newJob = new _Job
-                {
-                    InvocationData = string.Empty,
-                    Arguments = string.Empty,
-                    CreatedAt = session.Storage.UtcNow
-                };
-                session.Insert(newJob);
-                session.Flush();
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                
 
                 var jobId = newJob.Id;
 
@@ -391,8 +392,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void ExpireList_SetsExpirationTime_OnAList_WithGivenKey()
         {
-            const string arrangeSql = @"
-insert into List (`Key`) values (@key)";
+ 
 
             UseSession(session =>
             {
@@ -555,10 +555,7 @@ insert into List (`Key`) values (@key)";
         [CleanDatabase]
         public void PersistHash_ClearsExpirationTime_OnAGivenHash()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`, ExpireAt)
-values (@key, @field, @expireAt)";
-
+ 
             UseSession(session =>
             {
                 // Arrange

@@ -12,7 +12,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
     {
         public CountersAggregatorTests()
         {
-            _storage = ConnectionUtils.CreateStorage();
+            _storage = ConnectionUtils.GetStorage();
             _sut = new CountersAggregator(_storage, TimeSpan.Zero);
         }
 

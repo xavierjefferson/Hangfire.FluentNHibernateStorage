@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
 
         private FluentNHibernateStorage.FluentNHibernateJobStorage CreateStorage()
         {
-            return ConnectionUtils.CreateStorage(_options);
+            return ConnectionUtils.GetStorage(_options);
         }
 
         [Fact]

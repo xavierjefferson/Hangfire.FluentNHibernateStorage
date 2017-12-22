@@ -6,7 +6,7 @@ using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.Storage.Monitoring;
 using Moq;
-using MySql.Data.MySqlClient;
+ 
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
@@ -15,8 +15,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
     {
         public FluentNHibernateMonitoringApiTests()
         {
-            _connection = new MySqlConnection(ConnectionUtils.GetConnectionString());
-            _connection.Open();
+            var persistenceConfigurer = ConnectionUtils.GetPersistenceConfigurer();
+            
 
             var persistentJobQueueMonitoringApiMock = new Mock<IPersistentJobQueueMonitoringApi>();
             persistentJobQueueMonitoringApiMock.Setup(m => m.GetQueues()).Returns(new[] {"default"});
@@ -25,7 +25,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                 .Returns(persistentJobQueueMonitoringApiMock.Object);
 
-            var mySqlStorageMock = new Mock<FluentNHibernateJobStorage>(_connection);
+            var mySqlStorageMock = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
             mySqlStorageMock
                 .Setup(m => m.QueueProviders)
                 .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
@@ -36,12 +36,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
 
         public void Dispose()
         {
-            _connection.Dispose();
+            
             _storage.Dispose();
         }
 
         private readonly string _arguments = "[\"test\"]";
-        private readonly MySqlConnection _connection;
+        
         private readonly DateTime _createdAt = DateTime.UtcNow;
         private readonly DateTime _expireAt = DateTime.UtcNow.AddMinutes(1);
 

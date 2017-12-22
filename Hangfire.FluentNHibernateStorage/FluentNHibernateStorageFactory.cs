@@ -22,18 +22,22 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options = null)
         {
             options = options ?? new FluentNHibernateStorageOptions();
+            var configurer = GetPersistenceConfigurer(providerType, connectionString, options);
+
+            return new FluentNHibernateJobStorage(configurer, options, providerType);
+        }
+
+
+        public static IPersistenceConfigurer GetPersistenceConfigurer(ProviderTypeEnum providerType,
+            string connectionString,
+            FluentNHibernateStorageOptions options = null)
+        {
+            options = options ?? new FluentNHibernateStorageOptions();
 
             IPersistenceConfigurer configurer;
             switch (providerType)
             {
-                case ProviderTypeEnum.MsSqlCeStandard:
-
-                    configurer = ConfigureProvider(() => MsSqlCeConfiguration.Standard, connectionString, options);
-
-                    break;
-                case ProviderTypeEnum.MsSqlCe40:
-                    configurer = ConfigureProvider(() => MsSqlCeConfiguration.MsSqlCe40, connectionString, options);
-                    break;
+ 
 
                 case ProviderTypeEnum.OracleClient10:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
@@ -60,10 +64,7 @@ namespace Hangfire.FluentNHibernateStorage
                     configurer = ConfigureProvider(() => new FirebirdConfiguration(), connectionString, options);
 
                     break;
-                case ProviderTypeEnum.SQLite:
-                    configurer = ConfigureProvider(() => SQLiteConfiguration.Standard, connectionString, options);
-
-                    break;
+ 
                 case ProviderTypeEnum.DB2Informix1150:
                     configurer = ConfigureProvider(() => DB2Configuration.Informix1150, connectionString, options);
 
@@ -95,8 +96,7 @@ namespace Hangfire.FluentNHibernateStorage
                 default:
                     throw new ArgumentException("type");
             }
-
-            return new FluentNHibernateJobStorage(configurer, options, providerType);
+            return configurer;
         }
     }
 }

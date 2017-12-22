@@ -11,15 +11,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public FluentNHibernateFetchedJobTests()
         {
             _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
-            _connection = new Mock<IDbConnection>();
+         
             var options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
-            _storage = new Mock<FluentNHibernateJobStorage>(ConnectionUtils.GetConnectionString(), options);
+            _storage = new Mock<FluentNHibernateJobStorage>(ConnectionUtils.GetPersistenceConfigurer(), options);
         }
 
         private const int JobId = 1;
         private const string Queue = "queue";
 
-        private readonly Mock<IDbConnection> _connection;
+  
         private readonly FetchedJob _fetchedJob;
         private readonly int _id = 0;
         private readonly Mock<FluentNHibernateJobStorage> _storage;

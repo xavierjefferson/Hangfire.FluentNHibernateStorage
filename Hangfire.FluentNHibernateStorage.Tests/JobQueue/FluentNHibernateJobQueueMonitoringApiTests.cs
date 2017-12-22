@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
     {
         public FluentNHibernateJobQueueMonitoringApiTests()
         {
-            _storage = ConnectionUtils.CreateStorage();
+            _storage = ConnectionUtils.GetStorage();
             _sut = new FluentNHibernateJobQueueMonitoringApi(_storage);
         }
 
@@ -32,7 +32,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
             _storage.UseSession(session =>
             {
-                session.Insert(new _JobQueue {Job = new _Job {Id = 1}, Queue = _queue});
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 session.Flush();
                 result = _sut.GetEnqueuedAndFetchedCount(_queue);
 
@@ -51,7 +52,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             {
                 for (var i = 1; i <= 10; i++)
                 {
-                    session.Insert(new _JobQueue {Job = new _Job {Id = i}, Queue = _queue});
+                    var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                    session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }
                 session.Flush();
                 result = _sut.GetEnqueuedJobIds(_queue, 3, 2).ToArray();

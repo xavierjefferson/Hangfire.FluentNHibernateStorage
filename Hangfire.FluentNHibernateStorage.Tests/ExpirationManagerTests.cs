@@ -14,7 +14,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
     {
         public ExpirationManagerTests()
         {
-            _storage = ConnectionUtils.CreateStorage();
+            _storage = ConnectionUtils.GetStorage();
             var cts = new CancellationTokenSource();
             _context = new BackgroundProcessContext("dummy", _storage, new Dictionary<string, object>(), cts.Token);
         }

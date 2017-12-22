@@ -1,7 +1,8 @@
 ﻿using System;
+using System.Data.SqlClient;
+using System.Data.SqlServerCe;
+using System.IO;
 using System.Threading;
-using Dapper;
-using MySql.Data.MySqlClient;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
@@ -23,27 +24,27 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         private static void CreateAndInitializeDatabase()
         {
-            var recreateDatabaseSql = string.Format(
-                @"CREATE DATABASE IF NOT EXISTS `{0}`",
-                ConnectionUtils.GetDatabaseName());
-
-            using (var connection = new MySqlConnection(
-                ConnectionUtils.GetMasterConnectionString()))
+            using (var connection = new SqlConnection(ConnectionUtils.GetMasterConnectionString()))
             {
-                connection.Execute(recreateDatabaseSql);
+                connection.Open();
+                using (var sc = new SqlCommand(
+                   string.Format( "if not EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') Create Database [{0}]", ConnectionUtils.GetDatabaseName()), connection))
+                {
+                    sc.ExecuteNonQuery();
+                }
             }
         }
 
         private static void DropDatabase()
         {
-            var recreateDatabaseSql = string.Format(
-                @"DROP DATABASE IF EXISTS `{0}`",
-                ConnectionUtils.GetDatabaseName());
-
-            using (var connection = new MySqlConnection(
-                ConnectionUtils.GetMasterConnectionString()))
+            using (var connection = new SqlConnection(ConnectionUtils.GetMasterConnectionString()))
             {
-                connection.Execute(recreateDatabaseSql);
+                connection.Open();
+                using (var sc = new SqlCommand(
+                    string.Format("if EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') drop Database [{0}]", ConnectionUtils.GetDatabaseName()), connection))
+                {
+                    sc.ExecuteNonQuery();
+                }
             }
         }
     }

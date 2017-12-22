@@ -1,53 +1,63 @@
 ﻿using System;
+using System.Data.SqlClient;
+using System.IO;
 using FluentNHibernate.Cfg.Db;
-using MySql.Data.MySqlClient;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
     public static class ConnectionUtils
     {
-        private const string DatabaseVariable = "Hangfire_SqlServer_DatabaseName";
-
-        private const string ConnectionStringTemplateVariable
-            = "Hangfire_SqlServer_ConnectionStringTemplate";
-
-        private const string MasterDatabaseName = "mysql";
-        private const string DefaultDatabaseName = @"Hangfire.MySql.Tests";
-
-        private const string DefaultConnectionStringTemplate
-            = "server=127.0.0.1;uid=root;pwd=root;database={0};Allow User Variables=True";
+        private static readonly object Mutex = new object();
+        private static IPersistenceConfigurer _configurer;
+        private static string _conn = null;
+        private static string _conn2 = null;
+        public static string GetConnectionString()
+        {
+            lock (Mutex)
+            {
+                if (_conn == null)
+                {
+                   _conn = System.Configuration.ConfigurationManager.ConnectionStrings["main"].ConnectionString;
+                    Console.WriteLine("Using db conn {0}",_conn);
+                }
+                return _conn;
+            }
+            
+        }
 
         public static string GetDatabaseName()
         {
-            return Environment.GetEnvironmentVariable(DatabaseVariable) ?? DefaultDatabaseName;
+            return new SqlConnectionStringBuilder(GetConnectionString()).InitialCatalog;
         }
 
         public static string GetMasterConnectionString()
         {
-            return string.Format(GetConnectionStringTemplate(), MasterDatabaseName);
+            lock (Mutex)
+            {
+                if (_conn2 == null)
+                {
+                    _conn2 = new SqlConnectionStringBuilder(GetConnectionString()) { InitialCatalog = "master" }.ToString();
+                    Console.WriteLine("Using db conn master {0}" , _conn2);
+                }
+                return _conn2;
+            }
+            
         }
 
-        public static string GetConnectionString()
+        public static FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
-            return string.Format(GetConnectionStringTemplate(), GetDatabaseName());
+            return new FluentNHibernateJobStorage(GetPersistenceConfigurer());
         }
 
-        private static string GetConnectionStringTemplate()
+        public static IPersistenceConfigurer GetPersistenceConfigurer()
         {
-            return Environment.GetEnvironmentVariable(ConnectionStringTemplateVariable)
-                   ?? DefaultConnectionStringTemplate;
-        }
-
-        public static FluentNHibernateJobStorage CreateStorage(FluentNHibernateStorageOptions options = null)
-        {
-        }
-
-        public static IPersistenceConfigurer CreateConnection()
-        {
-            var connection = new MySqlConnection(GetConnectionString());
-            connection.Open();
-
-            return connection;
+            lock (Mutex)
+            {
+                var connectionString = GetConnectionString();
+                return _configurer ?? (_configurer = FluentNHibernateStorageFactory.GetPersistenceConfigurer(
+                           ProviderTypeEnum.MsSql2008,
+                           connectionString));
+            }
         }
     }
 }

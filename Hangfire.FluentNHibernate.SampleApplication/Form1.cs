@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.SqlServerCe;
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
@@ -134,12 +135,19 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void StartButton_Click(object sender, EventArgs e)
         {
+            
             var connectionString = ConnectionStringTextBox.Text;
-            SaveConnectionString(ProviderType, connectionString);
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                MessageBox.Show(this, "connection string cannot be blank");
+                return;
+            }
+                SaveConnectionString(ProviderType, connectionString);
 
             Settings.Default.DataSource = ProviderType.ToString();
             Settings.Default.Save();
 
+           
             //THIS LINE GETS THE STORAGE PROVIDER
             storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
             if (storage != null)

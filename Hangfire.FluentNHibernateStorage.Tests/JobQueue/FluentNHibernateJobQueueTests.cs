@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
     {
         public FluentNHibernateJobQueueTests()
         {
-            _storage = ConnectionUtils.CreateStorage();
+            _storage = ConnectionUtils.GetStorage();
         }
 
         public void Dispose()
@@ -62,13 +62,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             {
                 session.Truncate<_JobQueue>();
                 session.Truncate<_Job>();
-                var newjob = new _Job
-                {
-                    InvocationData = string.Empty,
-                    Arguments = string.Empty,
-                    CreatedAt = _storage.UtcNow
-                };
-                session.Insert(newjob);
+                var newjob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newjob, Queue = "default"});
                 session.Flush();
                 var queue = CreateJobQueue(_storage);
@@ -95,7 +89,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             // Arrange
             _storage.UseSession(session =>
             {
-                var newJobQueue = new _JobQueue {Job = new _Job {Id = 1}, Queue = "default"};
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJobQueue = new _JobQueue {Job = newJob, Queue = "default"};
                 session.Insert(newJobQueue);
                 session.Flush();
                 var id = newJobQueue.Id;
@@ -119,16 +114,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             // Arrange
             _storage.UseSession(session =>
             {
-                var newjob = new _Job
-                {
-                    InvocationData = string.Empty,
-                    Arguments = string.Empty,
-                    CreatedAt = _storage.UtcNow
-                };
-                session.Insert(newjob);
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue
                 {
-                    Job = newjob,
+                    Job = newJob,
                     FetchedAt = _storage.UtcNow.AddDays(-1),
                     Queue = "default"
                 });
@@ -153,16 +142,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             {
                 foreach (var queueName in new[] {"default", "critical"})
                 {
-                    var newjob = new _Job
-                    {
-                        InvocationData = string.Empty,
-                        Arguments = string.Empty,
-                        CreatedAt = _storage.UtcNow
-                    };
-                    session.Insert(newjob);
+                    var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                     session.Insert(new _JobQueue
                     {
-                        Job = newjob,
+                        Job = newJob,
                         Queue = queueName
                     });
                 }
@@ -195,16 +178,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             {
                 session.Truncate<_JobQueue>();
                 session.Truncate<_Job>();
-                var newjob = new _Job
-                {
-                    InvocationData = string.Empty,
-                    Arguments = string.Empty,
-                    CreatedAt = _storage.UtcNow
-                };
-                session.Insert(newjob);
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue
                 {
-                    Job = newjob,
+                    Job = newJob,
                     Queue = "critical"
                 });
                 session.Flush();
@@ -229,16 +206,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 session.Truncate<_Job>();
                 for (var i = 0; i < 2; i++)
                 {
-                    var newjob = new _Job
-                    {
-                        InvocationData = string.Empty,
-                        Arguments = string.Empty,
-                        CreatedAt = _storage.UtcNow
-                    };
-                    session.Insert(newjob);
+                    var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                     session.Insert(new _JobQueue
                     {
-                        Job = newjob,
+                        Job = newJob,
                         Queue = "default"
                     });
                 }
