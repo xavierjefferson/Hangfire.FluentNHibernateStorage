@@ -62,6 +62,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 PrepareSchemaIfNecessary = true,
                 DashboardJobListLimit = 50000,
                 TransactionTimeout = TimeSpan.FromMinutes(1),
+				DefaultSchema = null // use database provider's default schema
             };
 
             //THIS SECTION GETS THE STORAGE PROVIDER
@@ -89,6 +90,7 @@ Description of optional parameters:
 - `PrepareSchemaIfNecessary` - if set to `true`, it creates database tables. Default is `true`.
 - `DashboardJobListLimit` - dashboard job list limit. Default is 50000.
 - `TransactionTimeout` - transaction timeout. Default is 1 minute.
+- `DefaultSchema` - database schema into which the Hangfire tables will be created.  Default is database provider specific ("dbo" for SQL Server, "public" for PostgreSQL, etc).
 
 ### How to limit number of open connections
 
