@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data.SqlServerCe;
+ 
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;

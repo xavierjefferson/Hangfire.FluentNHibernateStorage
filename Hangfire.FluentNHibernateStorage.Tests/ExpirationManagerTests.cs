@@ -24,7 +24,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
 
         private static int CreateExpirationEntry(IWrappedSession session, DateTime? expireAt)
         {
-            session.Truncate<_AggregatedCounter>();
+            session.DeleteAll<_AggregatedCounter>();
             var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
             session.Insert(a);
             session.Flush();
@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             using (var session = _storage.GetStatefulSession())
             {
                 //Arrange
-                var entryId = CreateExpirationEntry(session, DateTime.UtcNow.AddMonths(1));
+                var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(1));
                 var manager = CreateManager();
 
                 //Act
@@ -222,7 +222,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             using (var session = _storage.GetStatefulSession())
             {
                 // Arrange
-                var entryId = CreateExpirationEntry(session, DateTime.UtcNow.AddMonths(-1));
+                var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(-1));
                 var manager = CreateManager();
                 // Act
                 manager.Execute(_context);

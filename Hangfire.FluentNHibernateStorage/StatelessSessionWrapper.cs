@@ -16,8 +16,16 @@ namespace Hangfire.FluentNHibernateStorage
             ProviderType = type;
             Storage = storage;
         }
+        public void Evict(object x)
+        {
+          
 
+        }
 
+        public void Clear()
+        {
+            
+        }
         public ITransaction BeginTransaction(IsolationLevel level)
         {
             return _session.BeginTransaction(level);

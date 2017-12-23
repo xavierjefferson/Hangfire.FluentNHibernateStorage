@@ -2,13 +2,13 @@
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public abstract class SessionWrapperBase
+    public abstract class SessionWrapperBase:IWrappedSessionBase
     {
         public FluentNHibernateJobStorage Storage { get; protected set; }
         public ProviderTypeEnum ProviderType { get; protected set; }
         public abstract IQuery CreateQuery(string query);
 
-        public void Truncate<T>()
+        public void DeleteAll<T>()
         {
             ExecuteQuery(string.Format("delete from {0}", typeof(T).Name));
         }

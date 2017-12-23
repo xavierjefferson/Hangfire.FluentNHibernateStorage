@@ -129,6 +129,9 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                         long CountStats(string key)
                         {
+                            var l1 = session.Query<_AggregatedCounter>().Where(i => i.Key == key).Select(i => i.Value).ToList();
+                            var l2 = session.Query<_Counter>().Where(i => i.Key == key).Select(i => i.Value).ToList();
+                            return l1.Sum() + l2.Sum();
                             return session.Query<_AggregatedCounter>().Where(i => i.Key == key).Sum(i => i.Value) +
                                    session.Query<_Counter>().Where(i => i.Key == key).Sum(i => i.Value);
                         }
@@ -142,7 +145,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             Servers = session.Query<_Server>().Count(),
                             Succeeded = CountStats("stats:succeeded"),
                             Deleted = CountStats("stats:deleted"),
-                            Recurring = session.Query<_Set>().Count(i => i.Key == "recurring-jobs'")
+                            Recurring = session.Query<_Set>().Count(i => i.Key == "recurring-jobs")
                         };
                     }
                 );

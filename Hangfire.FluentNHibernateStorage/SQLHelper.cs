@@ -62,7 +62,7 @@ namespace Hangfire.FluentNHibernateStorage
         internal static readonly Dictionary<Type, string> DeleteByKeyStatementDictionary = new Dictionary<Type, string>
         {
             {typeof(_Set), GetDeleteByKeyStatement<_Set>()},
-            {typeof(_Hash), GetDeleteByKeyStatement<_List>()},
+            {typeof(_Hash), GetDeleteByKeyStatement<_Hash>()},
             {typeof(_List), GetDeleteByKeyStatement<_List>()}
         };
 
@@ -70,14 +70,14 @@ namespace Hangfire.FluentNHibernateStorage
             new Dictionary<Type, string>
             {
                 {typeof(_Set), GetDeleteByKeyValueStatement<_Set>()},
-                {typeof(_Hash), GetDeleteByKeyValueStatement<_List>()},
+                //{typeof(_Hash), GetDeleteByKeyValueStatement<_Hash>()},
                 {typeof(_List), GetDeleteByKeyValueStatement<_List>()}
             };
 
         internal static readonly Dictionary<Type, string> SetExpireStatementDictionary = new Dictionary<Type, string>
         {
             {typeof(_Set), GetSetExpireByKeyStatement<_Set>()},
-            {typeof(_Hash), GetSetExpireByKeyStatement<_List>()},
+            {typeof(_Hash), GetSetExpireByKeyStatement<_Hash>()},
             {typeof(_List), GetSetExpireByKeyStatement<_List>()}
         };
 
@@ -152,7 +152,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal static string GetSetExpireByKeyStatement<T>() where T : IExpirableWithKey
         {
-            return string.Format("update {0} set {1}={2} where {3}:={4}", typeof(T).Name.WrapObjectName(),
+            return string.Format("update {0} set {1}=:{2} where {3}=:{4}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirable.ExpireAt).WrapObjectName(), ValueParameterName,
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 IdParameterName);
@@ -160,14 +160,14 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
         {
-            return string.Format("delete from {0} where {1}:={2}", typeof(T).Name.WrapObjectName(),
+            return string.Format("delete from {0} where {1}=:{2}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 ValueParameterName);
         }
 
         internal static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
         {
-            return string.Format("delete from {0} where {1}:={2} and {3}=:{4}", typeof(T).Name.WrapObjectName(),
+            return string.Format("delete from {0} where {1}=:{2} and {3}=:{4}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 ValueParameterName, nameof(IKeyWithStringValue.Value).WrapObjectName(), ValueParameter2Name);
         }

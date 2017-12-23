@@ -6,7 +6,6 @@ using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.Storage.Monitoring;
 using Moq;
- 
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
@@ -16,7 +15,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         public FluentNHibernateMonitoringApiTests()
         {
             var persistenceConfigurer = ConnectionUtils.GetPersistenceConfigurer();
-            
+
 
             var persistentJobQueueMonitoringApiMock = new Mock<IPersistentJobQueueMonitoringApi>();
             persistentJobQueueMonitoringApiMock.Setup(m => m.GetQueues()).Returns(new[] {"default"});
@@ -32,18 +31,19 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
 
             _storage = mySqlStorageMock.Object;
             _sut = new FluentNHibernateMonitoringApi(_storage, _jobListLimit);
+            _createdAt = _storage.UtcNow;
+            _expireAt = _storage.UtcNow.AddMinutes(1);
         }
 
         public void Dispose()
         {
-            
             _storage.Dispose();
         }
 
         private readonly string _arguments = "[\"test\"]";
-        
-        private readonly DateTime _createdAt = DateTime.UtcNow;
-        private readonly DateTime _expireAt = DateTime.UtcNow.AddMinutes(1);
+
+        private readonly DateTime _createdAt;
+        private readonly DateTime _expireAt;
 
         private readonly string _invocationData =
             "{\"Type\":\"System.Console, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"," +
@@ -68,6 +68,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Insert(new _Counter {Key = "stats:deleted", Value = 1});
                 connection.Insert(new _Counter {Key = "stats:deleted", Value = 1});
                 connection.Flush();
+                connection.Clear();
                 result = _sut.GetStatistics();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
 
@@ -83,7 +84,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             StatisticsDto result = null;
             _storage.UseSession(connection =>
             {
-                connection.Insert(new _Job(){InvocationData = string.Empty,Arguments = string.Empty,StateName = "Enqueued", CreatedAt = connection.Storage.UtcNow});
+                connection.Insert(new _Job
+                {
+                    InvocationData = string.Empty,
+                    Arguments = string.Empty,
+                    StateName = "Enqueued",
+                    CreatedAt = connection.Storage.UtcNow
+                });
                 result = _sut.GetStatistics();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
 
@@ -101,7 +108,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             {
                 for (var i = 0; i < 2; i++)
                 {
-                    connection.Insert(new _Job(){InvocationData = string.Empty,Arguments = string.Empty,CreatedAt = connection.Storage.UtcNow, StateName = "Failed"});
+                    connection.Insert(new _Job
+                    {
+                        InvocationData = string.Empty,
+                        Arguments = string.Empty,
+                        CreatedAt = connection.Storage.UtcNow,
+                        StateName = "Failed"
+                    });
                 }
                 connection.Flush();
 
@@ -130,7 +143,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
 
                 result = _sut.GetStatistics();
-            } , FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
 
             Assert.Equal(expectedProcessingCount, result.Processing);
         }
@@ -155,12 +168,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             StatisticsDto result = null;
             _storage.UseSession(connection =>
             {
-
-                connection.Insert(new _Set{Key = "recurring-jobs", Value = "test", Score = 0});
+                connection.Insert(new _Set {Key = "recurring-jobs", Value = "test", Score = 0});
                 connection.Flush();
-
+                connection.Clear();
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
 
             Assert.Equal(expectedRecurringCount, result.Recurring);
         }
@@ -176,7 +188,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             {
                 for (var i = 0; i < 3; i++)
                 {
-                    connection.Insert(new _Job(){InvocationData = string.Empty, CreatedAt = connection.Storage.UtcNow, Arguments = string.Empty, StateName ="Scheduled"});
+                    connection.Insert(new _Job
+                    {
+                        InvocationData = string.Empty,
+                        CreatedAt = connection.Storage.UtcNow,
+                        Arguments = string.Empty,
+                        StateName = "Scheduled"
+                    });
                 }
                 connection.Flush();
 
@@ -197,7 +215,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             {
                 for (var i = 1; i < 3; i++)
                 {
-                    connection.Insert(new _Server() { Id=i.ToString(), Data = i.ToString()});
+                    connection.Insert(new _Server {Id = i.ToString(), Data = i.ToString()  });
                 }
                 connection.Flush();
                 result = _sut.GetStatistics();
@@ -215,8 +233,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             StatisticsDto result = null;
             _storage.UseSession(connection =>
             {
-                connection.Insert(new _Counter(){Key="stats:succeeded", Value = 1});
-                connection.Insert(new _AggregatedCounter() { Key = "stats:succeeded", Value = 10 });
+                connection.Insert(new _Counter {Key = "stats:succeeded", Value = 1});
+                connection.Insert(new _AggregatedCounter {Key = "stats:succeeded", Value = 10});
                 connection.Flush();
                 result = _sut.GetStatistics();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
@@ -341,7 +359,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 {
                     connection.Insert(new _JobParameter {Job = newJob, Name = x.Key, Value = x.Value});
                 }
-                
+
                 connection.Flush();
                 var jobId = newJob.Id;
 

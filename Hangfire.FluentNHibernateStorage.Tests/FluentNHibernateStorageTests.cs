@@ -27,7 +27,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             var exception = Assert.Throws<ArgumentNullException>(
                 () => new FluentNHibernateStorage.FluentNHibernateJobStorage(null));
 
-            Assert.Equal("nameOrConnectionString", exception.ParamName);
+            Assert.Equal("persistenceConfigurer", exception.ParamName);
         }
 
         [Fact]
@@ -36,10 +36,8 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         {
             var storage = CreateStorage();
 
-            var components = storage.GetComponents();
-
-            var componentTypes = components.Select(x => x.GetType()).ToArray();
-            Assert.Contains(typeof(ExpirationManager), componentTypes);
+            var components = storage.GetBackgroundProcesses();
+            Assert.True(components.OfType<ExpirationManager>().Any());
         }
 
 

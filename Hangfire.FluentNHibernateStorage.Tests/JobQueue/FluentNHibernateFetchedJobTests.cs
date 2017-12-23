@@ -43,9 +43,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Ctor_ThrowsAnException_WhenConnectionIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob));
+                () => new FluentNHibernateFetchedJob(null, _fetchedJob));
 
-            Assert.Equal("connection", exception.ParamName);
+            Assert.Equal("storage", exception.ParamName);
         }
 
         [Fact]

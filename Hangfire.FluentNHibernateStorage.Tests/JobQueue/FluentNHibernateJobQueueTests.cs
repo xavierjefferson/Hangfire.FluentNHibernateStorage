@@ -60,8 +60,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             // Arrange
             _storage.UseSession(session =>
             {
-                session.Truncate<_JobQueue>();
-                session.Truncate<_Job>();
+                session.DeleteAll<_JobQueue>();
+                session.DeleteAll<_Job>();
                 var newjob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newjob, Queue = "default"});
                 session.Flush();
@@ -93,7 +93,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 var newJobQueue = new _JobQueue {Job = newJob, Queue = "default"};
                 session.Insert(newJobQueue);
                 session.Flush();
-                var id = newJobQueue.Id;
+                session.Clear();
+ 
                 var queue = CreateJobQueue(_storage);
 
                 // Act
@@ -102,7 +103,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     CreateTimingOutCancellationToken());
 
                 // Assert
-                Assert.Equal("1", payload.JobId);
+                Assert.Equal(newJob.Id.ToString(), payload.JobId);
                 Assert.Equal("default", payload.Queue);
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
         }
@@ -140,7 +141,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             _storage.UseSession(session =>
             {
-                foreach (var queueName in new[] {"default", "critical"})
+                var queueNames = new[] { "critical", "default" };
+                foreach (var queueName in queueNames)
                 {
                     var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                     session.Insert(new _JobQueue
@@ -154,15 +156,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 var queue = CreateJobQueue(_storage);
 
+                
                 var critical = (FluentNHibernateFetchedJob) queue.Dequeue(
-                    new[] {"critical", "default"},
+                    queueNames,
                     CreateTimingOutCancellationToken());
 
                 Assert.NotNull(critical.JobId);
                 Assert.Equal("critical", critical.Queue);
 
                 var @default = (FluentNHibernateFetchedJob) queue.Dequeue(
-                    new[] {"critical", "default"},
+                    queueNames,
                     CreateTimingOutCancellationToken());
 
                 Assert.NotNull(@default.JobId);
@@ -176,8 +179,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             _storage.UseSession(session =>
             {
-                session.Truncate<_JobQueue>();
-                session.Truncate<_Job>();
+                session.DeleteAll<_JobQueue>();
+                session.DeleteAll<_Job>();
                 var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue
                 {
@@ -202,8 +205,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             _storage.UseSession(session =>
             {
                 // Arrange
-                session.Truncate<_JobQueue>();
-                session.Truncate<_Job>();
+                session.DeleteAll<_JobQueue>();
+                session.DeleteAll<_Job>();
                 for (var i = 0; i < 2; i++)
                 {
                     var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
@@ -297,14 +300,17 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             _storage.UseSession(session =>
             {
-                session.Truncate<_JobQueue>();
+                session.DeleteAll<_JobQueue>();
+                session.Flush();
+                session.Clear();
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
 
                 var queue = CreateJobQueue(_storage);
 
-                queue.Enqueue(session, "default", "1");
+                queue.Enqueue(session, "default",newJob.Id.ToString());
 
                 var record = session.Query<_JobQueue>().Single();
-                Assert.Equal("1", record.Job.Id.ToString());
+                Assert.Equal(newJob.Id, record.Job.Id);
                 Assert.Equal("default", record.Queue);
                 Assert.Null(record.FetchedAt);
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);

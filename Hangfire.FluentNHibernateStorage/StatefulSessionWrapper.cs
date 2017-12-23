@@ -22,6 +22,11 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.BeginTransaction();
         }
 
+        public void Clear()
+        {
+            _session.Clear();
+        }
+
         public ITransaction BeginTransaction(IsolationLevel level)
         {
             return _session.BeginTransaction(level);
@@ -35,6 +40,12 @@ namespace Hangfire.FluentNHibernateStorage
         public override IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
+        }
+
+        public void Evict(object x)
+        {
+            _session.Evict(x);
+            
         }
 
         public ISQLQuery CreateSqlQuery(string queryString)

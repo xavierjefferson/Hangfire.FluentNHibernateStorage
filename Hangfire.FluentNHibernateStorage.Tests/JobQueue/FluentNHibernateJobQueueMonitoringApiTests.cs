@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Transactions;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -37,7 +38,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 session.Flush();
                 result = _sut.GetEnqueuedAndFetchedCount(_queue);
 
-                session.Truncate<_JobQueue>();
+                session.DeleteAll<_JobQueue>();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
 
             Assert.Equal(1, result.EnqueuedCount);
@@ -47,23 +48,25 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedJobIds_ReturnsCorrectResult()
         {
-            int[] result = null;
+            int[] result = null;  List<_Job> jobs = new List<_Job>(); 
             _storage.UseSession(session =>
             {
+              
                 for (var i = 1; i <= 10; i++)
                 {
                     var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                    jobs.Add(newJob);
                     session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }
                 session.Flush();
                 result = _sut.GetEnqueuedJobIds(_queue, 3, 2).ToArray();
 
-                session.Truncate<_JobQueue>();
+                session.DeleteAll<_JobQueue>();
             }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
 
             Assert.Equal(2, result.Length);
-            Assert.Equal(4, result[0]);
-            Assert.Equal(5, result[1]);
+            Assert.Equal(jobs[3].Id, result[0]);
+            Assert.Equal(jobs[4].Id, result[1]);
         }
 
 

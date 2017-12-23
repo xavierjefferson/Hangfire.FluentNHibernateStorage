@@ -52,6 +52,10 @@ namespace Hangfire.FluentNHibernateStorage
         internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
             FluentNHibernateStorageOptions options, ProviderTypeEnum type)
         {
+            if (persistenceConfigurer == null)
+            {
+                throw new ArgumentNullException("persistenceConfigurer");
+            }
             Type = type;
             PersistenceConfigurer = persistenceConfigurer;
 
@@ -253,9 +257,29 @@ namespace Hangfire.FluentNHibernateStorage
                 : new TransactionScope();
         }
 
+        public void ResetAll()
+        {
+            using (var session = GetStatefulSession() )
+            {
+                session.DeleteAll<_List>();
+                session.DeleteAll<_Hash>();
+                session.DeleteAll<_Set>();
+                session.DeleteAll<_Server>();
+                session.DeleteAll<_JobQueue>();
+                session.DeleteAll<_JobParameter>();
+                session.DeleteAll<_JobState>();
+                session.DeleteAll<_Job>();
+                session.DeleteAll<_Counter>();
+                session.DeleteAll<_AggregatedCounter>();
+                session.DeleteAll<_DistributedLock>();
+                session.Flush();
+            }
+        }
+
         public void UseSession([InstantHandle] Action<IWrappedSession> action,
             FluentNHibernateJobStorageSessionStateEnum state)
         {
+            state = FluentNHibernateJobStorageSessionStateEnum.Stateful;
             switch (state)
             {
                 case FluentNHibernateJobStorageSessionStateEnum.Stateful:
@@ -276,6 +300,7 @@ namespace Hangfire.FluentNHibernateStorage
         public T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func,
             FluentNHibernateJobStorageSessionStateEnum state)
         {
+            state = FluentNHibernateJobStorageSessionStateEnum.Stateful;
             switch (state)
             {
                 case FluentNHibernateJobStorageSessionStateEnum.Stateful:

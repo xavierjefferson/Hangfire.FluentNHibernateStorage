@@ -5,16 +5,22 @@ using NHibernate;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public interface IWrappedSession : IDisposable
+    public interface IWrappedSessionBase
     {
-        void Truncate<T>();
         ProviderTypeEnum ProviderType { get; }
         FluentNHibernateJobStorage Storage { get; }
+        void DeleteAll<T>();
+        int ExecuteQuery(string queryString);
+    }
+
+    public interface IWrappedSession : IDisposable, IWrappedSessionBase
+    {
+        void Clear();
         ITransaction BeginTransaction(IsolationLevel level);
         ITransaction BeginTransaction();
         IQueryable<T> Query<T>();
         IQuery CreateQuery(string queryString);
-        int ExecuteQuery(string queryString);
+        void Evict(object x);
         ISQLQuery CreateSqlQuery(string queryString);
         void Insert(object x);
         void Update(object x);

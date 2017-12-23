@@ -27,17 +27,19 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SQLHelper.SetExpireStatementDictionary[typeof(T)])
+            var queryString = SQLHelper.SetExpireStatementDictionary[typeof(T)];
+            session.CreateQuery(queryString)
                 .SetParameter(SQLHelper.ValueParameterName, expire)
                 .SetParameter(SQLHelper.IdParameterName, key)
                 .ExecuteUpdate();
+            session.Flush();
         }
 
         private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpirableWithKey
         {
             session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)])
                 .SetParameter(SQLHelper.ValueParameterName, key)
-                .ExecuteUpdate();
+                .ExecuteUpdate(); session.Flush();
         }
 
         private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpirableWithKey
@@ -45,7 +47,7 @@ namespace Hangfire.FluentNHibernateStorage
             session.CreateQuery(SQLHelper.DeleteByKeyValueStatementlDictionary[typeof(T)])
                 .SetParameter(SQLHelper.ValueParameterName, key)
                 .SetParameter(SQLHelper.ValueParameter2Name, value)
-                .ExecuteUpdate();
+                .ExecuteUpdate(); session.Flush();
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -262,7 +264,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 var idList = session.Query<_List>()
                     .OrderBy(i => i.Id)
-                    .Where(i => i.Key == key)
+                    .Where(i => i.Key == key).ToList()
                     .Select((i, j) => new {index = j, id = i.Id});
                 var before = idList.Where(i => i.index < keepStartingFrom)
                     .Union(idList.Where(i => i.index > keepEndingAt))

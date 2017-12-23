@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Data.SqlClient;
-using System.Data.SqlServerCe;
+ 
 using System.IO;
 using System.Threading;
+using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
@@ -37,15 +38,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         private static void DropDatabase()
         {
-            using (var connection = new SqlConnection(ConnectionUtils.GetMasterConnectionString()))
-            {
-                connection.Open();
-                using (var sc = new SqlCommand(
-                    string.Format("if EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') drop Database [{0}]", ConnectionUtils.GetDatabaseName()), connection))
-                {
-                    sc.ExecuteNonQuery();
-                }
-            }
+            var fluentNHibernateJobStorage = ConnectionUtils.GetStorage();
+            fluentNHibernateJobStorage.ResetAll();
         }
     }
 }
