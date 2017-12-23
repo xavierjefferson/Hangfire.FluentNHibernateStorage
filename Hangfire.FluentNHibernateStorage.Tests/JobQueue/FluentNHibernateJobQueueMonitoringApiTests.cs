@@ -39,7 +39,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 result = _sut.GetEnqueuedAndFetchedCount(_queue);
 
                 session.DeleteAll<_JobQueue>();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(1, result.EnqueuedCount);
         }
@@ -62,7 +62,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 result = _sut.GetEnqueuedJobIds(_queue, 3, 2).ToArray();
 
                 session.DeleteAll<_JobQueue>();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(2, result.Length);
             Assert.Equal(jobs[3].Id, result[0]);

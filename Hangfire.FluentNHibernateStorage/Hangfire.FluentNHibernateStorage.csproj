@@ -67,11 +67,7 @@
     <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
     <Compile Include="Entities\_Dual.cs" />
-    <Compile Include="FluentNHibernateDistributedLockBase.cs" />
-    <Compile Include="FluentNHibernateJobStorageSessionStateEnum.cs" />
-    <Compile Include="FluentNHibernateStatelessDistributedLock.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
-    <Compile Include="IWrappedSession.cs" />
     <Compile Include="Maps\Constants.cs" />
     <Compile Include="Maps\IntIdMap.cs" />
     <Compile Include="Maps\ObjectHelper.cs" />
@@ -102,7 +98,6 @@
     <Compile Include="Maps\_JobStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
     <Compile Include="ServerTimeSyncManager.cs" />
-    <Compile Include="SessionWrapperBase.cs" />
     <Compile Include="SQLHelper.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />
@@ -126,8 +121,7 @@
     <Compile Include="ProviderTypeEnum.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Entities\ServerData.cs" />
-    <Compile Include="StatefulSessionWrapper.cs" />
-    <Compile Include="StatelessSessionWrapper.cs" />
+    <Compile Include="SessionWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

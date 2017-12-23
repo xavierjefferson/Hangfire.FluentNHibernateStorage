@@ -26,8 +26,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < _storage.UtcNow)
                 {
                     var result = _storage.UseSession(
-                        session => { return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList(); },
-                        FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                        session => { return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList(); });
 
                     _queuesCache = result;
                     _cacheUpdated = _storage.UtcNow;
@@ -48,7 +47,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     .Skip(from)
                     .Take(perPage)
                     .ToList();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            });
         }
 
 
@@ -67,7 +66,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 {
                     EnqueuedCount = result
                 };
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            });
         }
     }
 }

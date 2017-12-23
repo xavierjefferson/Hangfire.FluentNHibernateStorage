@@ -7,6 +7,7 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.Server;
 using Hangfire.Storage;
+using Hangfire.Storage.Monitoring;
 using Moq;
 using Xunit;
 
@@ -28,43 +29,34 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         private readonly PersistentJobQueueProviderCollection _providers;
         private readonly Mock<IPersistentJobQueue> _queue;
 
-        private static _Job InsertSingleJob(IWrappedSession sql)
+        private void UseJobStorageConnectionWithSession(
+            Action<SessionWrapper, FluentNHibernateJobStorageConnection> action)
         {
-            var newJob = new _Job
+            UseJobStorageConnection(jobsto =>
             {
-                InvocationData = string.Empty,
-                Arguments = string.Empty,
-                CreatedAt = sql.Storage.UtcNow
-            };
-            sql.Insert(newJob);
-            sql.Flush();
-            return newJob;
-        }
-
-        private void UseJobStorageConnectionWithSession(Action<IWrappedSession, FluentNHibernateJobStorageConnection> action)
-        {
-            var storage = ConnectionUtils.CreateStorage();
-            using (var connection = new FluentNHibernateJobStorageConnection(storage))
-            {
-                using (var session = storage.GetStatefulSession())
+                using (var session = jobsto.Storage.GetSession())
                 {
-                    action(session, connection);
+                    action(session, jobsto);
                 }
-            }
+            });
         }
 
         private void UseJobStorageConnection(Action<FluentNHibernateJobStorageConnection> action)
         {
-            var persistenceConfigurer = ConnectionUtils.CreatePersistenceConfigurer();
-            
+            var storage = GetMockStorage();
+
+            using (var jobStorage = new FluentNHibernateJobStorageConnection(storage.Object))
+            {
+                action(jobStorage);
+            }
+        }
+
+        private Mock<FluentNHibernateJobStorage> GetMockStorage()
+        {
+            var persistenceConfigurer = ConnectionUtils.GetPersistenceConfigurer();
             var storage = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
             storage.Setup(x => x.QueueProviders).Returns(_providers);
-
-            using (var connection = new FluentNHibernateJobStorageConnection(storage.Object))
-            {
-                action(connection);
-            }
-            
+            return storage;
         }
 
         public static void SampleMethod(string arg)
@@ -75,9 +67,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void AcquireLock_ReturnsNonNullInstance()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var @lock = connection.AcquireDistributedLock("1", TimeSpan.FromSeconds(1));
+                var @lock = jobStorage.AcquireDistributedLock("1", TimeSpan.FromSeconds(1));
                 Assert.NotNull(@lock);
             });
         }
@@ -86,20 +78,22 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void AnnounceServer_CreatesOrUpdatesARecord()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
+                var queues = new[] {"critical", "default"};
                 var context1 = new ServerContext
                 {
-                    Queues = new[] {"critical", "default"},
+                    Queues = queues,
                     WorkerCount = 4
                 };
-                connection.AnnounceServer("server", context1);
-
-                var server = sql.Query<_Server>().Single();
+                jobStorage.AnnounceServer("server", context1);
+                session.Clear();
+                var server = session.Query<_Server>().Single();
                 Assert.Equal("server", server.Id);
-                Assert.True(server.Data.StartsWith(
-                        "{\"WorkerCount\":4,\"Queues\":[\"critical\",\"default\"],\"StartedAt\":"),
-                    server.Data);
+                Assert.NotNull(server.Data);
+                var serverData1 = JobHelper.FromJson<ServerData>(server.Data);
+                Assert.Equal(4,serverData1.WorkerCount);
+                Assert.Equal(queues,serverData1.Queues);
                 Assert.NotNull(server.LastHeartbeat);
 
                 var context2 = new ServerContext
@@ -107,10 +101,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     Queues = new[] {"default"},
                     WorkerCount = 1000
                 };
-                connection.AnnounceServer("server", context2);
-                var sameServer = sql.Query<_Server>().Single();
+                jobStorage.AnnounceServer("server", context2); session.Clear();
+                var sameServer = session.Query<_Server>().Single();
                 Assert.Equal("server", sameServer.Id);
-                Assert.Contains("1000", sameServer.Data);
+                Assert.NotNull(sameServer.Data);
+                var serverData2 = JobHelper.FromJson<ServerData>(sameServer.Data);
+                Assert.Equal(1000,serverData2.WorkerCount);
             });
         }
 
@@ -118,10 +114,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void AnnounceServer_ThrowsAnException_WhenContextIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.AnnounceServer("server", null));
+                    () => jobStorage.AnnounceServer("server", null));
 
                 Assert.Equal("context", exception.ParamName);
             });
@@ -131,10 +127,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void AnnounceServer_ThrowsAnException_WhenServerIdIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.AnnounceServer(null, new ServerContext()));
+                    () => jobStorage.AnnounceServer(null, new ServerContext()));
 
                 Assert.Equal("serverId", exception.ParamName);
             });
@@ -144,10 +140,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void CreateExpiredJob_CreatesAJobInTheStorage_AndSetsItsParameters()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 var createdAt = new DateTime(2012, 12, 12);
-                var jobId = connection.CreateExpiredJob(
+                var jobId = jobStorage.CreateExpiredJob(
                     Job.FromExpression(() => SampleMethod("Hello")),
                     new Dictionary<string, string> {{"Key1", "Value1"}, {"Key2", "Value2"}},
                     createdAt,
@@ -155,8 +151,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
                 Assert.NotNull(jobId);
                 Assert.NotEmpty(jobId);
-
-                var sqlJob = sql.Query<_Job>().Single();
+                session.Clear();
+                var sqlJob = session.Query<_Job>().Single();
                 Assert.Equal(jobId, sqlJob.Id.ToString());
                 Assert.Equal(createdAt, sqlJob.CreatedAt);
                 Assert.Equal(null, sqlJob.StateName);
@@ -172,7 +168,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Assert.True(createdAt.AddDays(1).AddMinutes(-1) < sqlJob.ExpireAt);
                 Assert.True(sqlJob.ExpireAt < createdAt.AddDays(1).AddMinutes(1));
 
-                var parameters = sql.Query<_JobParameter>()
+                var parameters = session.Query<_JobParameter>()
                     .Where(i => i.Job.Id == int.Parse(jobId))
                     .ToDictionary(x => x.Name, x => x.Value);
 
@@ -185,13 +181,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void CreateExpiredJob_ThrowsAnException_WhenJobIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.CreateExpiredJob(
+                    () => jobStorage.CreateExpiredJob(
                         null,
                         new Dictionary<string, string>(),
-                        DateTime.UtcNow,
+                        jobStorage.Storage.UtcNow,
                         TimeSpan.Zero));
 
                 Assert.Equal("job", exception.ParamName);
@@ -202,13 +198,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void CreateExpiredJob_ThrowsAnException_WhenParametersCollectionIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.CreateExpiredJob(
+                    () => jobStorage.CreateExpiredJob(
                         Job.FromExpression(() => SampleMethod("hello")),
                         null,
-                        DateTime.UtcNow,
+                        jobStorage.Storage.UtcNow,
                         TimeSpan.Zero));
 
                 Assert.Equal("parameters", exception.ParamName);
@@ -219,9 +215,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void CreateWriteTransaction_ReturnsNonNullInstance()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var transaction = connection.CreateWriteTransaction();
+                var transaction = jobStorage.CreateWriteTransaction();
                 Assert.NotNull(transaction);
             });
         }
@@ -239,12 +235,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void FetchNextJob_DelegatesItsExecution_ToTheQueue()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var token = new CancellationToken();
                 var queues = new[] {"default"};
 
-                connection.FetchNextJob(queues, token);
+                jobStorage.FetchNextJob(queues, token);
 
                 _queue.Verify(x => x.Dequeue(queues, token));
             });
@@ -254,14 +250,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void FetchNextJob_Throws_IfMultipleProvidersResolved()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var token = new CancellationToken();
                 var anotherProvider = new Mock<IPersistentJobQueueProvider>();
                 _providers.Add(anotherProvider.Object, new[] {"critical"});
 
                 Assert.Throws<InvalidOperationException>(
-                    () => connection.FetchNextJob(new[] {"critical", "default"}, token));
+                    () => jobStorage.FetchNextJob(new[] {"critical", "default"}, token));
             });
         }
 
@@ -269,22 +265,18 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void GetAllEntriesFromHash_ReturnsAllKeysAndTheirValues()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`, `Value`)
-values (@key, @field, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "some-hash", field = "Key1", value = "Value1"},
-                    new {key = "some-hash", field = "Key2", value = "Value2"},
-                    new {key = "another-hash", field = "Key3", value = "Value3"}
+                    new _Hash {Key = "some-hash", Field = "Key1", Value = "Value1"},
+                    new _Hash {Key = "some-hash", Field = "Key2", Value = "Value2"},
+                    new _Hash {Key = "another-hash", Field = "Key3", Value = "Value3"}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetAllEntriesFromHash("some-hash");
+                session.Clear(); var result = jobStorage.GetAllEntriesFromHash("some-hash");
 
                 // Assert
                 Assert.NotNull(result);
@@ -298,9 +290,9 @@ values (@key, @field, @value)";
         [CleanDatabase]
         public void GetAllEntriesFromHash_ReturnsNull_IfHashDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetAllEntriesFromHash("some-hash");
+                var result = jobStorage.GetAllEntriesFromHash("some-hash");
                 Assert.Null(result);
             });
         }
@@ -309,30 +301,27 @@ values (@key, @field, @value)";
         [CleanDatabase]
         public void GetAllEntriesFromHash_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
-                Assert.Throws<ArgumentNullException>(() => connection.GetAllEntriesFromHash(null)));
+            UseJobStorageConnection(jobStorage =>
+                Assert.Throws<ArgumentNullException>(() => jobStorage.GetAllEntriesFromHash(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void GetAllItemsFromList_ReturnsAllItems_FromAGivenList()
         {
-            const string arrangeSql = @"
-insert into List (`Key`, Value)
-values (@key, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "list-1", value = "1"},
-                    new {key = "list-2", value = "2"},
-                    new {key = "list-1", value = "3"}
+                    new _List {Key = "list-1", Value = "1"},
+                    new _List {Key = "list-2", Value = "2"},
+                    new _List {Key = "list-1", Value = "3"}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetAllItemsFromList("list-1");
+                session.Clear();
+                var result = jobStorage.GetAllItemsFromList("list-1");
 
                 // Assert
                 Assert.Equal(new[] {"3", "1"}, result);
@@ -343,9 +332,9 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetAllItemsFromList_ReturnsAnEmptyList_WhenListDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetAllItemsFromList("my-list");
+                var result = jobStorage.GetAllItemsFromList("my-list");
                 Assert.Empty(result);
             });
         }
@@ -354,10 +343,10 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetAllItemsFromList_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetAllItemsFromList(null));
+                    () => jobStorage.GetAllItemsFromList(null));
             });
         }
 
@@ -367,20 +356,21 @@ values (@key, @value)";
         {
             const string arrangeSql = @"
 insert into `Set` (`Key`, Score, Value)
-values (@key, 0.0, @value)";
+values (@Key, 0.0, @Value)";
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "some-set", value = "1"},
-                    new {key = "some-set", value = "2"},
-                    new {key = "another-set", value = "3"}
+                    new _Set {Key = "some-set", Value = "1"},
+                    new _Set {Key = "some-set", Value = "2"},
+                    new _Set {Key = "another-set", Value = "3"}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetAllItemsFromSet("some-set");
+                session.Clear();
+                var result = jobStorage.GetAllItemsFromSet("some-set");
 
                 // Assert
                 Assert.Equal(2, result.Count);
@@ -393,9 +383,9 @@ values (@key, 0.0, @value)";
         [CleanDatabase]
         public void GetAllItemsFromSet_ReturnsEmptyCollection_WhenKeyDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetAllItemsFromSet("some-set");
+                var result = jobStorage.GetAllItemsFromSet("some-set");
 
                 Assert.NotNull(result);
                 Assert.Equal(0, result.Count);
@@ -406,29 +396,27 @@ values (@key, 0.0, @value)";
         [CleanDatabase]
         public void GetAllItemsFromSet_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
-                Assert.Throws<ArgumentNullException>(() => connection.GetAllItemsFromSet(null)));
+            UseJobStorageConnection(jobStorage =>
+                Assert.Throws<ArgumentNullException>(() => jobStorage.GetAllItemsFromSet(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void GetCounter_IncludesValues_FromCounterAggregateTable()
         {
-            const string arrangeSql = @"
-insert into AggregatedCounter (`Key`, `Value`)
-values (@key, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "counter-1", value = 12},
-                    new {key = "counter-2", value = 15}
+                    new _AggregatedCounter {Key = "counter-1", Value = 12},
+                    new _AggregatedCounter {Key = "counter-2", Value = 15}
                 });
-
+                ;
+                session.Flush();
                 // Act
-                var result = connection.GetCounter("counter-1");
+                session.Clear();
+                var result = jobStorage.GetCounter("counter-1");
 
                 Assert.Equal(12, result);
             });
@@ -438,22 +426,19 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetCounter_ReturnsSumOfValues_InCounterTable()
         {
-            const string arrangeSql = @"
-insert into Counter (`Key`, `Value`)
-values (@key, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "counter-1", value = 1},
-                    new {key = "counter-2", value = 1},
-                    new {key = "counter-1", value = 1}
+                    new _Counter {Key = "counter-1", Value = 1},
+                    new _Counter {Key = "counter-2", Value = 1},
+                    new _Counter {Key = "counter-1", Value = 1}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetCounter("counter-1");
+                session.Clear();
+                var result = jobStorage.GetCounter("counter-1");
 
                 // Assert
                 Assert.Equal(2, result);
@@ -464,9 +449,9 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetCounter_ReturnsZero_WhenKeyDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetCounter("my-counter");
+                var result = jobStorage.GetCounter("my-counter");
                 Assert.Equal(0, result);
             });
         }
@@ -476,10 +461,10 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetCounter_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetCounter(null));
+                    () => jobStorage.GetCounter(null));
             });
         }
 
@@ -487,10 +472,10 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ReturnsNull_WhenTheKeyDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetFirstByLowestScoreFromSet(
-                    "key", 0, 1);
+                var result = jobStorage.GetFirstByLowestScoreFromSet(
+                    "Key", 0, 1);
 
                 Assert.Null(result);
             });
@@ -500,15 +485,15 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ReturnsTheValueWithTheLowestScore()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Insert(new _Set {Key = "key", Score = 1, Value = "1.0"});
-                sql.Insert(new _Set {Key = "key", Score = -1, Value = "-1.0"});
-                sql.Insert(new _Set {Key = "key", Score = -5, Value = "-5.0"});
-                sql.Insert(new _Set {Key = "another-key", Score = -2, Value = "-2.0"});
-                sql.Flush();
-
-                var result = connection.GetFirstByLowestScoreFromSet("key", -1.0, 3.0);
+                session.Insert(new _Set {Key = "Key", Score = 1, Value = "1.0"});
+                session.Insert(new _Set {Key = "Key", Score = -1, Value = "-1.0"});
+                session.Insert(new _Set {Key = "Key", Score = -5, Value = "-5.0"});
+                session.Insert(new _Set {Key = "another-Key", Score = -2, Value = "-2.0"});
+                session.Flush();
+                session.Clear();
+                var result = jobStorage.GetFirstByLowestScoreFromSet("Key", -1.0, 3.0);
 
                 Assert.Equal("-1.0", result);
             });
@@ -518,20 +503,20 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ThrowsAnException_ToScoreIsLowerThanFromScore()
         {
-            UseJobStorageConnection(connection => Assert.Throws<ArgumentException>(
-                () => connection.GetFirstByLowestScoreFromSet("key", 0, -1)));
+            UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentException>(
+                () => jobStorage.GetFirstByLowestScoreFromSet("Key", 0, -1)));
         }
 
         [Fact]
         [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetFirstByLowestScoreFromSet(null, 0, 1));
+                    () => jobStorage.GetFirstByLowestScoreFromSet(null, 0, 1));
 
-                Assert.Equal("key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName);
             });
         }
 
@@ -541,20 +526,20 @@ values (@key, @value)";
         {
             const string arrangeSql = @"
 insert into Hash (`Key`, `Field`)
-values (@key, @field)";
+values (@Key, @Field)";
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "hash-1", field = "field-1"},
-                    new {key = "hash-1", field = "field-2"},
-                    new {key = "hash-2", field = "field-1"}
+                    new _Hash {Key = "hash-1", Field = "Field-1"},
+                    new _Hash {Key = "hash-1", Field = "Field-2"},
+                    new _Hash {Key = "hash-2", Field = "Field-1"}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetHashCount("hash-1");
+                session.Clear(); var result = jobStorage.GetHashCount("hash-1");
 
                 // Assert
                 Assert.Equal(2, result);
@@ -565,9 +550,9 @@ values (@key, @field)";
         [CleanDatabase]
         public void GetHashCount_ReturnsZero_WhenKeyDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetHashCount("my-hash");
+                var result = jobStorage.GetHashCount("my-hash");
                 Assert.Equal(0, result);
             });
         }
@@ -576,28 +561,30 @@ values (@key, @field)";
         [CleanDatabase]
         public void GetHashCount_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection => { Assert.Throws<ArgumentNullException>(() => connection.GetHashCount(null)); });
+            UseJobStorageConnection(jobStorage =>
+            {
+                Assert.Throws<ArgumentNullException>(() => jobStorage.GetHashCount(null));
+            });
         }
 
         [Fact]
         [CleanDatabase]
         public void GetHashTtl_ReturnsExpirationTimeForHash()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`, `ExpireAt`)
-values (@key, @field, @expireAt)";
+             
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "hash-1", field = "field", expireAt = (DateTime?) DateTime.UtcNow.AddHours(1)},
-                    new {key = "hash-2", field = "field", expireAt = (DateTime?) null}
+                    new _Hash {Key = "hash-1", Field = "Field", ExpireAt = session.Storage.UtcNow.AddHours(1)},
+                    new _Hash {Key = "hash-2", Field = "Field", ExpireAt = null}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetHashTtl("hash-1");
+                session.Clear();
+                var result = jobStorage.GetHashTtl("hash-1");
 
                 // Assert
                 Assert.True(TimeSpan.FromMinutes(59) < result);
@@ -609,9 +596,9 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetHashTtl_ReturnsNegativeValue_WhenHashDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetHashTtl("my-hash");
+                var result = jobStorage.GetHashTtl("my-hash");
                 Assert.True(result < TimeSpan.Zero);
             });
         }
@@ -620,10 +607,10 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetHashTtl_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetHashTtl(null));
+                    () => jobStorage.GetHashTtl(null));
             });
         }
 
@@ -631,7 +618,7 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetJobData_ReturnsJobLoadException_IfThereWasADeserializationException()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 var newJob = new _Job
                 {
@@ -639,10 +626,10 @@ values (@key, @field, @expireAt)";
                     StateName = "Succeeded",
                     Arguments = "['Arguments']"
                 };
-                sql.Insert(newJob);
-                sql.Flush();
-
-                var result = connection.GetJobData(newJob.Id.ToString());
+                session.Insert(newJob);
+                session.Flush();
+                session.Clear();
+                var result = jobStorage.GetJobData(newJob.Id.ToString());
 
                 Assert.NotNull(result.LoadException);
             });
@@ -652,9 +639,9 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetJobData_ReturnsNull_WhenThereIsNoSuchJob()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetJobData("1");
+                var result = jobStorage.GetJobData("1");
                 Assert.Null(result);
             });
         }
@@ -663,7 +650,7 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetJobData_ReturnsResult_WhenJobExists()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 var job = Job.FromExpression(() => SampleMethod("wrong"));
                 var newJob = new _Job
@@ -672,18 +659,19 @@ values (@key, @field, @expireAt)";
                     StateName = "Succeeded",
                     Arguments = "['Arguments']"
                 };
-                sql.Insert(newJob);
-                var jobId = newJob.Id;
+                session.Insert(newJob);
+                session.Flush();
+                var jobId = newJob.Id; session.Clear();
 
-                var result = connection.GetJobData(jobId.ToString());
+                var result = jobStorage.GetJobData(jobId.ToString());
 
                 Assert.NotNull(result);
                 Assert.NotNull(result.Job);
                 Assert.Equal("Succeeded", result.State);
                 Assert.Equal("Arguments", result.Job.Args[0]);
                 Assert.Null(result.LoadException);
-                Assert.True(DateTime.UtcNow.AddMinutes(-1) < result.CreatedAt);
-                Assert.True(result.CreatedAt < DateTime.UtcNow.AddMinutes(1));
+                Assert.True(session.Storage.UtcNow.AddMinutes(-1) < result.CreatedAt);
+                Assert.True(result.CreatedAt < session.Storage.UtcNow.AddMinutes(1));
             });
         }
 
@@ -691,30 +679,27 @@ values (@key, @field, @expireAt)";
         [CleanDatabase]
         public void GetJobData_ThrowsAnException_WhenJobIdIsNull()
         {
-            UseJobStorageConnection(connection => Assert.Throws<ArgumentNullException>(
-                () => connection.GetJobData(null)));
+            UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
+                () => jobStorage.GetJobData(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void GetListCount_ReturnsTheNumberOfListElements()
         {
-            const string arrangeSql = @"
-insert into List (`Key`)
-values (@key)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "list-1"},
-                    new {key = "list-1"},
-                    new {key = "list-2"}
+                    new _List {Key = "list-1"},
+                    new _List {Key = "list-1"},
+                    new _List {Key = "list-2"}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetListCount("list-1");
+                session.Clear();
+                var result = jobStorage.GetListCount("list-1");
 
                 // Assert
                 Assert.Equal(2, result);
@@ -725,9 +710,9 @@ values (@key)";
         [CleanDatabase]
         public void GetListCount_ReturnsZero_WhenListDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetListCount("my-list");
+                var result = jobStorage.GetListCount("my-list");
                 Assert.Equal(0, result);
             });
         }
@@ -736,10 +721,10 @@ values (@key)";
         [CleanDatabase]
         public void GetListCount_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetListCount(null));
+                    () => jobStorage.GetListCount(null));
             });
         }
 
@@ -747,21 +732,17 @@ values (@key)";
         [CleanDatabase]
         public void GetListTtl_ReturnsExpirationTimeForList()
         {
-            const string arrangeSql = @"
-insert into List (`Key`, `ExpireAt`)
-values (@key, @expireAt)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "list-1", expireAt = (DateTime?) DateTime.UtcNow.AddHours(1)},
-                    new {key = "list-2", expireAt = (DateTime?) null}
+                    new _List {Key = "list-1", ExpireAt = session.Storage.UtcNow.AddHours(1)},
+                    new _List {Key = "list-2", ExpireAt = null}
                 });
-
+                session.Flush();
                 // Act
-                var result = connection.GetListTtl("list-1");
+                session.Clear(); var result = jobStorage.GetListTtl("list-1");
 
                 // Assert
                 Assert.True(TimeSpan.FromMinutes(59) < result);
@@ -773,9 +754,9 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetListTtl_ReturnsNegativeValue_WhenListDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetListTtl("my-list");
+                var result = jobStorage.GetListTtl("my-list");
                 Assert.True(result < TimeSpan.Zero);
             });
         }
@@ -784,10 +765,10 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetListTtl_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetListTtl(null));
+                    () => jobStorage.GetListTtl(null));
             });
         }
 
@@ -795,10 +776,10 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetParameter_ReturnsNull_WhenParameterDoesNotExists()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var value = connection.GetJobParameter("1", "hello");
-                Assert.Null(value);
+                var Value = jobStorage.GetJobParameter("1", "hello");
+                Assert.Null(Value);
             });
         }
 
@@ -806,15 +787,15 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetParameter_ReturnsParameterValue_WhenJobExists()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = InsertSingleJob(sql);
-                sql.Insert(new _JobParameter {Job = newJob, Name = "name", Value = "value"});
-                sql.Flush();
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                session.Insert(new _JobParameter {Job = newJob, Name = "name", Value = "Value"});
+                session.Flush();
 
-                var value = connection.GetJobParameter(newJob.Id.ToString(), "name");
+                session.Clear(); var Value = jobStorage.GetJobParameter(newJob.Id.ToString(), "name");
 
-                Assert.Equal("value", value);
+                Assert.Equal("Value", Value);
             });
         }
 
@@ -822,10 +803,10 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetParameter_ThrowsAnException_WhenJobIdIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetJobParameter(null, "hello"));
+                    () => jobStorage.GetJobParameter(null, "hello"));
 
                 Assert.Equal("id", exception.ParamName);
             });
@@ -835,10 +816,10 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetParameter_ThrowsAnException_WhenNameIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetJobParameter("1", null));
+                    () => jobStorage.GetJobParameter("1", null));
 
                 Assert.Equal("name", exception.ParamName);
             });
@@ -848,24 +829,20 @@ values (@key, @expireAt)";
         [CleanDatabase]
         public void GetRangeFromList_ReturnsAllEntries_WithinGivenBounds()
         {
-            const string arrangeSql = @"
-insert into List (`Key`, `Value`)
-values (@key, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "list-1", value = "1"},
-                    new {key = "list-2", value = "2"},
-                    new {key = "list-1", value = "3"},
-                    new {key = "list-1", value = "4"},
-                    new {key = "list-1", value = "5"}
+                    new _List {Key = "list-1", Value = "1"},
+                    new _List {Key = "list-2", Value = "2"},
+                    new _List {Key = "list-1", Value = "3"},
+                    new _List {Key = "list-1", Value = "4"},
+                    new _List {Key = "list-1", Value = "5"}
                 });
-
+session.Flush();
                 // Act
-                var result = connection.GetRangeFromList("list-1", 1, 2);
+                session.Clear(); var result = jobStorage.GetRangeFromList("list-1", 1, 2);
 
                 // Assert
                 Assert.Equal(new[] {"4", "3"}, result);
@@ -876,9 +853,9 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetRangeFromList_ReturnsAnEmptyList_WhenListDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetRangeFromList("my-list", 0, 1);
+                var result = jobStorage.GetRangeFromList("my-list", 0, 1);
                 Assert.Empty(result);
             });
         }
@@ -887,12 +864,12 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetRangeFromList_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetRangeFromList(null, 0, 1));
+                    () => jobStorage.GetRangeFromList(null, 0, 1));
 
-                Assert.Equal("key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName);
             });
         }
 
@@ -900,23 +877,20 @@ values (@key, @value)";
         [CleanDatabase]
         public void GetRangeFromSet_ReturnsPagedElements()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, `Score`)
-values (@Key, @Value, 0.0)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Execute(arrangeSql, new List<dynamic>
+                session.Insert(new List<dynamic>
                 {
-                    new {Key = "set-1", Value = "1"},
-                    new {Key = "set-1", Value = "2"},
-                    new {Key = "set-1", Value = "3"},
-                    new {Key = "set-1", Value = "4"},
-                    new {Key = "set-2", Value = "4"},
-                    new {Key = "set-1", Value = "5"}
+                    new _Set {Key = "set-1", Value = "1"},
+                    new _Set {Key = "set-1", Value = "2"},
+                    new _Set {Key = "set-1", Value = "3"},
+                    new _Set {Key = "set-1", Value = "4"},
+                    new _Set {Key = "set-2", Value = "4"},
+                    new _Set {Key = "set-1", Value = "5"}
                 });
-
-                var result = connection.GetRangeFromSet("set-1", 2, 3);
+                session.Flush();
+                session.Clear();
+                var result = jobStorage.GetRangeFromSet("set-1", 2, 3);
 
                 Assert.Equal(new[] {"3", "4"}, result);
             });
@@ -930,9 +904,9 @@ values (@Key, @Value, 0.0)";
 insert into `Set` (`Key`, `Value`, `Score`)
 values (@Key, @Value, 0.0)";
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Execute(arrangeSql, new List<dynamic>
+                session.Insert(new List<dynamic>
                 {
                     new {Key = "set-1", Value = "1"},
                     new {Key = "set-1", Value = "2"},
@@ -942,9 +916,9 @@ values (@Key, @Value, 0.0)";
                     new {Key = "set-1", Value = "5"},
                     new {Key = "set-2", Value = "2"},
                     new {Key = "set-1", Value = "3"}
-                });
-
-                var result = connection.GetRangeFromSet("set-1", 0, 4);
+                });session.Flush();
+                session.Clear();
+                var result = jobStorage.GetRangeFromSet("set-1", 0, 4);
 
                 Assert.Equal(new[] {"1", "2", "4", "5", "3"}, result);
             });
@@ -954,9 +928,9 @@ values (@Key, @Value, 0.0)";
         [CleanDatabase]
         public void GetRangeFromSet_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                Assert.Throws<ArgumentNullException>(() => connection.GetRangeFromSet(null, 0, 1));
+                Assert.Throws<ArgumentNullException>(() => jobStorage.GetRangeFromSet(null, 0, 1));
             });
         }
 
@@ -966,18 +940,19 @@ values (@Key, @Value, 0.0)";
         {
             const string arrangeSql = @"
 insert into `Set` (`Key`, `Value`, `Score`)
-values (@key, @value, 0.0)";
+values (@Key, @Value, 0.0)";
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Execute(arrangeSql, new List<dynamic>
+                session.Insert(new List<dynamic>
                 {
-                    new {key = "set-1", value = "value-1"},
-                    new {key = "set-2", value = "value-1"},
-                    new {key = "set-1", value = "value-2"}
+                    new {Key = "set-1", Value = "Value-1"},
+                    new {Key = "set-2", Value = "Value-1"},
+                    new {Key = "set-1", Value = "Value-2"}
                 });
-
-                var result = connection.GetSetCount("set-1");
+                session.Flush();
+                session.Clear();
+                var result = jobStorage.GetSetCount("set-1");
 
                 Assert.Equal(2, result);
             });
@@ -987,9 +962,9 @@ values (@key, @value, 0.0)";
         [CleanDatabase]
         public void GetSetCount_ReturnsZero_WhenSetDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetSetCount("my-set");
+                var result = jobStorage.GetSetCount("my-set");
                 Assert.Equal(0, result);
             });
         }
@@ -998,10 +973,10 @@ values (@key, @value, 0.0)";
         [CleanDatabase]
         public void GetSetCount_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 Assert.Throws<ArgumentNullException>(
-                    () => connection.GetSetCount(null));
+                    () => jobStorage.GetSetCount(null));
             });
         }
 
@@ -1011,19 +986,20 @@ values (@key, @value, 0.0)";
         {
             const string arrangeSql = @"
 insert into `Set` (`Key`, `Value`, `ExpireAt`, `Score`)
-values (@key, @value, @expireAt, 0.0)";
+values (@Key, @Value, @ExpireAt, 0.0)";
 
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "set-1", value = "1", expireAt = (DateTime?) DateTime.UtcNow.AddMinutes(60)},
-                    new {key = "set-2", value = "2", expireAt = (DateTime?) null}
+                    new {Key = "set-1", Value = "1", ExpireAt = (DateTime?) session.Storage.UtcNow.AddMinutes(60)},
+                    new {Key = "set-2", Value = "2", ExpireAt = (DateTime?) null}
                 });
-
+                session.Flush();
+                session.Clear();
                 // Act
-                var result = connection.GetSetTtl("set-1");
+                var result = jobStorage.GetSetTtl("set-1");
 
                 // Assert
                 Assert.True(TimeSpan.FromMinutes(59) < result);
@@ -1035,9 +1011,9 @@ values (@key, @value, @expireAt, 0.0)";
         [CleanDatabase]
         public void GetSetTtl_ReturnsNegativeValue_WhenSetDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetSetTtl("my-set");
+                var result = jobStorage.GetSetTtl("my-set");
                 Assert.True(result < TimeSpan.Zero);
             });
         }
@@ -1046,14 +1022,17 @@ values (@key, @value, @expireAt, 0.0)";
         [CleanDatabase]
         public void GetSetTtl_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection => { Assert.Throws<ArgumentNullException>(() => connection.GetSetTtl(null)); });
+            UseJobStorageConnection(jobStorage =>
+            {
+                Assert.Throws<ArgumentNullException>(() => jobStorage.GetSetTtl(null));
+            });
         }
 
         [Fact]
         [CleanDatabase]
         public void GetStateData_ReturnsCorrectData()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 var data = new Dictionary<string, string>
                 {
@@ -1064,31 +1043,32 @@ values (@key, @value, @expireAt, 0.0)";
                     InvocationData = string.Empty,
                     Arguments = string.Empty,
                     StateName = string.Empty,
-                    CreatedAt = sql.Storage.UtcNow
+                    CreatedAt = session.Storage.UtcNow
                 };
-                sql.Insert(newJob);
-                sql.Insert(new _JobState {Job = newJob, Name = "old-state", CreatedAt = sql.Storage.UtcNow});
+                session.Insert(newJob);
+                session.Insert(new _JobState {Job = newJob, Name = "old-state", CreatedAt = session.Storage.UtcNow});
                 var lastState = new _JobState
                 {
                     Job = newJob,
                     Name = "Name",
                     Reason = "Reason",
-                    CreatedAt = sql.Storage.UtcNow,
+                    CreatedAt = session.Storage.UtcNow,
                     Data = JobHelper.ToJson(data)
                 };
-                sql.Insert(lastState);
-                sql.Flush();
+                session.Insert(lastState);
+                session.Flush();
                 newJob.StateName = lastState.Name;
                 newJob.StateReason = lastState.Reason;
                 newJob.StateData = lastState.Data;
-                newJob.LastStateChangedAt = sql.Storage.UtcNow;
-                sql.Update(newJob);
-                sql.Flush();
+                newJob.LastStateChangedAt = session.Storage.UtcNow;
+                session.Update(newJob);
+                session.Flush();
+                session.Clear();
 
 
                 var jobId = newJob.Id;
 
-                var result = connection.GetStateData(jobId.ToString());
+                var result = jobStorage.GetStateData(jobId.ToString());
                 Assert.NotNull(result);
 
                 Assert.Equal("Name", result.Name);
@@ -1101,32 +1081,35 @@ values (@key, @value, @expireAt, 0.0)";
         [CleanDatabase]
         public void GetStateData_ReturnsCorrectData_WhenPropertiesAreCamelcased()
         {
-            const string arrangeSql = @"
-insert into Job (InvocationData, Arguments, StateName, CreatedAt)
-values ('', '', '', UTC_TIMESTAMP());
-select last_insert_id() into @JobId;
-insert into State (JobId, Name, CreatedAt)
-values (@JobId, 'old-state', UTC_TIMESTAMP());
-insert into State (JobId, Name, Reason, Data, CreatedAt)
-values (@JobId, @name, @reason, @data, UTC_TIMESTAMP());
-select last_insert_id() into @StateId;
-update Job set StateId = @StateId;
-select @JobId as Id;";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 var data = new Dictionary<string, string>
                 {
-                    {"key", "Value"}
+                    {"Key", "Value"}
                 };
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                session.Insert(new _JobState {Job = newJob, Name = "old-state", CreatedAt = session.Storage.UtcNow});
+                var jobState = new _JobState
+                {
+                    Job = newJob,
+                    Name = "Name",
+                    Reason = "Reason",
+                    CreatedAt = session.Storage.UtcNow,
+                    Data = JobHelper.ToJson(data)
+                };
+                session.Insert(jobState);
+                session.Flush();
+                newJob.StateName = jobState.Name;
+                newJob.StateReason = jobState.Reason;
+                newJob.StateData = jobState.Data;
+                session.Update(newJob);
+                session.Flush();
+                session.Clear();
 
-                var jobId = (int) sql.Query(
-                        arrangeSql,
-                        new {name = "Name", reason = "Reason", data = JobHelper.ToJson(data)})
-                    .Single()
-                    .Id;
 
-                var result = connection.GetStateData(jobId.ToString());
+                var jobId = newJob.Id;
+
+                var result = jobStorage.GetStateData(jobId.ToString());
                 Assert.NotNull(result);
 
                 Assert.Equal("Value", result.Data["Key"]);
@@ -1137,9 +1120,9 @@ select @JobId as Id;";
         [CleanDatabase]
         public void GetStateData_ReturnsNull_IfThereIsNoSuchState()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetStateData("1");
+                var result = jobStorage.GetStateData("1");
                 Assert.Null(result);
             });
         }
@@ -1149,17 +1132,17 @@ select @JobId as Id;";
         public void GetStateData_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(
-                connection => Assert.Throws<ArgumentNullException>(
-                    () => connection.GetStateData(null)));
+                jobStorage => Assert.Throws<ArgumentNullException>(
+                    () => jobStorage.GetStateData(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void GetValueFromHash_ReturnsNull_WhenHashDoesNotExist()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
-                var result = connection.GetValueFromHash("my-hash", "name");
+                var result = jobStorage.GetValueFromHash("my-hash", "name");
                 Assert.Null(result);
             });
         }
@@ -1168,22 +1151,19 @@ select @JobId as Id;";
         [CleanDatabase]
         public void GetValueFromHash_ReturnsValue_OfAGivenField()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`, `Value`)
-values (@key, @field, @value)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                sql.Execute(arrangeSql, new[]
+                session.Insert(new[]
                 {
-                    new {key = "hash-1", field = "field-1", value = "1"},
-                    new {key = "hash-1", field = "field-2", value = "2"},
-                    new {key = "hash-2", field = "field-1", value = "3"}
+                    new _Hash {Key = "hash-1", Field = "Field-1", Value = "1"},
+                    new _Hash {Key = "hash-1", Field = "Field-2", Value = "2"},
+                    new _Hash {Key = "hash-2", Field = "Field-1", Value = "3"}
                 });
-
+                session.Flush();
+                session.Clear();
                 // Act
-                var result = connection.GetValueFromHash("hash-1", "field-1");
+                var result = jobStorage.GetValueFromHash("hash-1", "Field-1");
 
                 // Assert
                 Assert.Equal("1", result);
@@ -1194,12 +1174,12 @@ values (@key, @field, @value)";
         [CleanDatabase]
         public void GetValueFromHash_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetValueFromHash(null, "name"));
+                    () => jobStorage.GetValueFromHash(null, "name"));
 
-                Assert.Equal("key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName);
             });
         }
 
@@ -1207,10 +1187,10 @@ values (@key, @field, @value)";
         [CleanDatabase]
         public void GetValueFromHash_ThrowsAnException_WhenNameIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.GetValueFromHash("key", null));
+                    () => jobStorage.GetValueFromHash("Key", null));
 
                 Assert.Equal("name", exception.ParamName);
             });
@@ -1220,28 +1200,34 @@ values (@key, @field, @value)";
         [CleanDatabase]
         public void Heartbeat_ThrowsAnException_WhenServerIdIsNull()
         {
-            UseJobStorageConnection(connection => Assert.Throws<ArgumentNullException>(
-                () => connection.Heartbeat(null)));
+            UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
+                () => jobStorage.Heartbeat(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void Heartbeat_UpdatesLastHeartbeat_OfTheServerWithGivenId()
         {
-            const string arrangeSql = @"
-insert into Server (Id, Data, LastHeartbeat)
-values
-('server1', '', '2012-12-12 12:12:12'),
-('server2', '', '2012-12-12 12:12:12')";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Execute(arrangeSql);
-
-                connection.Heartbeat("server1");
-
-                var servers = sql.Query<_Server>()
-                    .ToDictionary(x => x.Id, x => x.LastHeartbeat);
+                session.Insert(new _Server
+                {
+                    Id = "server1",
+                    Data = string.Empty,
+                    LastHeartbeat = new DateTime(2012, 12, 12, 12, 12, 12)
+                });
+                session.Insert(new _Server
+                {
+                    Id = "server2",
+                    Data = string.Empty,
+                    LastHeartbeat = new DateTime(2012, 12, 12, 12, 12, 12)
+                });
+                session.Flush();
+               
+                jobStorage.Heartbeat("server1");
+ session.Clear();
+                var servers = session.Query<_Server>()
+                    .ToDictionary(x => x.Id, x => x.LastHeartbeat.Value);
 
                 Assert.NotEqual(2012, servers["server1"].Year);
                 Assert.Equal(2012, servers["server2"].Year);
@@ -1252,15 +1238,17 @@ values
         [CleanDatabase]
         public void RemoveServer_RemovesAServerRecord()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Insert(new _Server {Id = "Server1", Data = string.Empty, LastHeartbeat = sql.Storage.UtcNow});
-                sql.Insert(new _Server {Id = "Server2", Data = string.Empty, LastHeartbeat = sql.Storage.UtcNow});
-                sql.Flush();
+                session.Insert(
+                    new _Server {Id = "Server1", Data = string.Empty, LastHeartbeat = session.Storage.UtcNow});
+                session.Insert(
+                    new _Server {Id = "Server2", Data = string.Empty, LastHeartbeat = session.Storage.UtcNow});
+                session.Flush();
 
-                connection.RemoveServer("Server1");
-
-                var server = sql.Query<_Server>().Single();
+                jobStorage.RemoveServer("Server1");
+                session.Clear();
+                var server = session.Query<_Server>().Single();
                 Assert.NotEqual("Server1", server.Id, StringComparer.OrdinalIgnoreCase);
             });
         }
@@ -1269,31 +1257,26 @@ values
         [CleanDatabase]
         public void RemoveServer_ThrowsAnException_WhenServerIdIsNull()
         {
-            UseJobStorageConnection(connection => Assert.Throws<ArgumentNullException>(
-                () => connection.RemoveServer(null)));
+            UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
+                () => jobStorage.RemoveServer(null)));
         }
 
         [Fact]
         [CleanDatabase]
         public void RemoveTimedOutServers_DoItsWorkPerfectly()
         {
-            const string arrangeSql = @"
-insert into Server (Id, Data, LastHeartbeat)
-values (@id, '', @heartbeat)";
-
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                sql.Execute(
-                    arrangeSql,
+                session.Insert(
                     new[]
                     {
-                        new {id = "server1", heartbeat = DateTime.UtcNow.AddDays(-1)},
-                        new {id = "server2", heartbeat = DateTime.UtcNow.AddHours(-12)}
+                        new _Server {Id = "server1", LastHeartbeat = session.Storage.UtcNow.AddDays(-1)},
+                        new _Server {Id = "server2", LastHeartbeat = session.Storage.UtcNow.AddHours(-12)}
                     });
-
-                connection.RemoveTimedOutServers(TimeSpan.FromHours(15));
-
-                var liveServer = sql.Query<_Server>().Single();
+                session.Flush();
+                jobStorage.RemoveTimedOutServers(TimeSpan.FromHours(15));
+                session.Clear();
+                var liveServer = session.Query<_Server>().Single();
                 Assert.Equal("server2", liveServer.Id);
             });
         }
@@ -1302,22 +1285,23 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void RemoveTimedOutServers_ThrowsAnException_WhenTimeOutIsNegative()
         {
-            UseJobStorageConnection(connection => Assert.Throws<ArgumentException>(
-                () => connection.RemoveTimedOutServers(TimeSpan.FromMinutes(-5))));
+            UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentException>(
+                () => jobStorage.RemoveTimedOutServers(TimeSpan.FromMinutes(-5))));
         }
 
         [Fact]
         [CleanDatabase]
         public void SetParameter_CanAcceptNulls_AsValues()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = InsertSingleJob(sql);
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
+                session.Flush();
+                session.Clear();
+                jobStorage.SetJobParameter(jobId, "Name", null);
 
-                connection.SetJobParameter(jobId, "Name", null);
-
-                var parameter = sql.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
+                var parameter = session.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
 
                 Assert.Equal(null, parameter.Value);
             });
@@ -1327,10 +1311,10 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetParameter_ThrowsAnException_WhenJobIdIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.SetJobParameter(null, "name", "value"));
+                    () => jobStorage.SetJobParameter(null, "name", "Value"));
 
                 Assert.Equal("id", exception.ParamName);
             });
@@ -1340,10 +1324,10 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetParameter_ThrowsAnException_WhenNameIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.SetJobParameter("1", null, "value"));
+                    () => jobStorage.SetJobParameter("1", null, "Value"));
 
                 Assert.Equal("name", exception.ParamName);
             });
@@ -1353,15 +1337,16 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetParameter_UpdatesValue_WhenParameterWithTheGivenName_AlreadyExists()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = InsertSingleJob(sql);
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
 
-                connection.SetJobParameter(jobId, "Name", "Value");
-                connection.SetJobParameter(jobId, "Name", "AnotherValue");
-
-                var parameter = sql.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
+                jobStorage.SetJobParameter(jobId, "Name", "Value");
+                jobStorage.SetJobParameter(jobId, "Name", "AnotherValue");
+                session.Flush();
+                session.Clear();
+                var parameter = session.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
 
                 Assert.Equal("AnotherValue", parameter.Value);
             });
@@ -1371,15 +1356,16 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetParameters_CreatesNewParameter_WhenParameterWithTheGivenNameDoesNotExists()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = InsertSingleJob(sql);
+                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
 
                 var jobId = newJob.Id.ToString();
 
-                connection.SetJobParameter(jobId, "Name", "Value");
-
-                var parameter = sql.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
+                jobStorage.SetJobParameter(jobId, "Name", "Value");
+                session.Flush();
+                session.Clear();
+                var parameter = session.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
 
                 Assert.Equal("Value", parameter.Value);
             });
@@ -1389,18 +1375,17 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetRangeInHash_MergesAllRecords()
         {
-            UseJobStorageConnectionWithSession((sql, connection) =>
+            UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                connection.SetRangeInHash("some-hash", new Dictionary<string, string>
+                jobStorage.SetRangeInHash("some-hash", new Dictionary<string, string>
                 {
                     {"Key1", "Value1"},
                     {"Key2", "Value2"}
                 });
-
-                var result = sql.Query(
-                        "select * from Hash where `Key` = @key",
-                        new {key = "some-hash"})
-                    .ToDictionary(x => (string) x.Field, x => (string) x.Value);
+                session.Flush();
+                session.Clear();
+                var result = session.Query<_Hash>().Where(i => i.Key == "some-hash")
+                    .ToDictionary(x => x.Field, x => x.Value);
 
                 Assert.Equal("Value1", result["Key1"]);
                 Assert.Equal("Value2", result["Key2"]);
@@ -1411,12 +1396,12 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.SetRangeInHash(null, new Dictionary<string, string>()));
+                    () => jobStorage.SetRangeInHash(null, new Dictionary<string, string>()));
 
-                Assert.Equal("key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName);
             });
         }
 
@@ -1424,10 +1409,10 @@ values (@id, '', @heartbeat)";
         [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyValuePairsArgumentIsNull()
         {
-            UseJobStorageConnection(connection =>
+            UseJobStorageConnection(jobStorage =>
             {
                 var exception = Assert.Throws<ArgumentNullException>(
-                    () => connection.SetRangeInHash("some-hash", null));
+                    () => jobStorage.SetRangeInHash("some-hash", null));
 
                 Assert.Equal("keyValuePairs", exception.ParamName);
             });

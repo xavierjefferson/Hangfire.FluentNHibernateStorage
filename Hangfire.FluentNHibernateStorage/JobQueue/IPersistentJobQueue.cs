@@ -6,6 +6,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     public interface IPersistentJobQueue
     {
         IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken);
-        void Enqueue(IWrappedSession session, string queue, string jobId);
+        void Enqueue(SessionWrapper session, string queue, string jobId);
     }
 }

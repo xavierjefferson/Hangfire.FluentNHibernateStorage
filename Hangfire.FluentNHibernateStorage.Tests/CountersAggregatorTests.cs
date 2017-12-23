@@ -42,7 +42,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
 
                 // Assert
                 Assert.Equal(1, connection.Query<_AggregatedCounter>().Count());
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
     }
 }

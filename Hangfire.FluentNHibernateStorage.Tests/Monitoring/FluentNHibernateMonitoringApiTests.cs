@@ -70,7 +70,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
                 connection.Clear();
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(expectedStatsDeletedCount, result.Deleted);
         }
@@ -92,7 +92,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                     CreatedAt = connection.Storage.UtcNow
                 });
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(expectedEnqueuedCount, result.Enqueued);
         }
@@ -119,7 +119,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
 
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            });
 
             Assert.Equal(expectedFailedCount, result.Failed);
         }
@@ -143,7 +143,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
 
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            });
 
             Assert.Equal(expectedProcessingCount, result.Processing);
         }
@@ -172,7 +172,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
                 connection.Clear();
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(expectedRecurringCount, result.Recurring);
         }
@@ -199,7 +199,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Flush();
 
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(expectedScheduledCount, result.Scheduled);
         }
@@ -219,7 +219,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 }
                 connection.Flush();
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(expectedServersCount, result.Servers);
         }
@@ -237,7 +237,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Insert(new _AggregatedCounter {Key = "stats:succeeded", Value = 10});
                 connection.Flush();
                 result = _sut.GetStatistics();
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+            });
 
             Assert.Equal(expectedStatsSucceededCount, result.Succeeded);
         }
@@ -262,7 +262,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 var jobId = newJob.Id;
 
                 result = _sut.JobDetails(jobId.ToString());
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(_createdAt.ToString("yyyy-MM-dd hh:mm:ss"),
                 result.CreatedAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
@@ -301,7 +301,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 var jobId = newJob.Id;
 
                 result = _sut.JobDetails(jobId.ToString());
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(1, result.History.Count);
         }
@@ -327,7 +327,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
 
 
                 result = _sut.JobDetails(jobId.ToString());
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.NotNull(result.Job);
         }
@@ -364,7 +364,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 var jobId = newJob.Id;
 
                 result = _sut.JobDetails(jobId.ToString());
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
 
             Assert.Equal(properties, result.Properties);
         }

@@ -81,7 +81,7 @@ namespace Hangfire.FluentNHibernateStorage
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
 
-        private long DeleteExpirableWithId<T>(IWrappedSession session, DateTime baseDate) where T : IExpirableWithId
+        private long DeleteExpirableWithId<T>(SessionWrapper session, DateTime baseDate) where T : IExpirableWithId
 
         {
             List<int> ids;
@@ -95,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage
 
 
         private void BatchDelete<T>(CancellationToken cancellationToken,
-            Func<IWrappedSession, DateTime, long> deleteFunc)
+            Func<SessionWrapper, DateTime, long> deleteFunc)
 
         {
             var entityName = typeof(T).Name;
@@ -108,10 +108,13 @@ namespace Hangfire.FluentNHibernateStorage
                 try
                 {
                     using (var distributedLock =
-                        new FluentNHibernateStatelessDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
+                        new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
                             cancellationToken).Acquire())
                     {
-                        removedCount = deleteFunc(distributedLock.Session, _storage.UtcNow);
+                        using (var session = _storage.GetSession())
+                        {
+                            removedCount = deleteFunc(session, _storage.UtcNow);
+                        }
                     }
 
                     Logger.InfoFormat("removed records count={0}", removedCount);

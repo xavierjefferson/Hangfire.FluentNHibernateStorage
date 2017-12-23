@@ -95,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage
                 IdParameterName);
         }
 
-        public static void UpsertEntity<T>(this IWrappedSession session, Expression<Func<T, bool>> matchFunc,
+        public static void UpsertEntity<T>(this SessionWrapper session, Expression<Func<T, bool>> matchFunc,
             Action<T> changeFunc,
             Action<T> keysetAction) where T : new()
         {
@@ -115,7 +115,7 @@ namespace Hangfire.FluentNHibernateStorage
             session.Flush();
         }
 
-        public static long DeleteByInt32Id<T>(this IWrappedSession session, ICollection<int> id) where T : IInt32Id
+        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> id) where T : IInt32Id
         {
             if (!id.Any())
             {
@@ -139,7 +139,7 @@ namespace Hangfire.FluentNHibernateStorage
             return session.CreateQuery(queryString).SetParameterList(IdParameterName, id).ExecuteUpdate();
         }
 
-        public static void DoActionByExpression<T>(this IWrappedSession session, Expression<Func<T, bool>> expr,
+        public static void DoActionByExpression<T>(this SessionWrapper session, Expression<Func<T, bool>> expr,
             Action<T> action)
             where T : IExpirableWithId
         {

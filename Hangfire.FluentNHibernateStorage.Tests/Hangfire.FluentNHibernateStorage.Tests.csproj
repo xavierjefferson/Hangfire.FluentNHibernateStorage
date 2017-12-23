@@ -41,6 +41,7 @@
   <ItemGroup>
     <Compile Include="CountersAggregatorTests.cs" />
     <Compile Include="ExpirationManagerTests.cs" />
+    <Compile Include="FluentNHibernateStorageConnectionTests.cs" />
     <Compile Include="JobQueue\FluentNHibernateFetchedJobTests.cs" />
     <Compile Include="JobQueue\FluentNHibernateJobQueueMonitoringApiTests.cs" />
     <Compile Include="JobQueue\FluentNHibernateJobQueueTests.cs" />

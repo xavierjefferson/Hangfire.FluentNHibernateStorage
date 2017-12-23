@@ -1,15 +1,28 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using System.Linq;
 using NHibernate;
 using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class StatefulSessionWrapper : SessionWrapperBase, IWrappedSession
+    public class SessionWrapper  :IDisposable
     {
         private readonly ISession _session;
+        public FluentNHibernateJobStorage Storage { get; protected set; }
+        public ProviderTypeEnum ProviderType { get; protected set; }
 
-        public StatefulSessionWrapper(ISession session, ProviderTypeEnum type, FluentNHibernateJobStorage storage)
+        public IDbConnection Connection => _session.Connection;
+
+        public void DeleteAll<T>()
+        {
+            ExecuteQuery(string.Format("delete from {0}", typeof(T).Name));
+        }
+        public int ExecuteQuery(string queryString)
+        {
+            return CreateQuery(queryString).ExecuteUpdate();
+        }
+        public SessionWrapper(ISession session, ProviderTypeEnum type, FluentNHibernateJobStorage storage)
         {
             _session = session;
             ProviderType = type;
@@ -37,7 +50,7 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.Query<T>();
         }
 
-        public override IQuery CreateQuery(string queryString)
+        public  IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
         }

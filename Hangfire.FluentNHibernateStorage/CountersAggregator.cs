@@ -86,7 +86,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                         transaction.Commit();
                     }
-                }, FluentNHibernateJobStorageSessionStateEnum.Stateless);
+                });
 
                 if (removedCount >= NumberOfRecordsInSinglePass)
                 {

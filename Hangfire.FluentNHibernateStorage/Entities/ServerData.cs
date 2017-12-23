@@ -2,7 +2,7 @@ using System;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    internal class ServerData
+    public class ServerData
     {
         public int WorkerCount { get; set; }
         public string[] Queues { get; set; }

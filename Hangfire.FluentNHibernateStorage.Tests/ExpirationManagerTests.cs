@@ -22,7 +22,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         private readonly BackgroundProcessContext _context;
         private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
 
-        private static int CreateExpirationEntry(IWrappedSession session, DateTime? expireAt)
+        private static int CreateExpirationEntry(SessionWrapper session, DateTime? expireAt)
         {
             session.DeleteAll<_AggregatedCounter>();
             var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
@@ -31,7 +31,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             return a.Id;
         }
 
-        private static bool IsEntryExpired(IWrappedSession session, int entryId)
+        private static bool IsEntryExpired(SessionWrapper session, int entryId)
         {
             var count = session.Query<_AggregatedCounter>().Count(i => i.Id == entryId);
 
@@ -53,7 +53,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(1));
@@ -71,7 +71,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithNoExpirationTimeSet()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, null);
@@ -89,7 +89,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_AggregatedCounterTable()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 session.Insert(new _AggregatedCounter
@@ -114,7 +114,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_HashTable()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 session.Insert(new _Hash
@@ -146,7 +146,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_JobTable()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 session.Insert(new _Job
@@ -173,7 +173,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_ListTable()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 session.Insert(new _List {Key = "key", ExpireAt = session.Storage.UtcNow.AddMonths(-1)});
@@ -193,7 +193,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_SetTable()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 session.Insert(new _Set
@@ -219,7 +219,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_RemovesOutdatedRecords()
         {
-            using (var session = _storage.GetStatefulSession())
+            using (var session = _storage.GetSession())
             {
                 // Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(-1));

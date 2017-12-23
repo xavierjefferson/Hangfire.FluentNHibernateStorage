@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             public string JobId2 { get; set; }
         }
 
-        private static InsertTwoJobsResult InsertTwoJobs(IWrappedSession session, Action<_Job> action = null)
+        private static InsertTwoJobsResult InsertTwoJobs(SessionWrapper session, Action<_Job> action = null)
         {
             var insertTwoJobsResult = new InsertTwoJobsResult();
 
@@ -49,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             return insertTwoJobsResult;
         }
 
-        public static _Job InsertNewJob(IWrappedSession session, Action<_Job> action = null)
+        public static _Job InsertNewJob(SessionWrapper session, Action<_Job> action = null)
         {
             var newJob = new _Job
             {
@@ -63,21 +63,21 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             return newJob;
         }
 
-        private static _Job GetTestJob(IWrappedSession connection, string jobId)
+        private static _Job GetTestJob(SessionWrapper connection, string jobId)
         {
             return connection.Query<_Job>().Single(i => i.Id == int.Parse(jobId));
         }
 
-        private static void UseSession(Action<IWrappedSession> action)
+        private static void UseSession(Action<SessionWrapper> action)
         {
             using (var storage = ConnectionUtils.GetStorage())
             {
-                action(storage.GetStatefulSession());
+                action(storage.GetSession());
             }
         }
 
         private void Commit(
-            IWrappedSession connection,
+            SessionWrapper connection,
             Action<FluentNHibernateWriteOnlyTransaction> action)
         {
             using (var transaction = new FluentNHibernateWriteOnlyTransaction(connection.Storage))
@@ -181,7 +181,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var job = InsertNewJob(session);
                 Commit(session, x => x.AddToQueue("default", job.Id.ToString()));
                 session.Clear();
-                correctJobQueue.Verify(x => x.Enqueue(It.IsNotNull<IWrappedSession>(), "default", job.Id.ToString()));
+                correctJobQueue.Verify(x => x.Enqueue(It.IsNotNull<SessionWrapper>(), "default", job.Id.ToString()));
             });
         }
 

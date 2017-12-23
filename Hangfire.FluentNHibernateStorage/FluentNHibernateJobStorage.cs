@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -22,8 +23,8 @@ namespace Hangfire.FluentNHibernateStorage
     public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
-
-        private static readonly object mutex = new object();
+        private readonly  object _dateOffsetMutex = new object();
+        private static readonly object SessionFactoryMutex = new object();
         private readonly CountersAggregator _countersAggregator;
 
         private readonly ExpirationManager _expirationManager;
@@ -35,7 +36,7 @@ namespace Hangfire.FluentNHibernateStorage
             new Dictionary<IPersistenceConfigurer, ISessionFactory>();
 
         private TimeSpan _utcOffset = TimeSpan.Zero;
-       
+
 
         public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer)
             : this(persistenceConfigurer, new FluentNHibernateStorageOptions())
@@ -46,20 +47,13 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options) : this(persistenceConfigurer, options,
             InferProviderType(persistenceConfigurer))
         {
-         
         }
 
         internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
             FluentNHibernateStorageOptions options, ProviderTypeEnum type)
         {
-            if (persistenceConfigurer == null)
-            {
-                throw new ArgumentNullException("persistenceConfigurer");
-            }
             Type = type;
-            PersistenceConfigurer = persistenceConfigurer;
-
-
+            PersistenceConfigurer = persistenceConfigurer ?? throw new ArgumentNullException("persistenceConfigurer");
             _options = options ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
@@ -72,7 +66,6 @@ namespace Hangfire.FluentNHibernateStorage
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
 
-
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
         public Func<IPersistenceConfigurer> ConfigurerFunc { get; set; }
@@ -83,7 +76,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             get
             {
-                lock (mutex)
+                lock (_dateOffsetMutex)
                 {
                     var utcNow = DateTime.UtcNow.Add(_utcOffset);
                     return utcNow;
@@ -98,14 +91,28 @@ namespace Hangfire.FluentNHibernateStorage
         public void RefreshUtcOffset()
         {
             Logger.Debug("Refreshing UTC offset");
-            lock (mutex)
+            lock (_dateOffsetMutex)
             {
-
-                using (var session = GetStatefulSession())
+                using (var session = GetSession())
                 {
-                    
-                    var query =
-                        session.CreateQuery(string.Format("select current_timestamp() from {0}", nameof(_Dual)));
+                    IQuery query;
+                    switch (Type)
+                    {
+                        case ProviderTypeEnum.MySQL:
+                            query = session.CreateSqlQuery("select utc_timestamp()");
+                            break;
+                        case ProviderTypeEnum.MsSql2000:
+                        case ProviderTypeEnum.MsSql2005:
+                        case ProviderTypeEnum.MsSql2008:
+                        case ProviderTypeEnum.MsSql2012:
+                            query = session.CreateSqlQuery("select getutcdate()");
+                            break;
+                        default:
+                            query =
+                                session.CreateQuery(string.Format("select current_timestamp() from {0}",
+                                    nameof(_Dual)));
+                            break;
+                    }
                     var stopwatch = new Stopwatch();
                     var current = DateTime.UtcNow;
                     stopwatch.Start();
@@ -120,7 +127,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             try
             {
-                using (var session = GetStatelessSession())
+                using (var session = GetSession())
                 {
                     using (var tx = session.BeginTransaction(System.Data.IsolationLevel.Serializable))
                     {
@@ -150,7 +157,6 @@ namespace Hangfire.FluentNHibernateStorage
 
         private static ProviderTypeEnum InferProviderType(IPersistenceConfigurer config)
         {
-            
             if (config is MsSqlConfiguration)
             {
                 return ProviderTypeEnum.MsSql2000;
@@ -159,9 +165,9 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return ProviderTypeEnum.PostgreSQLStandard;
             }
-            if (config is JetDriverConfiguration)
+            if (config is JetDriverConfiguration  || config is SQLiteConfiguration || config is MsSqlCeConfiguration)
             {
-                throw new ArgumentException("Jet driver is explicitly not supported.");
+                throw new ArgumentException($"{config.GetType().Name} is explicitly not supported.");
             }
             if (config is DB2Configuration)
             {
@@ -171,7 +177,6 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return ProviderTypeEnum.OracleClient9;
             }
-           
             if (config is FirebirdConfiguration)
             {
                 return ProviderTypeEnum.Firebird;
@@ -214,35 +219,29 @@ namespace Hangfire.FluentNHibernateStorage
 
         public IEnumerable ExecuteHqlQuery(string hql)
         {
-            using (var a = GetStatelessSession())
+            using (var session = GetSession())
             {
-                return a.CreateQuery(hql).List();
+                return session.CreateQuery(hql).List();
             }
         }
 
-        internal T UseTransaction<T>(
-            [InstantHandle] Func<IWrappedSession, T> func, IsolationLevel? isolationLevel,
-            FluentNHibernateJobStorageSessionStateEnum state)
+        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func, IsolationLevel? isolationLevel)
         {
             using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
             {
-                var result = UseSession(func,
-                    state);
+                var result = UseSession(func);
                 transaction.Complete();
-
                 return result;
             }
         }
 
-        internal void UseTransaction([InstantHandle] Action<IWrappedSession> action,
-            FluentNHibernateJobStorageSessionStateEnum state)
+        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action)
         {
             UseTransaction(session =>
-                {
-                    action(session);
-                    return true;
-                }, null,
-                state);
+            {
+                action(session);
+                return true;
+            }, null);
         }
 
         private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)
@@ -259,7 +258,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void ResetAll()
         {
-            using (var session = GetStatefulSession() )
+            using (var session = GetSession())
             {
                 session.DeleteAll<_List>();
                 session.DeleteAll<_Hash>();
@@ -276,51 +275,26 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        public void UseSession([InstantHandle] Action<IWrappedSession> action,
-            FluentNHibernateJobStorageSessionStateEnum state)
+        public void UseSession([InstantHandle] Action<SessionWrapper> action)
         {
-            state = FluentNHibernateJobStorageSessionStateEnum.Stateful;
-            switch (state)
+            using (var session = GetSession())
             {
-                case FluentNHibernateJobStorageSessionStateEnum.Stateful:
-                    using (var session = GetStatefulSession())
-                    {
-                        action(session);
-                    }
-                    break;
-                default:
-                    using (var session = GetStatelessSession())
-                    {
-                        action(session);
-                    }
-                    break;
+                action(session);
             }
         }
 
-        public T UseSession<T>([InstantHandle] Func<IWrappedSession, T> func,
-            FluentNHibernateJobStorageSessionStateEnum state)
+        public T UseSession<T>([InstantHandle] Func<SessionWrapper, T> func)
         {
-            state = FluentNHibernateJobStorageSessionStateEnum.Stateful;
-            switch (state)
+            using (var session = GetSession())
             {
-                case FluentNHibernateJobStorageSessionStateEnum.Stateful:
-                    using (var session = GetStatefulSession())
-                    {
-                        var result = func(session);
-                        return result;
-                    }
-                default:
-                    using (var session = GetStatelessSession())
-                    {
-                        var result = func(session);
-                        return result;
-                    }
+                var result = func(session);
+                return result;
             }
         }
 
         private ISessionFactory GetSessionFactory(IPersistenceConfigurer configurer)
         {
-            lock (mutex)
+            lock (SessionFactoryMutex)
             {
                 //SINGLETON!
                 if (_sessionFactories.ContainsKey(configurer) && _sessionFactories[configurer] != null)
@@ -339,34 +313,22 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 
-        public IWrappedSession GetStatefulSession()
+        public SessionWrapper GetSession()
         {
-            lock (mutex)
+            lock (SessionFactoryMutex)
             {
                 if (_options.PrepareSchemaIfNecessary)
                 {
                     TryBuildSchema();
                 }
             }
-            return new StatefulSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type, this);
+            return new SessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type, this);
         }
 
-        public IWrappedSession GetStatelessSession()
-        {
-            lock (mutex)
-            {
-                if (_options.PrepareSchemaIfNecessary)
-                {
-                    TryBuildSchema();
-                }
-            }
-            return new StatelessSessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenStatelessSession(), Type,
-                this);
-        }
 
         private void TryBuildSchema()
         {
-            lock (mutex)
+            lock (SessionFactoryMutex)
             {
                 Logger.Info("Start installing Hangfire SQL object check...");
                 Fluently.Configure()

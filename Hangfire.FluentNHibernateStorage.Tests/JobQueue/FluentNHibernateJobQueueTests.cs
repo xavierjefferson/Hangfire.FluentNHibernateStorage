@@ -79,7 +79,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 var jobInQueue = session.Query<_JobQueue>().SingleOrDefault();
                 Assert.Null(jobInQueue);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -105,7 +105,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 // Assert
                 Assert.Equal(newJob.Id.ToString(), payload.JobId);
                 Assert.Equal("default", payload.Queue);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -132,7 +132,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 // Assert
                 Assert.NotEmpty(payload.JobId);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -170,7 +170,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 Assert.NotNull(@default.JobId);
                 Assert.Equal("default", @default.Queue);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -195,7 +195,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     () => queue.Dequeue(
                         DefaultQueues,
                         CreateTimingOutCancellationToken()));
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -232,7 +232,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     .Single();
 
                 Assert.Null(otherJobFetchedAt);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -247,7 +247,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     () => queue.Dequeue(new string[0], CreateTimingOutCancellationToken()));
 
                 Assert.Equal("queues", exception.ParamName);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -262,7 +262,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     () => queue.Dequeue(null, CreateTimingOutCancellationToken()));
 
                 Assert.Equal("queues", exception.ParamName);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -276,7 +276,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 Assert.Throws<OperationCanceledException>(
                     () => queue.Dequeue(DefaultQueues, cts.Token));
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -291,7 +291,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 Assert.Throws<OperationCanceledException>(
                     () => queue.Dequeue(DefaultQueues, cts.Token));
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
 
         [Fact]
@@ -313,7 +313,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                 Assert.Equal(newJob.Id, record.Job.Id);
                 Assert.Equal("default", record.Queue);
                 Assert.Null(record.FetchedAt);
-            }, FluentNHibernateJobStorageSessionStateEnum.Stateful);
+            });
         }
     }
 }

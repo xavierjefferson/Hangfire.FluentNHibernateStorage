@@ -15,8 +15,8 @@ namespace Hangfire.FluentNHibernateStorage
 
 
         //transactional command queue.
-        private readonly Queue<Action<IWrappedSession>> _commandQueue
-            = new Queue<Action<IWrappedSession>>();
+        private readonly Queue<Action<SessionWrapper>> _commandQueue
+            = new Queue<Action<SessionWrapper>>();
 
         private readonly FluentNHibernateJobStorage _storage;
 
@@ -25,7 +25,7 @@ namespace Hangfire.FluentNHibernateStorage
             _storage = storage ?? throw new ArgumentNullException("storage");
         }
 
-        private void SetExpireAt<T>(string key, DateTime? expire, IWrappedSession session) where T : IExpirableWithKey
+        private void SetExpireAt<T>(string key, DateTime? expire, SessionWrapper session) where T : IExpirableWithKey
         {
             var queryString = SQLHelper.SetExpireStatementDictionary[typeof(T)];
             session.CreateQuery(queryString)
@@ -35,19 +35,21 @@ namespace Hangfire.FluentNHibernateStorage
             session.Flush();
         }
 
-        private void DeleteByKey<T>(string key, IWrappedSession session) where T : IExpirableWithKey
+        private void DeleteByKey<T>(string key, SessionWrapper session) where T : IExpirableWithKey
         {
             session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)])
                 .SetParameter(SQLHelper.ValueParameterName, key)
-                .ExecuteUpdate(); session.Flush();
+                .ExecuteUpdate();
+            session.Flush();
         }
 
-        private void DeleteByKeyValue<T>(string key, string value, IWrappedSession session) where T : IExpirableWithKey
+        private void DeleteByKeyValue<T>(string key, string value, SessionWrapper session) where T : IExpirableWithKey
         {
             session.CreateQuery(SQLHelper.DeleteByKeyValueStatementlDictionary[typeof(T)])
                 .SetParameter(SQLHelper.ValueParameterName, key)
                 .SetParameter(SQLHelper.ValueParameter2Name, value)
-                .ExecuteUpdate(); session.Flush();
+                .ExecuteUpdate();
+            session.Flush();
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
@@ -361,17 +363,16 @@ namespace Hangfire.FluentNHibernateStorage
         public override void Commit()
         {
             _storage.UseTransaction(session =>
+            {
+                foreach (var command in _commandQueue)
                 {
-                    foreach (var command in _commandQueue)
-                    {
-                        command(session);
-                        session.Flush();
-                    }
-                },
-                FluentNHibernateJobStorageSessionStateEnum.Stateful);
+                    command(session);
+                    session.Flush();
+                }
+            });
         }
 
-        internal void QueueCommand(Action<IWrappedSession> action)
+        internal void QueueCommand(Action<SessionWrapper> action)
         {
             _commandQueue.Enqueue(action);
         }
