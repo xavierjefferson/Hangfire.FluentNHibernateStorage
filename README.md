@@ -6,13 +6,36 @@ FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fir
 This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  Firebird is also an option.  Though FluentNHibernate supports SQLite, MS Access (Jet), and SQL Server Compact Edition, none of these proved to work, and there's no plan to support them.
 
 ## Installation
- 
+
 
 Run the following command in the NuGet Package Manager console to install Hangfire.FluentNHibernateStorage:
 
 ```
 Install-Package Hangfire.FluentNHibernateStorage
 ```
+
+For the use of any database other than SQL Server, you must ALSO install an appropriate driver package:
+
+### For MySQL:
+```
+Install-Package MySql.Data
+```
+
+### For PostgreSQL:
+```
+Install-Package Npgsql
+```
+
+### For Oracle:
+```
+Install-Package Oracle.ManagedDataAccess
+```
+
+### For Firebird:
+```
+Install-Package FirebirdSql.Data.FirebirdClient
+```
+
 
 ## Usage
 ```
