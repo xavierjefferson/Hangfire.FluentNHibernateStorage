@@ -3,7 +3,7 @@
 
 FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
 
-This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  I've added hooks for the serverless databases, which are MS SQL Compact Edition, SQLite, and Jet (Access), but as the SQLite implementation quickly falls on its face, I wouldn't advise use of any of these three.
+This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  Firebird is also an option.  Though FluentNHibernate supports SQLite, MS Access (Jet), and SQL Server Compact Edition, none of these proved to work, and there's no plan to support them.
 
 ## Installation
  
@@ -42,7 +42,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             };
 
             //THIS SECTION GETS THE STORAGE PROVIDER
-            var PersistenceConfigurerType = PersistenceConfigurerEnum.MsSql2012;
+            var PersistenceConfigurerType = ProviderTypeEnum.MsSql2012;
             var connectionString = ConfigurationManager.ConnectionStrings["someConnectionString"].ConnectionString;
             var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString, options);
 
