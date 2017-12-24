@@ -17,6 +17,8 @@
         MsSql2008 = 13,
         MsSql2012 = 14,
         MsSql2005 = 15,
-        MsSql2000 = 16
+        MsSql2000 = 16,
+        OracleClient10Managed = 17,
+        OracleClient9Managed = 18,
     }
 }

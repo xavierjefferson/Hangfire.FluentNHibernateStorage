@@ -98,6 +98,13 @@ namespace Hangfire.FluentNHibernateStorage
                     IQuery query;
                     switch (Type)
                     {
+                        case ProviderTypeEnum.OracleClient10Managed:
+                        case ProviderTypeEnum.OracleClient9Managed:
+
+                        case ProviderTypeEnum.OracleClient10:
+                        case ProviderTypeEnum.OracleClient9:
+                            query = session.CreateSqlQuery("select systimestamp at time zone 'UTC' from dual");
+                            break;
                         case ProviderTypeEnum.PostgreSQLStandard:
                         case ProviderTypeEnum.PostgreSQL81:
                         case ProviderTypeEnum.PostgreSQL82:

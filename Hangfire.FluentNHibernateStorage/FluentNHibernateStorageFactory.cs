@@ -1,16 +1,17 @@
 ﻿using System;
 using FluentNHibernate.Cfg.Db;
+using NHibernate.Driver;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     public sealed class FluentNHibernateStorageFactory
     {
-        private static IPersistenceConfigurer ConfigureProvider<T, U>(Func<PersistenceConfiguration<T, U>> createFunc,
+        private static T ConfigureProvider<T, U>(Func<PersistenceConfiguration<T, U>> createFunc,
             string connectionString, FluentNHibernateStorageOptions options) where T : PersistenceConfiguration<T, U>
             where U : ConnectionStringBuilder, new()
         {
             var provider = createFunc().ConnectionString(connectionString);
-
+            
             if (!string.IsNullOrWhiteSpace(options.DefaultSchema))
             {
                 provider.DefaultSchema(options.DefaultSchema);
@@ -37,11 +38,17 @@ namespace Hangfire.FluentNHibernateStorage
             IPersistenceConfigurer configurer;
             switch (providerType)
             {
- 
+                case ProviderTypeEnum.OracleClient10Managed:
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options).Driver<OracleManagedDataClientDriver>();
+
+                    break;
+                case ProviderTypeEnum.OracleClient9Managed:
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options).Driver<OracleManagedDataClientDriver>();
+                    break;
 
                 case ProviderTypeEnum.OracleClient10:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
-
+                    
                     break;
                 case ProviderTypeEnum.OracleClient9:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options);
