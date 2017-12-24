@@ -98,6 +98,11 @@ namespace Hangfire.FluentNHibernateStorage
                     IQuery query;
                     switch (Type)
                     {
+                        case ProviderTypeEnum.PostgreSQLStandard:
+                        case ProviderTypeEnum.PostgreSQL81:
+                        case ProviderTypeEnum.PostgreSQL82:
+                            query = session.CreateSqlQuery("SELECT NOW() at time zone 'utc'");
+                            break;
                         case ProviderTypeEnum.MySQL:
                             query = session.CreateSqlQuery("select utc_timestamp()");
                             break;
