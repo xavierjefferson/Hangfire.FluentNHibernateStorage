@@ -3,7 +3,7 @@
 
 FluentNHibernate storage implementation of [Hangfire](http://hangfire.io/) - fire-and-forget, delayed and recurring tasks runner for .NET. Scalable and reliable background job runner. Supports multiple servers, CPU and I/O intensive, long-running and short-running jobs.
 
-This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, and DB2.  Firebird is also an option.  Though FluentNHibernate supports SQLite, MS Access (Jet), and SQL Server Compact Edition, none of these proved to work, and there's no plan to support them.
+This implementation supports Hangfire storage with intended primary support on MS SQL Server, MySQL, PostgreSQL, Oracle, Firebird, and DB/2.  Though FluentNHibernate supports SQLite, MS Access (Jet), and SQL Server Compact Edition, none of these proved to work, and there's no plan to support them.
 
 ## Installation
 
@@ -14,7 +14,7 @@ Run the following command in the NuGet Package Manager console to install Hangfi
 Install-Package Hangfire.FluentNHibernateStorage
 ```
 
-For the use of any database other than SQL Server, you must ALSO install an appropriate driver package:
+IMPORTANT!  For the use of any database other than SQL Server, you must also install an appropriate driver package:
 
 ### For MySQL:
 ```
@@ -26,7 +26,7 @@ Install-Package MySql.Data
 Install-Package Npgsql
 ```
 
-### For Oracle:
+### For Oracle (with managed provider):
 ```
 Install-Package Oracle.ManagedDataAccess
 ```

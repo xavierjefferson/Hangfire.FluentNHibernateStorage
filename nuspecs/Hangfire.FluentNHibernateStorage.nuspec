@@ -3,15 +3,15 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJ</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
     <projectUrl>https://github.com/xavierjefferson/Hangfire.FluentNHibernateStorage</projectUrl>
     <!--<iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>-->
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>A Hangfire storage provider for SQL Server, MySQL, DB/2, Postgres, and Firebird</description>
-    <releaseNotes>Initial release</releaseNotes>
+    <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, Postgres, and Firebird</description>
+    <releaseNotes>Adopt proper db server clock synchronization for PostgreSQL and Oracle.  Added factory method hooks and enum values to allow use of Oracle managed providers.</releaseNotes>
     <copyright>Copyright © 2017 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
     <dependencies>
