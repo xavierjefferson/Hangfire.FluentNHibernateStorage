@@ -7,7 +7,7 @@ using Hangfire.Server;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class CountersAggregator : IBackgroundProcess
+    public class CountersAggregator : IBackgroundProcess, IServerComponent
     {
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
@@ -25,17 +25,12 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(BackgroundProcessContext context)
         {
-            GetValue(context.CancellationToken);
+           Execute(context.CancellationToken);
         }
 
         public void Execute(CancellationToken cancellationToken)
         {
             var token = cancellationToken;
-            GetValue(token);
-        }
-
-        private void GetValue(CancellationToken token)
-        {
             Logger.Info("Aggregating records in 'Counter' table...");
 
             long removedCount = 0;

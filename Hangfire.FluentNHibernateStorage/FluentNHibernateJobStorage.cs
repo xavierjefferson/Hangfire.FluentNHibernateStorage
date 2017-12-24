@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -23,9 +22,9 @@ namespace Hangfire.FluentNHibernateStorage
     public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
-        private readonly  object _dateOffsetMutex = new object();
         private static readonly object SessionFactoryMutex = new object();
         private readonly CountersAggregator _countersAggregator;
+        private readonly object _dateOffsetMutex = new object();
 
         private readonly ExpirationManager _expirationManager;
         private readonly FluentNHibernateStorageOptions _options;
@@ -177,7 +176,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return ProviderTypeEnum.PostgreSQLStandard;
             }
-            if (config is JetDriverConfiguration  || config is SQLiteConfiguration || config is MsSqlCeConfiguration)
+            if (config is JetDriverConfiguration || config is SQLiteConfiguration || config is MsSqlCeConfiguration)
             {
                 throw new ArgumentException($"{config.GetType().Name} is explicitly not supported.");
             }
@@ -204,6 +203,12 @@ namespace Hangfire.FluentNHibernateStorage
                     new FluentNHibernateJobQueueProvider(this, _options));
         }
 
+#pragma warning disable 618
+        public override IEnumerable<IServerComponent> GetComponents()
+#pragma warning restore 618
+        {
+            return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
+        }
 
         public List<IBackgroundProcess> GetBackgroundProcesses()
         {

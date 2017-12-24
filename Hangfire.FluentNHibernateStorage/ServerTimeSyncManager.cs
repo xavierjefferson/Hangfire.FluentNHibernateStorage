@@ -1,9 +1,10 @@
 using System;
+using System.Threading;
 using Hangfire.Server;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class ServerTimeSyncManager : IBackgroundProcess
+    public class ServerTimeSyncManager : IBackgroundProcess, IServerComponent
     {
         private readonly TimeSpan _checkInterval;
         private readonly FluentNHibernateJobStorage _storage;
@@ -16,7 +17,12 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(BackgroundProcessContext context)
         {
-            var cancellationToken = context.CancellationToken;
+            Execute(context.CancellationToken);
+          
+        }
+
+        public void Execute(CancellationToken cancellationToken)
+        {
             _storage.RefreshUtcOffset();
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
