@@ -48,7 +48,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedJobIds_ReturnsCorrectResult()
         {
-            int[] result = null;  List<_Job> jobs = new List<_Job>(); 
+            long[] result = null;  List<_Job> jobs = new List<_Job>(); 
             _storage.UseSession(session =>
             {
               

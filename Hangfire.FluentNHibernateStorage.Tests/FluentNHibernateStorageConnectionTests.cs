@@ -169,7 +169,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Assert.True(sqlJob.ExpireAt < createdAt.AddDays(1).AddMinutes(1));
 
                 var parameters = session.Query<_JobParameter>()
-                    .Where(i => i.Job.Id == int.Parse(jobId))
+                    .Where(i => i.Job.Id == long.Parse(jobId))
                     .ToDictionary(x => x.Name, x => x.Value);
 
                 Assert.Equal("Value1", parameters["Key1"]);

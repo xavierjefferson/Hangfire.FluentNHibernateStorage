@@ -95,18 +95,22 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (id == null) throw new ArgumentNullException("id");
             if (name == null) throw new ArgumentNullException("name");
-
+            var converter = JobIdConverter.Get(id);
+            if (!converter.Valid)
+            {
+                return;
+            }
             Storage.UseSession(session =>
             {
                 var updated = session.CreateQuery(SQLHelper.UpdateJobParameterValueStatement)
                     .SetParameter(SQLHelper.ValueParameterName, value)
-                    .SetParameter(SQLHelper.IdParameterName, int.Parse(id))
+                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
                     .ExecuteUpdate();
                 if (updated == 0)
                 {
                     var jobParameter = new _JobParameter
                     {
-                        Job = new _Job {Id = int.Parse(id)},
+                        Job = new _Job {Id = converter.Value},
                         Name = name,
                         Value = value
                     };
@@ -120,11 +124,16 @@ namespace Hangfire.FluentNHibernateStorage
         public override string GetJobParameter(string id, string name)
         {
             if (id == null) throw new ArgumentNullException("id");
+            var converter = JobIdConverter.Get(id);
+            if (!converter.Valid)
+            {
+                return null;
+            }
             if (name == null) throw new ArgumentNullException("name");
 
             return Storage.UseSession(session =>
                 session.Query<_JobParameter>()
-                    .Where(i => i.Job.Id == int.Parse(id) && i.Name == name)
+                    .Where(i => i.Job.Id == converter.Value && i.Name == name)
                     .Select(i => i.Value)
                     .SingleOrDefault());
         }
@@ -132,13 +141,20 @@ namespace Hangfire.FluentNHibernateStorage
         public override JobData GetJobData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
+            var converter = JobIdConverter.Get(jobId);
 
+            if (!converter.Valid)
+            {
+                return null;
+            }
+            Logger.InfoFormat("Get job data for job '{0}'",jobId);
+            
             return Storage.UseSession(session =>
             {
                 var jobData =
                     session
                         .Query<_Job>()
-                        .SingleOrDefault(i => i.Id == int.Parse(jobId));
+                        .SingleOrDefault(i => i.Id == converter.Value);
 
                 if (jobData == null) return null;
 
@@ -170,11 +186,15 @@ namespace Hangfire.FluentNHibernateStorage
         public override StateData GetStateData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
-
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return null;
+            }
             return Storage.UseSession(session =>
             {
                 var job = session.Query<_Job>()
-                    .Where(i => i.Id == int.Parse(jobId))
+                    .Where(i => i.Id == converter.Value)
                     .Select(i => new {i.StateName, i.StateData, i.StateReason})
                     .SingleOrDefault();
                 if (job == null)
@@ -271,7 +291,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return session.Query<_Set>()
                     .OrderBy(i => i.Id)
-                    .Skip(startingFrom - 1)
+                    .Skip(startingFrom)
                     .Take(endingAt - startingFrom + 1)
                     .Select(i => i.Value)
                     .ToList();
@@ -371,7 +391,7 @@ namespace Hangfire.FluentNHibernateStorage
                         .OrderByDescending(i => i.Id)
                         .Where(i => i.Key == key)
                         .Select(i => i.Value)
-                        .Skip(startingFrom - 1)
+                        .Skip(startingFrom)
                         .Take(endingAt - startingFrom + 1)
                         .ToList();
             });
@@ -445,5 +465,24 @@ namespace Hangfire.FluentNHibernateStorage
                 return result.Count != 0 ? result : null;
             });
         }
+    }
+
+    class JobIdConverter
+    {
+        public bool Valid { get; private set; }
+        public long Value { get; private set; }
+
+        public static JobIdConverter Get(string jobId)
+        {
+            long tmp;
+            var valid = long.TryParse(jobId, out tmp);
+            return new JobIdConverter {Value = tmp, Valid = valid};
+        }
+
+        private JobIdConverter()
+        {
+            
+        }
+        
     }
 }

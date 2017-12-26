@@ -77,9 +77,14 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobDetailsDto JobDetails(string jobId)
         {
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return null;
+            }
             return UseStatefulTransaction(session =>
             {
-                var job = session.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
+                var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job == null) return null;
 
                 var parameters = job.Parameters.ToDictionary(x => x.Name, x => x.Value);
@@ -137,6 +142,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                         return new StatisticsDto
                         {
+                            
                             Enqueued = GetJobStatusCount("Enqueued"),
                             Failed = GetJobStatusCount("Failed"),
                             Processing = GetJobStatusCount("Processing"),
@@ -354,7 +360,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var a = session.Query<_Job>()
                 .OrderBy(i => i.Id)
                 .Where(i => i.StateName == stateName)
-                .Skip(from - 1)
+                .Skip(from)
                 .Take(count)
                 .ToList();
 

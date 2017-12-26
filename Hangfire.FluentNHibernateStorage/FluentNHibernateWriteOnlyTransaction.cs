@@ -56,12 +56,16 @@ namespace Hangfire.FluentNHibernateStorage
         public override void ExpireJob(string jobId, TimeSpan expireIn)
         {
             Logger.TraceFormat("ExpireJob jobId={0}", jobId);
-
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return;
+            }
             AcquireJobLock();
 
             QueueCommand(session =>
                 session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
-                    .SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
+                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
                     .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(expireIn))
                     .ExecuteUpdate());
         }
@@ -69,25 +73,33 @@ namespace Hangfire.FluentNHibernateStorage
         public override void PersistJob(string jobId)
         {
             Logger.TraceFormat("PersistJob jobId={0}", jobId);
-
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return;
+            }
             AcquireJobLock();
 
             QueueCommand(session =>
                 session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
                     .SetParameter(SQLHelper.ValueParameterName, null)
-                    .SetParameter(SQLHelper.IdParameterName, int.Parse(jobId))
+                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
                     .ExecuteUpdate());
         }
 
         public override void SetJobState(string jobId, IState state)
         {
             Logger.TraceFormat("SetJobState jobId={0}", jobId);
-
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return;
+            }
             AcquireStateLock();
             AcquireJobLock();
             QueueCommand(session =>
             {
-                var job = session.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId));
+                var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job != null)
                 {
                     var sqlState = new _JobState
@@ -115,13 +127,17 @@ namespace Hangfire.FluentNHibernateStorage
         public override void AddJobState(string jobId, IState state)
         {
             Logger.TraceFormat("AddJobState jobId={0}, state={1}", jobId, state);
-
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return;
+            }
             AcquireStateLock();
             QueueCommand(session =>
             {
                 session.Insert(new _JobState
                 {
-                    Job = new _Job {Id = int.Parse(jobId)},
+                    Job = new _Job {Id = converter.Value},
                     Name = state.Name,
                     Reason = state.Reason,
                     CreatedAt = session.Storage.UtcNow,

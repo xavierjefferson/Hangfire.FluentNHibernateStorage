@@ -227,7 +227,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
                 // Assert
                 var otherJobFetchedAt = session.Query<_JobQueue>()
-                    .Where(i => i.Job.Id != int.Parse(payload.JobId))
+                    .Where(i => i.Job.Id != long.Parse(payload.JobId))
                     .Select(i => i.FetchedAt)
                     .Single();
 

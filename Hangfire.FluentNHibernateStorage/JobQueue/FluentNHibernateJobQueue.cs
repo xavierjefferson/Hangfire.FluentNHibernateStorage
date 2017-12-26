@@ -101,9 +101,14 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public void Enqueue(SessionWrapper session, string queue, string jobId)
         {
+            var converter = JobIdConverter.Get(jobId);
+            if (!converter.Valid)
+            {
+                return;
+            }
             session.Insert(new _JobQueue
             {
-                Job = session.Query<_Job>().SingleOrDefault(i => i.Id == int.Parse(jobId)),
+                Job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value),
                 Queue = queue
             });
             session.Flush();

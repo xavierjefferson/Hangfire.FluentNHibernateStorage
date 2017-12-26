@@ -68,6 +68,7 @@
     <Compile Include="Entities\_DistributedLock.cs" />
     <Compile Include="Entities\_Dual.cs" />
     <Compile Include="FluentNHibernateStorageFactory.cs" />
+    <Compile Include="JobIdConverter.cs" />
     <Compile Include="Maps\Constants.cs" />
     <Compile Include="Maps\IntIdMap.cs" />
     <Compile Include="Maps\ObjectHelper.cs" />

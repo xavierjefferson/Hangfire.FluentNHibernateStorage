@@ -65,7 +65,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         private static _Job GetTestJob(SessionWrapper connection, string jobId)
         {
-            return connection.Query<_Job>().Single(i => i.Id == int.Parse(jobId));
+            return connection.Query<_Job>().Single(i => i.Id == long.Parse(jobId));
         }
 
         private static void UseSession(Action<SessionWrapper> action)

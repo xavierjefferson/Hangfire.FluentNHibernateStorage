@@ -44,7 +44,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     .OrderBy(i => i.Id)
                     .Where(i => i.Queue == queue)
                     .Select(i => i.Job.Id)
-                    .Skip(from - 1)
+                    .Skip(from)
                     .Take(perPage)
                     .ToList();
             });
@@ -57,7 +57,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             return _storage.UseSession(session =>
             {
                 return session.Query<_JobQueue>().Where(i => (i.FetchedAt != null) & (i.Queue == queue))
-                    .OrderBy(i => i.Id).Skip(from - 1).Take(perPage).Select(i => i.Id).ToList();
+                    .OrderBy(i => i.Id).Skip(from).Take(perPage).Select(i => i.Id).ToList();
             });
         }
 
