@@ -59,15 +59,20 @@ namespace Hangfire.FluentNHibernateStorage
             _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
             _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
             _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
-            EnsureDualHasOneRow();
-            RefreshUtcOffset();
+            try
+            {
+                EnsureDualHasOneRow();
+                RefreshUtcOffset();
+            }
+            catch (FluentConfigurationException ex)
+            {
+                throw ex.InnerException;
+            }
         }
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
 
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
-
-        public Func<IPersistenceConfigurer> ConfigurerFunc { get; set; }
 
         public ProviderTypeEnum Type { get; } = ProviderTypeEnum.None;
 

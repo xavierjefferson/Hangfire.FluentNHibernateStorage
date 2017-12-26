@@ -135,51 +135,55 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void StartButton_Click(object sender, EventArgs e)
         {
-            
-            var connectionString = ConnectionStringTextBox.Text;
-            if (string.IsNullOrWhiteSpace(connectionString))
+            try
             {
-                MessageBox.Show(this, "connection string cannot be blank");
-                return;
-            }
+                var connectionString = ConnectionStringTextBox.Text;
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    MessageBox.Show(this, "connection string cannot be blank");
+                    return;
+                }
                 SaveConnectionString(ProviderType, connectionString);
 
-            Settings.Default.DataSource = ProviderType.ToString();
-            Settings.Default.Save();
+                Settings.Default.DataSource = ProviderType.ToString();
+                Settings.Default.Save();
 
-           
-            //THIS LINE GETS THE STORAGE PROVIDER
-            storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
-            if (storage != null)
+
+                //THIS LINE GETS THE STORAGE PROVIDER
+                storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
+                if (storage != null)
+                {
+                    State = StateEnum.Starting;
+                    //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
+                    GlobalConfiguration.Configuration.UseLog4NetLogProvider()
+                        .UseStorage(storage);
+                  
+                        _timer = new Timer(60000);
+                        _timer.Elapsed += (a, b) =>
+                        {
+                            BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString()));
+                        };
+                        _timer.Start();
+                        /*THIS LINE STARTS THE BACKGROUND SERVER*/
+                        _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
+                            storage.GetBackgroundProcesses());
+
+                        /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
+                        RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
+                        RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
+                        loggerNew.Info("Background server started");
+                        State = StateEnum.Started;
+
+                   
+                }
+            }
+            catch (Exception ex)
             {
-                State = StateEnum.Starting;
-                //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
-                GlobalConfiguration.Configuration.UseLog4NetLogProvider()
-                    .UseStorage(storage);
-                try
-                {
-                    _timer = new Timer(60000);
-                    _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
-                    _timer.Start();
-                    /*THIS LINE STARTS THE BACKGROUND SERVER*/
-                    _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
-                        storage.GetBackgroundProcesses());
-
-                    /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
-                    RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
-                    RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
-                    loggerNew.Info("Background server started");
-                    State = StateEnum.Started;
-
-                }
-                catch (Exception ex)
-                {
-                    loggerNew.Error("Server start failed", ex);
-                    StopButton_Click(null, new EventArgs());
-                    State = StateEnum.Stopped;
-                    storage?.Dispose();
-                    storage = null;
-                }
+                  loggerNew.Error("Server start failed", ex);
+                        StopButton_Click(null, new EventArgs());
+                        State = StateEnum.Stopped;
+                        storage?.Dispose();
+                        storage = null;
             }
         }
 
