@@ -354,7 +354,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var a = session.Query<_Job>()
                 .OrderBy(i => i.Id)
                 .Where(i => i.StateName == stateName)
-                .Skip(from)
+                .Skip(from - 1)
                 .Take(count)
                 .ToList();
 
@@ -440,7 +440,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private JobList<EnqueuedJobDto> EnqueuedJobs(
             SessionWrapper session,
-            IEnumerable<int> jobIds)
+            IEnumerable<long> jobIds)
         {
             var jobs = session.Query<_Job>().Where(i => jobIds.Contains(i.Id)).ToList();
 
@@ -458,7 +458,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private JobList<FetchedJobDto> FetchedJobs(
             SessionWrapper session,
-            IEnumerable<int> jobIds)
+            IEnumerable<long> jobIds)
         {
             var result = new List<KeyValuePair<string, FetchedJobDto>>();
 

@@ -36,7 +36,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             }
         }
 
-        public IEnumerable<int> GetEnqueuedJobIds(string queue, int from, int perPage)
+        public IEnumerable<long> GetEnqueuedJobIds(string queue, int from, int perPage)
         {
             return _storage.UseSession(session =>
             {
@@ -44,16 +44,21 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     .OrderBy(i => i.Id)
                     .Where(i => i.Queue == queue)
                     .Select(i => i.Job.Id)
-                    .Skip(from)
+                    .Skip(from - 1)
                     .Take(perPage)
                     .ToList();
             });
         }
 
 
-        public IEnumerable<int> GetFetchedJobIds(string queue, int from, int perPage)
+        public IEnumerable<long> GetFetchedJobIds(string queue, int from, int perPage)
         {
-            return Enumerable.Empty<int>();
+            //return Enumerable.Empty<long>();
+            return _storage.UseSession(session =>
+            {
+                return session.Query<_JobQueue>().Where(i => (i.FetchedAt != null) & (i.Queue == queue))
+                    .OrderBy(i => i.Id).Skip(from - 1).Take(perPage).Select(i => i.Id).ToList();
+            });
         }
 
         public EnqueuedAndFetchedCountDto GetEnqueuedAndFetchedCount(string queue)

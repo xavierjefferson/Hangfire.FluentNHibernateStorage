@@ -63,7 +63,7 @@
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="DateHelper.cs" />
     <Compile Include="Entities\EntityBase0.cs" />
-    <Compile Include="Entities\IInt32Id.cs" />
+    <Compile Include="Entities\IInt64Id.cs" />
     <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
     <Compile Include="Entities\_Dual.cs" />
@@ -126,9 +126,6 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Install.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

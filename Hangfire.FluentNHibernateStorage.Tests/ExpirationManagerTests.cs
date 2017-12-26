@@ -22,7 +22,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         private readonly BackgroundProcessContext _context;
         private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
 
-        private static int CreateExpirationEntry(SessionWrapper session, DateTime? expireAt)
+        private static long CreateExpirationEntry(SessionWrapper session, DateTime? expireAt)
         {
             session.DeleteAll<_AggregatedCounter>();
             var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
@@ -31,7 +31,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             return a.Id;
         }
 
-        private static bool IsEntryExpired(SessionWrapper session, int entryId)
+        private static bool IsEntryExpired(SessionWrapper session, long entryId)
         {
             var count = session.Query<_AggregatedCounter>().Count(i => i.Id == entryId);
 

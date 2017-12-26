@@ -7,8 +7,10 @@ using Hangfire.Server;
 
 namespace Hangfire.FluentNHibernateStorage
 {
+#pragma warning disable 618
     public class CountersAggregator : IBackgroundProcess, IServerComponent
     {
+#pragma warning restore 618
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
@@ -77,7 +79,7 @@ namespace Hangfire.FluentNHibernateStorage
                             ;
                         }
                         removedCount =
-                            session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
+                            session.DeleteByInt64Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
                         transaction.Commit();
                     }

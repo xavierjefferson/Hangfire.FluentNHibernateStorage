@@ -3,7 +3,7 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    public abstract class IntIdMap<T> : ClassMap<T> where T : IInt32Id
+    public abstract class IntIdMap<T> : ClassMap<T> where T : IInt64Id
     {
         protected IntIdMap()
         {

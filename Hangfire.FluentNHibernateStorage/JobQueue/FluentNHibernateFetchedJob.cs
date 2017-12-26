@@ -9,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
-        private readonly int _id;
+        private readonly long _id;
 
 
         private readonly FluentNHibernateJobStorage _storage;
@@ -60,6 +60,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("Requeue JobId={0}", JobId);
             using (var session = _storage.GetSession())
             {
+                
                 session.CreateQuery(SQLHelper.UpdateJobQueueFetchedAtStatement)
                     .SetParameter(SQLHelper.ValueParameterName, null)
                     .SetParameter(SQLHelper.IdParameterName, _id)

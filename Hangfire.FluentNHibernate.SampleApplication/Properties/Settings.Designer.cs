@@ -38,12 +38,12 @@ namespace Hangfire.FluentNHibernate.SampleApplication.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string ConnectionStrings {
+        public string ProviderSettings {
             get {
-                return ((string)(this["ConnectionStrings"]));
+                return ((string)(this["ProviderSettings"]));
             }
             set {
-                this["ConnectionStrings"] = value;
+                this["ProviderSettings"] = value;
             }
         }
     }

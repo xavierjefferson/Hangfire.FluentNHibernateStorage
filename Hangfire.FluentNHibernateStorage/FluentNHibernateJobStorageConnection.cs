@@ -271,7 +271,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return session.Query<_Set>()
                     .OrderBy(i => i.Id)
-                    .Skip(startingFrom)
+                    .Skip(startingFrom - 1)
                     .Take(endingAt - startingFrom + 1)
                     .Select(i => i.Value)
                     .ToList();
@@ -371,7 +371,7 @@ namespace Hangfire.FluentNHibernateStorage
                         .OrderByDescending(i => i.Id)
                         .Where(i => i.Key == key)
                         .Select(i => i.Value)
-                        .Skip(startingFrom)
+                        .Skip(startingFrom - 1)
                         .Take(endingAt - startingFrom + 1)
                         .ToList();
             });
@@ -400,7 +400,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             return Storage.UseSession(session =>
             {
-                var item = session.Query<_List>().Where(i => i.Key == key).Min(i => i.ExpireAt);
+                var item = session.Query<T>().Where(i => i.Key == key).Min(i => i.ExpireAt);
                 if (item == null)
                 {
                     return TimeSpan.FromSeconds(-1);

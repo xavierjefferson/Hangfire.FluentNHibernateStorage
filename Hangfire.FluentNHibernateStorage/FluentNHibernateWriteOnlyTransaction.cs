@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Transactions;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
@@ -272,7 +273,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .Union(idList.Where(i => i.index > keepEndingAt))
                     .Select(i => i.id)
                     .ToList();
-                session.DeleteByInt32Id<_List>(before);
+                session.DeleteByInt64Id<_List>(before);
             });
         }
 
@@ -369,7 +370,7 @@ namespace Hangfire.FluentNHibernateStorage
                     command(session);
                     session.Flush();
                 }
-            });
+            }, IsolationLevel.RepeatableRead);
         }
 
         internal void QueueCommand(Action<SessionWrapper> action)

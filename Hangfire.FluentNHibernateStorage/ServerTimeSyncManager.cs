@@ -4,8 +4,10 @@ using Hangfire.Server;
 
 namespace Hangfire.FluentNHibernateStorage
 {
+#pragma warning disable 618
     public class ServerTimeSyncManager : IBackgroundProcess, IServerComponent
     {
+#pragma warning restore 618
         private readonly TimeSpan _checkInterval;
         private readonly FluentNHibernateJobStorage _storage;
 

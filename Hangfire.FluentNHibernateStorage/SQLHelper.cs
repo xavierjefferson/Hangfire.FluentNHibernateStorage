@@ -115,7 +115,7 @@ namespace Hangfire.FluentNHibernateStorage
             session.Flush();
         }
 
-        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> id) where T : IInt32Id
+        public static long DeleteByInt64Id<T>(this SessionWrapper session, ICollection<long> id) where T : IInt64Id
         {
             if (!id.Any())
             {
@@ -132,7 +132,7 @@ namespace Hangfire.FluentNHibernateStorage
                 else
                 {
                     queryString = string.Format("delete from {0} where {1} in (:{2})", typeName.Name.WrapObjectName(),
-                        nameof(IInt32Id.Id).WrapObjectName(), IdParameterName);
+                        nameof(IInt64Id.Id).WrapObjectName(), IdParameterName);
                     DeleteByIdCommands[typeName] = queryString;
                 }
             }

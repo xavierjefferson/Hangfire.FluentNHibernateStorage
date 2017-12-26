@@ -52,7 +52,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             get => (ProviderTypeEnum) DataProviderComboBox.SelectedItem;
             set
             {
-                ConnectionStringTextBox.Text = LoadConnectionString(value);
+                ConnectionStringTextBox.Text = LoadProviderSetting(value).ConnectionString;
                 DataProviderComboBox.SelectedItem = value;
             }
         }
@@ -78,30 +78,35 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             base.OnClosing(e);
         }
 
-        private Dictionary<ProviderTypeEnum, string> GetSettings()
+        private Dictionary<ProviderTypeEnum, ProviderSetting> GetSettings()
         {
-            var a = Settings.Default.ConnectionStrings;
+            var a = Settings.Default.ProviderSettings;
             try
             {
-                return JsonConvert.DeserializeObject<Dictionary<ProviderTypeEnum, string>>(a) ??
-                       new Dictionary<ProviderTypeEnum, string>
-                       {
-                           {
-                               ProviderTypeEnum.MsSql2012,
-                               "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"
-                           }
-                       };
+                var tmp = JsonConvert.DeserializeObject<Dictionary<ProviderTypeEnum, ProviderSetting>>(a);
+                if (tmp != null)
+                {
+                    return tmp;
+                }
+
             }
-            catch
+            catch(Exception ex)
             {
-                return new Dictionary<ProviderTypeEnum, string>();
+                loggerNew.Error("Error reading settings", ex);
             }
+            return new Dictionary<ProviderTypeEnum, ProviderSetting>
+            {
+                {
+                    ProviderTypeEnum.MsSql2012,
+                    new ProviderSetting(){ConnectionString = "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"}
+                }
+            };
         }
 
-        private string LoadConnectionString(ProviderTypeEnum persistenceConfigurer)
+        private ProviderSetting LoadProviderSetting(ProviderTypeEnum persistenceConfigurer)
         {
             var settings = GetSettings();
-            return settings.ContainsKey(persistenceConfigurer) ? settings[persistenceConfigurer] : string.Empty;
+            return settings.ContainsKey(persistenceConfigurer) ? settings[persistenceConfigurer] : new ProviderSetting();
         }
 
         private void Form1_Load(object sender, EventArgs e1)
@@ -128,7 +133,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             ConnectionStringTextBox.Text =
-                LoadConnectionString((ProviderTypeEnum) DataProviderComboBox.SelectedItem);
+                LoadProviderSetting((ProviderTypeEnum) DataProviderComboBox.SelectedItem).ConnectionString;
         }
 
         private FluentNHibernateJobStorage storage = null;
@@ -190,8 +195,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         private void SaveConnectionString(ProviderTypeEnum providerType, string connectionString)
         {
             var dictionary = GetSettings();
-            dictionary[providerType] = connectionString;
-            Settings.Default.ConnectionStrings = JsonConvert.SerializeObject(dictionary);
+            dictionary[providerType] = new ProviderSetting() {ConnectionString = connectionString};
+            Settings.Default.ProviderSettings = JsonConvert.SerializeObject(dictionary);
             Settings.Default.Save();
         }
 
@@ -222,6 +227,11 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         {
             var f = new HQLForm(this.storage);
             f.ShowDialog(this);
+        }
+
+        public class ProviderSetting
+        {
+            public string ConnectionString { get; set; }
         }
     }
 }

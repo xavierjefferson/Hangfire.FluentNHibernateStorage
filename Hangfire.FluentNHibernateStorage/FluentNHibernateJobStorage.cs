@@ -31,8 +31,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly ServerTimeSyncManager _serverTimeSyncManager;
 
-        private readonly Dictionary<IPersistenceConfigurer, ISessionFactory> _sessionFactories =
-            new Dictionary<IPersistenceConfigurer, ISessionFactory>();
+        private ISessionFactory _sessionFactory;
+
 
         private TimeSpan _utcOffset = TimeSpan.Zero;
 
@@ -59,15 +59,19 @@ namespace Hangfire.FluentNHibernateStorage
             _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
             _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
             _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
+
+            //escalate session factory issues early
             try
             {
-                EnsureDualHasOneRow();
-                RefreshUtcOffset();
+                var tmp = GetSessionFactory();
             }
             catch (FluentConfigurationException ex)
             {
                 throw ex.InnerException;
             }
+
+            EnsureDualHasOneRow();
+            RefreshUtcOffset();
         }
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
@@ -157,7 +161,7 @@ namespace Hangfire.FluentNHibernateStorage
                                 session.Flush();
                                 break;
                             default:
-                                session.DeleteByInt32Id<_Dual>(
+                                session.DeleteByInt64Id<_Dual>(
                                     session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
                                 break;
                         }
@@ -210,10 +214,11 @@ namespace Hangfire.FluentNHibernateStorage
 
 #pragma warning disable 618
         public override IEnumerable<IServerComponent> GetComponents()
-#pragma warning restore 618
+
         {
             return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
         }
+#pragma warning restore 618
 
         public List<IBackgroundProcess> GetBackgroundProcesses()
         {
@@ -247,7 +252,8 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func, IsolationLevel? isolationLevel)
+        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func,
+            IsolationLevel? isolationLevel = null)
         {
             using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
             {
@@ -257,13 +263,14 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action)
+        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action,
+            IsolationLevel? isolationLevel = null)
         {
             UseTransaction(session =>
             {
                 action(session);
                 return true;
-            }, null);
+            }, isolationLevel);
         }
 
         private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)
@@ -314,50 +321,27 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        private ISessionFactory GetSessionFactory(IPersistenceConfigurer configurer)
+        private ISessionFactory GetSessionFactory()
         {
             lock (SessionFactoryMutex)
             {
-                //SINGLETON!
-                if (_sessionFactories.ContainsKey(configurer) && _sessionFactories[configurer] != null)
+                if (_sessionFactory != null)
                 {
-                    return _sessionFactories[configurer];
+                    return _sessionFactory;
                 }
 
                 var fluentConfiguration =
                     Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>());
 
-                _sessionFactories[configurer] = fluentConfiguration
-                    .Database(configurer)
-                    .BuildSessionFactory();
-                return _sessionFactories[configurer];
-            }
-        }
-
-
-        public SessionWrapper GetSession()
-        {
-            lock (SessionFactoryMutex)
-            {
-                if (_options.PrepareSchemaIfNecessary)
-                {
-                    TryBuildSchema();
-                }
-            }
-            return new SessionWrapper(GetSessionFactory(PersistenceConfigurer).OpenSession(), Type, this);
-        }
-
-
-        private void TryBuildSchema()
-        {
-            lock (SessionFactoryMutex)
-            {
-                Logger.Info("Start installing Hangfire SQL object check...");
-                Fluently.Configure()
-                    .Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>())
+                _sessionFactory = fluentConfiguration
                     .Database(PersistenceConfigurer)
                     .ExposeConfiguration(cfg =>
                     {
+                        if (!_options.PrepareSchemaIfNecessary)
+                        {
+                            return;
+                        }
+                        Logger.Info("Start installing Hangfire SQL object check...");
                         var schemaUpdate = new SchemaUpdate(cfg);
                         using (var stringWriter = new StringWriter())
                         {
@@ -376,12 +360,18 @@ namespace Hangfire.FluentNHibernateStorage
                                 throw;
                             }
                         }
+                        _options.PrepareSchemaIfNecessary = false;
+                        Logger.Info("Hangfire SQL object check done.");
                     })
-                    .BuildConfiguration();
-
-                Logger.Info("Hangfire SQL object check done.");
-                _options.PrepareSchemaIfNecessary = false;
+                    .BuildSessionFactory();
+                return _sessionFactory;
             }
+        }
+
+
+        public SessionWrapper GetSession()
+        {
+            return new SessionWrapper(GetSessionFactory().OpenSession(), Type, this);
         }
     }
 }

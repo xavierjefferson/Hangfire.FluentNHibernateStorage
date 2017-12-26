@@ -1,7 +1,7 @@
 ﻿namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public abstract class EntityBase0 : IInt32Id
+    public abstract class EntityBase0 : IInt64Id
     {
-        public virtual int Id { get; set; }
+        public virtual long Id { get; set; }
     }
 }
