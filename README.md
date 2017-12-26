@@ -66,25 +66,25 @@ The package includes an enumeration of database providers AND their specific fla
 ```
 The enumeration values correspond to the list of providers NHibernate supports.  When you instantiate a provider, you'll pass the best enumeration value to the FluentNHibernateStorageFactory.For method, along with your connection string.  I wrote it this way so you don't have to be concerned with the underlying implementation details for the various providers, which can be a little messy.  
 
-###MS Sql Server
+### MS Sql Server
 You'll note that four versions of SQL Server are included.  If you're using MS SQL Server 2000 (and I hope you're not), you may have a rough time because the database does not support strings longer than 8000 characters.  This implementation was tested against MS Sql Server 2012 and 2008.
 
-###Oracle
+### Oracle
 Be advised that two of the four Oracle options (OracleClient9Managed, OracleClient10Managed) use the **Oracle.ManagedDataAccess** client library internally, while the other two (OracleClient9, OracleClient10) use the **System.Data.OracleClient** client library.  I'm not Oracle savvy, and I could only get **Oracle.ManagedDataAccess** to work properly (the other is NHibernate's default).  You may have a different experience.  This implementation was tested against Oracle 11g Express on Oracle Linux.
 
-###PostgreSQL
+### PostgreSQL
 This implementation was tested against PostgreSQL 10 on Ubuntu 12.
 
-###DB/2
+### DB/2
 This implementation was tested against IBM® Db2® Express-C on Windows.
 
-###MySQL
+### MySQL
 This implementation was tested against MySQL 5.7.20 on Ubuntu 16.
 
-###Firebird
+### Firebird
 I set out to test this implementation on all the RDBMS systems NHibernate supports, and this was the last on the list.  I could not get a database instance to work.  Your mileage may vary :)
 
-###Usage - Within an ASP.NET Application
+## Usage - Within an ASP.NET Application
 I may simplify the implementation later, but I think this code is pretty painless  Usage within an ASP.Net application would probably employ the OWin startup approach for Hangfire, which is pretty well-documented.  Please note the properties, which include specifying a database schema, passed to the method:
 ```
         public void Configuration(IAppBuilder app)
@@ -108,7 +108,7 @@ I may simplify the implementation later, but I think this code is pretty painles
             would go in this same method ***/
          }
 ```
-###Usage - A Standalone Server
+## Usage - A Standalone Server
 ```
 using System;
 using System.Configuration;
@@ -190,7 +190,7 @@ In order to run unit tests and integrational tests set the following variables i
 
 `Hangfire_SqlServer_DatabaseName` (default: `Hangfire.FluentNHibernate.Tests`)
 
-#Database Stuff
+# Database Stuff
 
  - **IMPORTANT**:  The Hangfire engine, with its 20 default worker threads, is not database-intensive but it can be VERY chatty.
  - During first-time use, you'll need table-creation rights on your RDBMS.
@@ -201,7 +201,7 @@ In order to run unit tests and integrational tests set the following variables i
  - Old records are automatically cleaned up.  Most of the cleanup parameters are specified by the Hangfire engine itself, and this implementation does its best to not lock up your RDDMS while old records are being purged.  For more information on specific cleanup parameters, consult the Hangfire forums.
  - Table Hangfire_Dual should contain one and only one row - this is by design, and it's required in order to support the various RDBMSs.
 
-##Tables Created:
+## Tables Created:
 ```
 Hangfire_AggregatedCounter
 Hangfire_Counter
