@@ -62,7 +62,7 @@
   <ItemGroup>
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="DateHelper.cs" />
-    <Compile Include="Entities\EntityBase0.cs" />
+    <Compile Include="Entities\Int64IdBase.cs" />
     <Compile Include="Entities\IInt64Id.cs" />
     <Compile Include="Entities\IKeyWithStringValue.cs" />
     <Compile Include="Entities\_DistributedLock.cs" />
@@ -70,15 +70,15 @@
     <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="JobIdConverter.cs" />
     <Compile Include="Maps\Constants.cs" />
-    <Compile Include="Maps\IntIdMap.cs" />
+    <Compile Include="Maps\Int64IdMapBase.cs" />
     <Compile Include="Maps\ObjectHelper.cs" />
     <Compile Include="Maps\_DistributedLockMap.cs" />
     <Compile Include="Entities\_AggregatedCounter.cs" />
     <Compile Include="Maps\_AggregatedCounterMap.cs" />
     <Compile Include="Entities\_Counter.cs" />
-    <Compile Include="Maps\EntityBase1Map.cs" />
+    <Compile Include="Maps\KeyValueTypeMapBase.cs" />
     <Compile Include="Maps\_CounterMap.cs" />
-    <Compile Include="Entities\EntityBase1.cs" />
+    <Compile Include="Entities\KeyValueTypeBase.cs" />
     <Compile Include="Entities\IExpirable.cs" />
     <Compile Include="Entities\IExpirableWithId.cs" />
     <Compile Include="Entities\IExpirableWithKey.cs" />
@@ -99,7 +99,7 @@
     <Compile Include="Maps\_JobStateMap.cs" />
     <Compile Include="ExpirationManager.cs" />
     <Compile Include="ServerTimeSyncManager.cs" />
-    <Compile Include="SQLHelper.cs" />
+    <Compile Include="SqlUtil.cs" />
     <Compile Include="JobQueue\FetchedJob.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueProvider.cs" />
     <Compile Include="JobQueue\IPersistentJobQueueMonitoringApi.cs" />

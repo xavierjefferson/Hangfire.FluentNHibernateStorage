@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Transactions;
 using FluentNHibernate.Cfg;
@@ -67,7 +66,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
             catch (FluentConfigurationException ex)
             {
-                throw ex.InnerException;
+                throw ex.InnerException??ex;
             }
 
             EnsureDualHasOneRow();
@@ -341,27 +340,22 @@ namespace Hangfire.FluentNHibernateStorage
                         {
                             return;
                         }
-                        Logger.Info("Start installing Hangfire SQL object check...");
+                        Logger.Info("Start schema check...");
                         var schemaUpdate = new SchemaUpdate(cfg);
-                        using (var stringWriter = new StringWriter())
+
+                        string lastStatement = null;
+                        try
                         {
-                            string _last = null;
-                            try
-                            {
-                                schemaUpdate.Execute(i =>
-                                {
-                                    _last = i;
-                                    stringWriter.WriteLine(i);
-                                }, true);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.ErrorException(string.Format("Can't do schema update '{0}'", _last), ex);
-                                throw;
-                            }
+                            schemaUpdate.Execute(i => { lastStatement = i; }, true);
                         }
+                        catch (Exception ex)
+                        {
+                            Logger.ErrorException(string.Format("Can't do schema update '{0}'", lastStatement), ex);
+                            throw;
+                        }
+
                         _options.PrepareSchemaIfNecessary = false;
-                        Logger.Info("Hangfire SQL object check done.");
+                        Logger.Info("Schema check done.");
                     })
                     .BuildSessionFactory();
                 return _sessionFactory;

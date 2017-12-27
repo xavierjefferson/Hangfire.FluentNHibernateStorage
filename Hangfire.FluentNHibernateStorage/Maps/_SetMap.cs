@@ -2,17 +2,15 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _SetMap : EntityBase1Map<_Set, string>
+    internal class _SetMap : KeyValueTypeMapBase<_Set, string>
     {
         public _SetMap()
         {
             Map(i => i.Score).Column("Score".WrapObjectName()).Not.Nullable();
         }
 
-        protected override bool HasUniqueKey => true;
-
-        protected override string KeyObjectName => "IX_Set_Key_Value";
-
+        protected override string KeyColumnIndexName => "IX_Set_Key_Value";
+        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
         protected override string TableName => "Hangfire_Set".WrapObjectName();
 
         protected override bool ValueNullable => false;

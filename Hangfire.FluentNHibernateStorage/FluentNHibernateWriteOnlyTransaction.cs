@@ -28,27 +28,27 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void SetExpireAt<T>(string key, DateTime? expire, SessionWrapper session) where T : IExpirableWithKey
         {
-            var queryString = SQLHelper.SetExpireStatementDictionary[typeof(T)];
+            var queryString = SqlUtil.SetExpireStatementDictionary[typeof(T)];
             session.CreateQuery(queryString)
-                .SetParameter(SQLHelper.ValueParameterName, expire)
-                .SetParameter(SQLHelper.IdParameterName, key)
+                .SetParameter(SqlUtil.ValueParameterName, expire)
+                .SetParameter(SqlUtil.IdParameterName, key)
                 .ExecuteUpdate();
             session.Flush();
         }
 
         private void DeleteByKey<T>(string key, SessionWrapper session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SQLHelper.DeleteByKeyStatementDictionary[typeof(T)])
-                .SetParameter(SQLHelper.ValueParameterName, key)
+            session.CreateQuery(SqlUtil.DeleteByKeyStatementDictionary[typeof(T)])
+                .SetParameter(SqlUtil.ValueParameterName, key)
                 .ExecuteUpdate();
             session.Flush();
         }
 
         private void DeleteByKeyValue<T>(string key, string value, SessionWrapper session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SQLHelper.DeleteByKeyValueStatementlDictionary[typeof(T)])
-                .SetParameter(SQLHelper.ValueParameterName, key)
-                .SetParameter(SQLHelper.ValueParameter2Name, value)
+            session.CreateQuery(SqlUtil.DeleteByKeyValueStatementlDictionary[typeof(T)])
+                .SetParameter(SqlUtil.ValueParameterName, key)
+                .SetParameter(SqlUtil.ValueParameter2Name, value)
                 .ExecuteUpdate();
             session.Flush();
         }
@@ -64,9 +64,9 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
-                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
-                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Add(expireIn))
+                session.CreateQuery(SqlUtil.UpdateJobExpireAtStatement)
+                    .SetParameter(SqlUtil.IdParameterName, converter.Value)
+                    .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow.Add(expireIn))
                     .ExecuteUpdate());
         }
 
@@ -81,9 +81,9 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireJobLock();
 
             QueueCommand(session =>
-                session.CreateQuery(SQLHelper.UpdateJobExpireAtStatement)
-                    .SetParameter(SQLHelper.ValueParameterName, null)
-                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
+                session.CreateQuery(SqlUtil.UpdateJobExpireAtStatement)
+                    .SetParameter(SqlUtil.ValueParameterName, null)
+                    .SetParameter(SqlUtil.IdParameterName, converter.Value)
                     .ExecuteUpdate());
         }
 

@@ -2,18 +2,18 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _ListMap : EntityBase1Map<_List, string>
+    internal class _ListMap : KeyValueTypeMapBase<_List, string>
     {
         public _ListMap()
         {
             Table("Hangfire_List".WrapObjectName());
         }
 
+        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Nonunique;
+
         protected override int? ValueLength => Constants.VarcharMaxLength;
 
-        protected override bool HasUniqueKey => false;
-
-        protected override string KeyObjectName => "IX_LIST_KEY";
+        protected override string KeyColumnIndexName => "IX_LIST_KEY";
 
         protected override string TableName => "List".WrapObjectName();
 

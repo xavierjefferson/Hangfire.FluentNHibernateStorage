@@ -19,9 +19,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public PersistentJobQueueProviderCollection(IPersistentJobQueueProvider defaultProvider)
         {
-            if (defaultProvider == null) throw new ArgumentNullException("defaultProvider");
-
-            _defaultProvider = defaultProvider;
+            _defaultProvider = defaultProvider ?? throw new ArgumentNullException("defaultProvider");
 
             _providers.Add(_defaultProvider);
         }

@@ -10,8 +10,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
         private readonly long _id;
-
-
         private readonly FluentNHibernateJobStorage _storage;
         private bool _disposed;
         private bool _removedFromQueue;
@@ -38,8 +36,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 Requeue();
             }
-
-
             _disposed = true;
         }
 
@@ -48,8 +44,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
             using (var session = _storage.GetSession())
             {
-                session.CreateQuery(SQLHelper.DeleteJobQueueStatement)
-                    .SetParameter(SQLHelper.IdParameterName, _id)
+                session.CreateQuery(SqlUtil.DeleteJobQueueStatement)
+                    .SetParameter(SqlUtil.IdParameterName, _id)
                     .ExecuteUpdate();
             }
             _removedFromQueue = true;
@@ -61,9 +57,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             using (var session = _storage.GetSession())
             {
                 
-                session.CreateQuery(SQLHelper.UpdateJobQueueFetchedAtStatement)
-                    .SetParameter(SQLHelper.ValueParameterName, null)
-                    .SetParameter(SQLHelper.IdParameterName, _id)
+                session.CreateQuery(SqlUtil.UpdateJobQueueFetchedAtStatement)
+                    .SetParameter(SqlUtil.ValueParameterName, null)
+                    .SetParameter(SqlUtil.IdParameterName, _id)
                     .ExecuteUpdate();
             }
             _requeued = true;

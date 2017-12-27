@@ -9,7 +9,7 @@ using NHibernate.Exceptions;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    internal static class SQLHelper
+    internal static class SqlUtil
     {
         public const string ValueParameterName = "newValue";
         public const string ValueParameter2Name = "newValue2";
@@ -70,7 +70,6 @@ namespace Hangfire.FluentNHibernateStorage
             new Dictionary<Type, string>
             {
                 {typeof(_Set), GetDeleteByKeyValueStatement<_Set>()},
-                //{typeof(_Hash), GetDeleteByKeyValueStatement<_Hash>()},
                 {typeof(_List), GetDeleteByKeyValueStatement<_List>()}
             };
 
@@ -150,7 +149,18 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal static string GetSetExpireByKeyStatement<T>() where T : IExpirableWithKey
+        internal static long DeleteExpirableWithId<T>(this SessionWrapper session, int take) where T : IExpirableWithId
+
+        {
+            var ids = session.Query<T>()
+                .Where(i => i.ExpireAt < session.Storage.UtcNow)
+                .Take(take)
+                .Select(i => i.Id)
+                .ToList();
+            return session.DeleteByInt64Id<T>(ids);
+        }
+
+        static string GetSetExpireByKeyStatement<T>() where T : IExpirableWithKey
         {
             return string.Format("update {0} set {1}=:{2} where {3}=:{4}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirable.ExpireAt).WrapObjectName(), ValueParameterName,
@@ -158,14 +168,14 @@ namespace Hangfire.FluentNHibernateStorage
                 IdParameterName);
         }
 
-        internal static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
+        static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
         {
             return string.Format("delete from {0} where {1}=:{2}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 ValueParameterName);
         }
 
-        internal static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
+        static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
         {
             return string.Format("delete from {0} where {1}=:{2} and {3}=:{4}", typeof(T).Name.WrapObjectName(),
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
@@ -224,7 +234,7 @@ namespace Hangfire.FluentNHibernateStorage
                         })
                         select :{ResourceParameterName}, :{NowParameterName},  
                         :{ExpireAtAsLongParameterName} from 
-                        {dualTableName} where not exists (select {Constants.Id} from 
+                        {dualTableName} where not exists (select {Constants.ColumnNames.Id.WrapObjectName()} from 
                         {distributedLockTableName} as d where d.{resourceColumnName} = 
                         :{ResourceParameterName} and 
                         d.{expireAtAsLongColumnName} > :{NowAsLongParameterName})";

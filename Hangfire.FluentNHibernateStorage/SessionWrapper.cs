@@ -6,27 +6,35 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class SessionWrapper  :IDisposable
+    public class SessionWrapper : IDisposable
     {
         private readonly ISession _session;
-        public FluentNHibernateJobStorage Storage { get; protected set; }
-        public ProviderTypeEnum ProviderType { get; protected set; }
 
-        public IDbConnection Connection => _session.Connection;
-
-        public void DeleteAll<T>()
-        {
-            ExecuteQuery(string.Format("delete from {0}", typeof(T).Name));
-        }
-        public int ExecuteQuery(string queryString)
-        {
-            return CreateQuery(queryString).ExecuteUpdate();
-        }
         public SessionWrapper(ISession session, ProviderTypeEnum type, FluentNHibernateJobStorage storage)
         {
             _session = session;
             ProviderType = type;
             Storage = storage;
+        }
+
+        public FluentNHibernateJobStorage Storage { get; protected set; }
+        public ProviderTypeEnum ProviderType { get; protected set; }
+
+        public IDbConnection Connection => _session.Connection;
+
+        public void Dispose()
+        {
+            _session?.Dispose();
+        }
+
+        public void DeleteAll<T>()
+        {
+            ExecuteQuery(string.Format("delete from {0}", typeof(T).Name));
+        }
+
+        public int ExecuteQuery(string queryString)
+        {
+            return CreateQuery(queryString).ExecuteUpdate();
         }
 
 
@@ -50,7 +58,7 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.Query<T>();
         }
 
-        public  IQuery CreateQuery(string queryString)
+        public IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
         }
@@ -58,7 +66,6 @@ namespace Hangfire.FluentNHibernateStorage
         public void Evict(object x)
         {
             _session.Evict(x);
-            
         }
 
         public ISQLQuery CreateSqlQuery(string queryString)
@@ -79,11 +86,6 @@ namespace Hangfire.FluentNHibernateStorage
         public void Flush()
         {
             _session.Flush();
-        }
-
-        public void Dispose()
-        {
-            _session?.Dispose();
         }
     }
 }

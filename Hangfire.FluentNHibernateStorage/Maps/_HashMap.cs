@@ -2,18 +2,18 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _HashMap : EntityBase1Map<_Hash, string>
+    internal class _HashMap : KeyValueTypeMapBase<_Hash, string>
     {
-        private const string UniqueIndexName = "IX_Hash_Key_Field";
+        private const string IndexName = "IX_Hash_Key_Field";
 
         public _HashMap()
         {
-            Map(i => i.Field).Column("Field".WrapObjectName()).Length(40).Not.Nullable().UniqueKey(UniqueIndexName);
+            Map(i => i.Field).Column("Field".WrapObjectName()).Length(40).Not.Nullable().UniqueKey(IndexName);
         }
 
-        protected override bool HasUniqueKey => true;
+        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
 
-        protected override string KeyObjectName => UniqueIndexName;
+        protected override string KeyColumnIndexName => IndexName;
 
         protected override string TableName => "Hangfire_Hash".WrapObjectName();
 

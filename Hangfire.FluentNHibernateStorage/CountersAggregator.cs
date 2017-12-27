@@ -53,20 +53,20 @@ namespace Hangfire.FluentNHibernateStorage
                                     expireAt = i.Max(counter => counter.ExpireAt)
                                 })
                             .ToList();
-                        var query = session.CreateQuery(SQLHelper.UpdateAggregateCounterSql);
+                        var query = session.CreateQuery(SqlUtil.UpdateAggregateCounterSql);
 
                         foreach (var item in countersByName)
                         {
                             if (item.expireAt.HasValue)
                             {
-                                query.SetParameter(SQLHelper.ValueParameter2Name, item.expireAt.Value);
+                                query.SetParameter(SqlUtil.ValueParameter2Name, item.expireAt.Value);
                             }
                             else
                             {
-                                query.SetParameter(SQLHelper.ValueParameter2Name, null);
+                                query.SetParameter(SqlUtil.ValueParameter2Name, null);
                             }
-                            if (query.SetString(SQLHelper.IdParameterName, item.Key)
-                                    .SetParameter(SQLHelper.ValueParameterName, item.value)
+                            if (query.SetString(SqlUtil.IdParameterName, item.Key)
+                                    .SetParameter(SqlUtil.ValueParameterName, item.value)
                                     .ExecuteUpdate() == 0)
                             {
                                 session.Insert(new _AggregatedCounter

@@ -37,11 +37,10 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                 try
                 {
-                    using (var distributedLock =
-                        new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(60))
-                            .Acquire())
+                    using (new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(60))
+                        .Acquire())
                     {
-                        var fluentNHibernateFetchedJob = SQLHelper.WrapForTransaction(() =>
+                        var fluentNHibernateFetchedJob = SqlUtil.WrapForTransaction(() =>
                         {
                             var token = Guid.NewGuid().ToString();
 

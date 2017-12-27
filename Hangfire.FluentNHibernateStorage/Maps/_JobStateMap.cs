@@ -2,25 +2,16 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _JobStateMap : IntIdMap<_JobState>
+    internal class _JobStateMap : Int64IdMapBase<_JobState>
     {
-        public const int stateReasonLength = 100;
-        public const int stateDataLength = Constants.VarcharMaxLength;
-        public const int stateNameLength = 20;
-
         public _JobStateMap()
         {
             Table("Hangfire_JobState".WrapObjectName());
-
-
-            Map(i => i.Name).Column("Name".WrapObjectName()).Length(stateNameLength).Not.Nullable();
-
-            Map(i => i.Reason).Column("Reason".WrapObjectName()).Length(stateReasonLength).Nullable();
-            Map(i => i.Data).Column(Constants.Data).Length(stateDataLength).Nullable();
-            Map(i => i.CreatedAt).Column(Constants.CreatedAt).Not.Nullable();
-
-
-            References(i => i.Job).Column(Constants.JobId).Not.Nullable().Cascade.Delete();
+            Map(i => i.Name).Column("Name".WrapObjectName()).Length(Constants.StateNameLength).Not.Nullable();
+            Map(i => i.Reason).Column("Reason".WrapObjectName()).Length(Constants.StateReasonLength).Nullable();
+            Map(i => i.Data).Column(Constants.ColumnNames.Data.WrapObjectName()).Length(Constants.StateDataLength).Nullable();
+            Map(i => i.CreatedAt).Column(Constants.ColumnNames.CreatedAt.WrapObjectName()).Not.Nullable();
+            References(i => i.Job).Column(Constants.ColumnNames.JobId.WrapObjectName()).Not.Nullable().Cascade.Delete();
         }
     }
 }

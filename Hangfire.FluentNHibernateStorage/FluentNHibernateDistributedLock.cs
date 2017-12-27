@@ -55,19 +55,19 @@ namespace Hangfire.FluentNHibernateStorage
                 _cancellationToken.ThrowIfCancellationRequested();
 
 
-                if (SQLHelper.WrapForTransaction(() =>
+                if (SqlUtil.WrapForTransaction(() =>
                 {
                     using (var session = _storage.GetSession())
                     {
                         using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                         {
                             var realnow1 = session.Storage.UtcNow;
-                            var count = session.CreateQuery(SQLHelper.GetCreateDistributedLockStatement())
-                                .SetParameter(SQLHelper.ResourceParameterName, _resource)
-                                .SetParameter(SQLHelper.ExpireAtAsLongParameterName,
+                            var count = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
+                                .SetParameter(SqlUtil.ResourceParameterName, _resource)
+                                .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
                                     realnow1.Add(_timeout).ToUnixDate())
-                                .SetParameter(SQLHelper.NowParameterName, realnow1)
-                                .SetParameter(SQLHelper.NowAsLongParameterName, realnow1.ToUnixDate());
+                                .SetParameter(SqlUtil.NowParameterName, realnow1)
+                                .SetParameter(SqlUtil.NowAsLongParameterName, realnow1.ToUnixDate());
 
 
                             if (count.ExecuteUpdate() > 0)
@@ -98,12 +98,12 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal void Release()
         {
-            SQLHelper.WrapForTransaction(() =>
+            SqlUtil.WrapForTransaction(() =>
             {
                 using (var session = _storage.GetSession())
                 {
-                    session.CreateQuery(SQLHelper.DeleteDistributedLockSql)
-                        .SetParameter(SQLHelper.IdParameterName, _resource)
+                    session.CreateQuery(SqlUtil.DeleteDistributedLockSql)
+                        .SetParameter(SqlUtil.IdParameterName, _resource)
                         .ExecuteUpdate();
                     session.Flush();
                     Logger.DebugFormat("Released distributed lock for {0}", _resource);

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -11,7 +10,6 @@ namespace Hangfire.FluentNHibernateStorage
 #pragma warning disable 618
     public class ExpirationManager : IBackgroundProcess, IServerComponent
     {
-#pragma warning restore 618
         private const string DistributedLockKey = "expirationmanager";
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
@@ -38,72 +36,11 @@ namespace Hangfire.FluentNHibernateStorage
         {
             var cancellationToken = context.CancellationToken;
             Execute(cancellationToken);
-          
-        }
-
-        private long DeleteExpirableWithId<T>(SessionWrapper session, DateTime baseDate) where T : IExpirableWithId
-
-        {
-            List<long> ids;
-            ids = session.Query<T>()
-                .Where(i => i.ExpireAt < baseDate)
-                .Take(NumberOfRecordsInSinglePass)
-                .Select(i => i.Id)
-                .ToList();
-            return session.DeleteByInt64Id<T>(ids);
-        }
-
-
-        private void BatchDelete<T>(CancellationToken cancellationToken,
-            Func<SessionWrapper, DateTime, long> deleteFunc)
-
-        {
-            var entityName = typeof(T).Name;
-            Logger.InfoFormat("Removing outdated records from table '{0}'...", entityName);
-
-            long removedCount = 0;
-
-            do
-            {
-                try
-                {
-                    using (var distributedLock =
-                        new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
-                            cancellationToken).Acquire())
-                    {
-                        using (var session = _storage.GetSession())
-                        {
-                            removedCount = deleteFunc(session, _storage.UtcNow);
-                        }
-                    }
-
-                    Logger.InfoFormat("removed records count={0}", removedCount);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex.ToString());
-                }
-
-
-                if (removedCount > 0)
-                {
-                    Logger.Info(string.Format("Removed {0} outdated record(s) from '{1}' table.", removedCount,
-                        entityName));
-
-                    cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-            } while (removedCount != 0);
-        }
-
-        public override string ToString()
-        {
-            return GetType().ToString();
         }
 
         public void Execute(CancellationToken cancellationToken)
         {
-            BatchDelete<_JobState>(cancellationToken, (session, baseDate2) =>
+            BatchDelete<_JobState>(cancellationToken, session =>
             {
                 var idList = session.Query<_JobState>()
                     .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
@@ -112,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt64Id<_JobState>(idList);
             });
-            BatchDelete<_JobQueue>(cancellationToken, (session, baseDate2) =>
+            BatchDelete<_JobQueue>(cancellationToken, session =>
             {
                 var idList = session.Query<_JobQueue>()
                     .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
@@ -121,7 +58,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt64Id<_JobState>(idList);
             });
-            BatchDelete<_JobParameter>(cancellationToken, (session, baseDate2) =>
+            BatchDelete<_JobParameter>(cancellationToken, session =>
             {
                 var idList = session.Query<_JobParameter>()
                     .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
@@ -130,7 +67,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt64Id<_JobParameter>(idList);
             });
-            BatchDelete<_DistributedLock>(cancellationToken, (session, baseDate2) =>
+            BatchDelete<_DistributedLock>(cancellationToken, session =>
             {
                 var idList = session.Query<_DistributedLock>()
                     .Where(i => i.ExpireAtAsLong < session.Storage.UtcNow.ToUnixDate())
@@ -147,5 +84,68 @@ namespace Hangfire.FluentNHibernateStorage
 
             cancellationToken.WaitHandle.WaitOne(_checkInterval);
         }
+
+        internal static long DeleteExpirableWithId<T>(SessionWrapper session) where T : IExpirableWithId
+
+        {
+            return session.DeleteExpirableWithId<T>(NumberOfRecordsInSinglePass);
+        }
+
+
+        private void BatchDelete<T>(CancellationToken cancellationToken,
+            Func<SessionWrapper, long> deleteFunc)
+
+        {
+            try
+            {
+                var entityName = typeof(T).Name;
+                Logger.InfoFormat("Removing outdated records from table '{0}'...", entityName);
+
+                long removedCount = 0;
+
+                while (true)
+                {
+                    try
+                    {
+                        using (new FluentNHibernateDistributedLock(_storage, DistributedLockKey, DefaultLockTimeout,
+                            cancellationToken).Acquire())
+                        {
+                            using (var session = _storage.GetSession())
+                            {
+                                removedCount = deleteFunc(session);
+                            }
+                        }
+
+                        Logger.InfoFormat("removed records count={0}", removedCount);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex.ToString());
+                    }
+
+
+                    if (removedCount <= 0)
+                    {
+                        break;
+                    }
+
+                    Logger.Info(string.Format("Removed {0} outdated record(s) from '{1}' table.", removedCount,
+                        entityName));
+
+                    cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                //do nothing
+            }
+        }
+
+        public override string ToString()
+        {
+            return GetType().ToString();
+        }
+#pragma warning restore 618
     }
 }

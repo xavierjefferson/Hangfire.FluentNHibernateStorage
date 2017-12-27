@@ -102,9 +102,9 @@ namespace Hangfire.FluentNHibernateStorage
             }
             Storage.UseSession(session =>
             {
-                var updated = session.CreateQuery(SQLHelper.UpdateJobParameterValueStatement)
-                    .SetParameter(SQLHelper.ValueParameterName, value)
-                    .SetParameter(SQLHelper.IdParameterName, converter.Value)
+                var updated = session.CreateQuery(SqlUtil.UpdateJobParameterValueStatement)
+                    .SetParameter(SqlUtil.ValueParameterName, value)
+                    .SetParameter(SqlUtil.IdParameterName, converter.Value)
                     .ExecuteUpdate();
                 if (updated == 0)
                 {
@@ -147,8 +147,8 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return null;
             }
-            Logger.InfoFormat("Get job data for job '{0}'",jobId);
-            
+            Logger.InfoFormat("Get job data for job '{0}'", jobId);
+
             return Storage.UseSession(session =>
             {
                 var jobData =
@@ -242,8 +242,8 @@ namespace Hangfire.FluentNHibernateStorage
             Storage.UseSession(
                 session =>
                 {
-                    session.CreateQuery(SQLHelper.DeleteServerByIdStatement)
-                        .SetParameter(SQLHelper.IdParameterName, serverId)
+                    session.CreateQuery(SqlUtil.DeleteServerByIdStatement)
+                        .SetParameter(SqlUtil.IdParameterName, serverId)
                         .ExecuteUpdate();
                 });
         }
@@ -254,9 +254,9 @@ namespace Hangfire.FluentNHibernateStorage
 
             Storage.UseSession(session =>
             {
-                session.CreateQuery(SQLHelper.UpdateServerLastHeartbeatStatement)
-                    .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow)
-                    .SetParameter(SQLHelper.IdParameterName, serverId)
+                session.CreateQuery(SqlUtil.UpdateServerLastHeartbeatStatement)
+                    .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow)
+                    .SetParameter(SqlUtil.IdParameterName, serverId)
                     .ExecuteUpdate();
             });
         }
@@ -270,8 +270,8 @@ namespace Hangfire.FluentNHibernateStorage
 
             return
                 Storage.UseSession(session =>
-                    session.CreateQuery(SQLHelper.DeleteServerByLastHeartbeatStatement)
-                        .SetParameter(SQLHelper.ValueParameterName, session.Storage.UtcNow.Subtract(timeOut))
+                    session.CreateQuery(SqlUtil.DeleteServerByLastHeartbeatStatement)
+                        .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow.Subtract(timeOut))
                         .ExecuteUpdate());
         }
 
@@ -291,6 +291,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return session.Query<_Set>()
                     .OrderBy(i => i.Id)
+                    .Where(i => i.Key == key)
                     .Skip(startingFrom)
                     .Take(endingAt - startingFrom + 1)
                     .Select(i => i.Value)
@@ -465,24 +466,5 @@ namespace Hangfire.FluentNHibernateStorage
                 return result.Count != 0 ? result : null;
             });
         }
-    }
-
-    class JobIdConverter
-    {
-        public bool Valid { get; private set; }
-        public long Value { get; private set; }
-
-        public static JobIdConverter Get(string jobId)
-        {
-            long tmp;
-            var valid = long.TryParse(jobId, out tmp);
-            return new JobIdConverter {Value = tmp, Valid = valid};
-        }
-
-        private JobIdConverter()
-        {
-            
-        }
-        
     }
 }
