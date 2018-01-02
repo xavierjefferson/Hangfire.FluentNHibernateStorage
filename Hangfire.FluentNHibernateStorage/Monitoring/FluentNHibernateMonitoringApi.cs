@@ -77,7 +77,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobDetailsDto JobDetails(string jobId)
         {
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return null;

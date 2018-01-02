@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void SetExpireAt<T>(string key, DateTime? expire, SessionWrapper session) where T : IExpirableWithKey
         {
-            var queryString = SqlUtil.SetExpireStatementDictionary[typeof(T)];
+            var queryString = SqlUtil.SetExpireAtByKeyStatementDictionary[typeof(T)];
             session.CreateQuery(queryString)
                 .SetParameter(SqlUtil.ValueParameterName, expire)
                 .SetParameter(SqlUtil.IdParameterName, key)
@@ -46,7 +46,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void DeleteByKeyValue<T>(string key, string value, SessionWrapper session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SqlUtil.DeleteByKeyValueStatementlDictionary[typeof(T)])
+            session.CreateQuery(SqlUtil.DeleteByKeyAndValueStatementDictionary[typeof(T)])
                 .SetParameter(SqlUtil.ValueParameterName, key)
                 .SetParameter(SqlUtil.ValueParameter2Name, value)
                 .ExecuteUpdate();
@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void ExpireJob(string jobId, TimeSpan expireIn)
         {
             Logger.TraceFormat("ExpireJob jobId={0}", jobId);
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -73,7 +73,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void PersistJob(string jobId)
         {
             Logger.TraceFormat("PersistJob jobId={0}", jobId);
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -90,7 +90,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void SetJobState(string jobId, IState state)
         {
             Logger.TraceFormat("SetJobState jobId={0}", jobId);
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -102,7 +102,7 @@ namespace Hangfire.FluentNHibernateStorage
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job != null)
                 {
-                    var sqlState = new _JobState
+                    var jobState = new _JobState
                     {
                         Job = job,
                         Reason = state.Reason,
@@ -110,12 +110,12 @@ namespace Hangfire.FluentNHibernateStorage
                         CreatedAt = session.Storage.UtcNow,
                         Data = JobHelper.ToJson(state.SerializeData())
                     };
-                    session.Insert(sqlState);
+                    session.Insert(jobState);
                     session.Flush();
 
-                    job.StateData = sqlState.Data;
-                    job.StateReason = sqlState.Reason;
-                    job.StateName = sqlState.Name;
+                    job.StateData = jobState.Data;
+                    job.StateReason = jobState.Reason;
+                    job.StateName = jobState.Name;
                     job.LastStateChangedAt = session.Storage.UtcNow;
 
                     session.Update(job);
@@ -127,7 +127,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void AddJobState(string jobId, IState state)
         {
             Logger.TraceFormat("AddJobState jobId={0}, state={1}", jobId, state);
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -284,9 +284,8 @@ namespace Hangfire.FluentNHibernateStorage
                 var idList = session.Query<_List>()
                     .OrderBy(i => i.Id)
                     .Where(i => i.Key == key).ToList()
-                    .Select((i, j) => new {index = j, id = i.Id});
-                var before = idList.Where(i => i.index < keepStartingFrom)
-                    .Union(idList.Where(i => i.index > keepEndingAt))
+                    .Select((i, j) => new {index = j, id = i.Id}).ToList();
+                var before = idList.Where(i => i.index < keepStartingFrom ||  i.index > keepEndingAt)
                     .Select(i => i.id)
                     .ToList();
                 session.DeleteByInt64Id<_List>(before);

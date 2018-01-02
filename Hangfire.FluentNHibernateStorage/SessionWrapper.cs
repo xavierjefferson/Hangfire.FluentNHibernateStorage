@@ -13,12 +13,10 @@ namespace Hangfire.FluentNHibernateStorage
         public SessionWrapper(ISession session, ProviderTypeEnum type, FluentNHibernateJobStorage storage)
         {
             _session = session;
-            ProviderType = type;
             Storage = storage;
         }
 
         public FluentNHibernateJobStorage Storage { get; protected set; }
-        public ProviderTypeEnum ProviderType { get; protected set; }
 
         public IDbConnection Connection => _session.Connection;
 

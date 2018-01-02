@@ -45,20 +45,20 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 using (var transaction = session.BeginTransaction())
                 {
-                    var sqlJob = new _Job
+                    var jobEntity = new _Job
                     {
                         InvocationData = JobHelper.ToJson(invocationData),
                         Arguments = invocationData.Arguments,
                         CreatedAt = createdAt,
                         ExpireAt = createdAt.Add(expireIn)
                     };
-                    session.Insert(sqlJob);
+                    session.Insert(jobEntity);
                     session.Flush();
                     foreach (var keyValuePair in parameters)
                     {
                         session.Insert(new _JobParameter
                         {
-                            Job = sqlJob,
+                            Job = jobEntity,
                             Name = keyValuePair.Key,
                             Value = keyValuePair.Value
                         });
@@ -66,7 +66,7 @@ namespace Hangfire.FluentNHibernateStorage
                     session.Flush();
 
                     transaction.Commit();
-                    return sqlJob.Id.ToString();
+                    return jobEntity.Id.ToString();
                 }
             });
         }
@@ -95,28 +95,19 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (id == null) throw new ArgumentNullException("id");
             if (name == null) throw new ArgumentNullException("name");
-            var converter = JobIdConverter.Get(id);
+            var converter = StringToInt64Converter.Convert(id);
             if (!converter.Valid)
             {
                 return;
             }
             Storage.UseSession(session =>
             {
-                var updated = session.CreateQuery(SqlUtil.UpdateJobParameterValueStatement)
-                    .SetParameter(SqlUtil.ValueParameterName, value)
-                    .SetParameter(SqlUtil.IdParameterName, converter.Value)
-                    .ExecuteUpdate();
-                if (updated == 0)
-                {
-                    var jobParameter = new _JobParameter
+                session.UpsertEntity<_JobParameter>(i=>i.Id == converter.Value,
+                    i=>i.Value = value, i =>
                     {
-                        Job = new _Job {Id = converter.Value},
-                        Name = name,
-                        Value = value
-                    };
-                    session.Insert(jobParameter);
-                }
-                session.Flush();
+                        i.Job = new _Job {Id = converter.Value};
+                        i.Name = name;
+                    });
                 ;
             });
         }
@@ -124,7 +115,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override string GetJobParameter(string id, string name)
         {
             if (id == null) throw new ArgumentNullException("id");
-            var converter = JobIdConverter.Get(id);
+            var converter = StringToInt64Converter.Convert(id);
             if (!converter.Valid)
             {
                 return null;
@@ -141,7 +132,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override JobData GetJobData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
 
             if (!converter.Valid)
             {
@@ -186,7 +177,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override StateData GetStateData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return null;

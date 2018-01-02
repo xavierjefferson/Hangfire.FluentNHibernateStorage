@@ -100,7 +100,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public void Enqueue(SessionWrapper session, string queue, string jobId)
         {
-            var converter = JobIdConverter.Get(jobId);
+            var converter = StringToInt64Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
