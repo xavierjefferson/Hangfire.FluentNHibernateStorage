@@ -30,9 +30,9 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (obj == null) return 1;
 
-            var mySqlDistributedLock = obj as FluentNHibernateDistributedLock;
-            if (mySqlDistributedLock != null)
-                return string.Compare(_resource, mySqlDistributedLock._resource,
+            var distributedLock = obj as FluentNHibernateDistributedLock;
+            if (distributedLock != null)
+                return string.Compare(_resource, distributedLock._resource,
                     StringComparison.InvariantCultureIgnoreCase);
 
             throw new ArgumentException(string.Format("Object is not a {0}", GetType().Name));

@@ -63,14 +63,13 @@ namespace Hangfire.FluentNHibernateStorage
             try
             {
                 var tmp = GetSessionFactory();
+                EnsureDualHasOneRow();
+                RefreshUtcOffset();
             }
             catch (FluentConfigurationException ex)
             {
                 throw ex.InnerException??ex;
             }
-
-            EnsureDualHasOneRow();
-            RefreshUtcOffset();
         }
 
         protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
@@ -171,6 +170,7 @@ namespace Hangfire.FluentNHibernateStorage
             catch (Exception ex)
             {
                 Logger.WarnException("Issue with dual table", ex);
+                throw;
             }
         }
 
@@ -227,8 +227,9 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void WriteOptionsToLog(ILog logger)
         {
-            logger.Info("Using the following options for SQL Server job storage:");
+            logger.Info("Using the following options for job storage:");
             logger.InfoFormat("    Queue poll interval: {0}.", _options.QueuePollInterval);
+            logger.InfoFormat("    Schema: {0}", _options.DefaultSchema??"(not specified)");
         }
 
 

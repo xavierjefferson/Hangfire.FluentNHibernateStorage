@@ -102,8 +102,8 @@ namespace Hangfire.FluentNHibernateStorage
             }
             Storage.UseSession(session =>
             {
-                session.UpsertEntity<_JobParameter>(i=>i.Id == converter.Value,
-                    i=>i.Value = value, i =>
+                session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value,
+                    i => i.Value = value, i =>
                     {
                         i.Job = new _Job {Id = converter.Value};
                         i.Name = name;
@@ -436,7 +436,8 @@ namespace Hangfire.FluentNHibernateStorage
                 foreach (var keyValuePair in keyValuePairs)
                 {
                     session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
-                        i => { i.Value = keyValuePair.Value; }, i =>
+                        i => { i.Value = keyValuePair.Value; },
+                        i =>
                         {
                             i.Key = key;
                             i.Field = keyValuePair.Key;

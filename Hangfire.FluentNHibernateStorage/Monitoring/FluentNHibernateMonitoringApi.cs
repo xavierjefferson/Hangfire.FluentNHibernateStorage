@@ -120,14 +120,14 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                         var statesDictionary = session.Query<_Job>()
                             .Where(i => i.StateName != null && i.StateName != string.Empty)
                             .GroupBy(i => i.StateName)
-                            .Select(i => new {i.Key, c = i.Count()})
-                            .ToDictionary(i => i.Key, j => j.c);
+                            .Select(i => new {i.Key, Count = i.Count()})
+                            .ToDictionary(i => i.Key, j => j.Count);
 
-                        int GetJobStatusCount(string b)
+                        int GetJobStatusCount(string key)
                         {
-                            if (statesDictionary.ContainsKey(b))
+                            if (statesDictionary.ContainsKey(key))
                             {
-                                return statesDictionary[b];
+                                return statesDictionary[key];
                             }
                             return 0;
                         }
@@ -357,14 +357,14 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             string stateName,
             Func<_Job, Job, Dictionary<string, string>, TDto> selector)
         {
-            var a = session.Query<_Job>()
+            var jobs = session.Query<_Job>()
                 .OrderBy(i => i.Id)
                 .Where(i => i.StateName == stateName)
                 .Skip(from)
                 .Take(count)
                 .ToList();
 
-            return DeserializeJobs(a, selector);
+            return DeserializeJobs(jobs, selector);
         }
 
         private static JobList<TDto> DeserializeJobs<TDto>(
