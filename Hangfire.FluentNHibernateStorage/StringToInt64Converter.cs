@@ -1,18 +1,18 @@
 namespace Hangfire.FluentNHibernateStorage
 {
-    class JobIdConverter
+    class StringToInt64Converter
     {
         public bool Valid { get; private set; }
         public long Value { get; private set; }
 
-        public static JobIdConverter Get(string jobId)
+        public static StringToInt64Converter Convert(string jobId)
         {
             long tmp;
             var valid = long.TryParse(jobId, out tmp);
-            return new JobIdConverter {Value = tmp, Valid = valid};
+            return new StringToInt64Converter {Value = tmp, Valid = valid};
         }
 
-        private JobIdConverter()
+        private StringToInt64Converter()
         {
             
         }

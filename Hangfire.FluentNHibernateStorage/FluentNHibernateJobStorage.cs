@@ -48,9 +48,9 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
         internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
-            FluentNHibernateStorageOptions options, ProviderTypeEnum type)
+            FluentNHibernateStorageOptions options, ProviderTypeEnum providerType)
         {
-            Type = type;
+            ProviderType = providerType;
             PersistenceConfigurer = persistenceConfigurer ?? throw new ArgumentNullException("persistenceConfigurer");
             _options = options ?? new FluentNHibernateStorageOptions();
 
@@ -77,7 +77,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
-        public ProviderTypeEnum Type { get; } = ProviderTypeEnum.None;
+        public ProviderTypeEnum ProviderType { get; } = ProviderTypeEnum.None;
 
         public DateTime UtcNow
         {
@@ -103,7 +103,7 @@ namespace Hangfire.FluentNHibernateStorage
                 using (var session = GetSession())
                 {
                     IQuery query;
-                    switch (Type)
+                    switch (ProviderType)
                     {
                         case ProviderTypeEnum.OracleClient10Managed:
                         case ProviderTypeEnum.OracleClient9Managed:
@@ -365,7 +365,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public SessionWrapper GetSession()
         {
-            return new SessionWrapper(GetSessionFactory().OpenSession(), Type, this);
+            return new SessionWrapper(GetSessionFactory().OpenSession(), ProviderType, this);
         }
     }
 }

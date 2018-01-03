@@ -26,16 +26,11 @@ namespace Hangfire.FluentNHibernateStorage
             get => _queuePollInterval;
             set
             {
-                var message = string.Format(
-                    "The QueuePollInterval property value should be positive. Given: {0}.",
-                    value);
-
-                if (value == TimeSpan.Zero)
+                if (value == TimeSpan.Zero || value != value.Duration())
                 {
-                    throw new ArgumentException(message, "value");
-                }
-                if (value != value.Duration())
-                {
+                    var message = string.Format(
+                        "The QueuePollInterval property value should be positive. Given: {0}.",
+                        value);
                     throw new ArgumentException(message, "value");
                 }
 

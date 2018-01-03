@@ -53,8 +53,9 @@ namespace Hangfire.FluentNHibernateStorage
                                     expireAt = i.Max(counter => counter.ExpireAt)
                                 })
                             .ToList();
-                        var query = session.CreateQuery(SqlUtil.UpdateAggregateCounterSql);
+                        var query = session.CreateQuery(SqlUtil.UpdateAggregateCounterStatement);
 
+                        //TODO: Consider using upsert approach
                         foreach (var item in countersByName)
                         {
                             if (item.expireAt.HasValue)

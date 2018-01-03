@@ -56,8 +56,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             //return Enumerable.Empty<long>();
             return _storage.UseSession(session =>
             {
-                return session.Query<_JobQueue>().Where(i => (i.FetchedAt != null) & (i.Queue == queue))
-                    .OrderBy(i => i.Id).Skip(from).Take(perPage).Select(i => i.Id).ToList();
+                return session.Query<_JobQueue>()
+                    .Where(i => i.FetchedAt != null & i.Queue == queue)
+                    .OrderBy(i => i.Id)
+                    .Skip(from)
+                    .Take(perPage)
+                    .Select(i => i.Id)
+                    .ToList();
             });
         }
 
@@ -65,11 +70,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             return _storage.UseSession(session =>
             {
-                var result = session.Query<_JobQueue>().Count(i => i.Queue == queue);
+                var result = session.Query<_JobQueue>().Where(i => i.Queue == queue).Select(i => i.FetchedAt).ToList();
 
                 return new EnqueuedAndFetchedCountDto
                 {
-                    EnqueuedCount = result
+                    EnqueuedCount = result.Count,
+                    FetchedCount = result.Count(i => i != null)
                 };
             });
         }
