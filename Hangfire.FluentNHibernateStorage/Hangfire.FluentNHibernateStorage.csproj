@@ -60,6 +60,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FluentNHibernateStorageBootstrapperConfigurationExtensions.cs" />
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="DateHelper.cs" />
     <Compile Include="Entities\Int64IdBase.cs" />
@@ -70,6 +71,7 @@
     <Compile Include="FluentNHibernateStorageFactory.cs" />
     <Compile Include="JobIdConverter.cs" />
     <Compile Include="Maps\Constants.cs" />
+    <Compile Include="Maps\IndexTypeEnum.cs" />
     <Compile Include="Maps\Int64IdMapBase.cs" />
     <Compile Include="Maps\ObjectHelper.cs" />
     <Compile Include="Maps\_DistributedLockMap.cs" />

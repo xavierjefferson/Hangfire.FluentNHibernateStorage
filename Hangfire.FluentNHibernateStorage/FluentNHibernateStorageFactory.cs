@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Configuration;
 using FluentNHibernate.Cfg.Db;
 using NHibernate.Driver;
 
@@ -11,7 +12,7 @@ namespace Hangfire.FluentNHibernateStorage
             where U : ConnectionStringBuilder, new()
         {
             var provider = createFunc().ConnectionString(connectionString);
-            
+
             if (!string.IsNullOrWhiteSpace(options.DefaultSchema))
             {
                 provider.DefaultSchema(options.DefaultSchema);
@@ -19,36 +20,84 @@ namespace Hangfire.FluentNHibernateStorage
             return provider;
         }
 
-        public static FluentNHibernateJobStorage For(ProviderTypeEnum providerType, string connectionString,
+        /// <summary>
+        ///     Factory method.  Return a job storage provider based on the given provider type, connection string, and options
+        /// </summary>
+        /// <param name="nameOrConnectionString">Connection string or its name</param>
+        /// <param name="providerType">Provider type from enumeration</param>
+        /// <param name="options">Advanced options</param>
+        public static FluentNHibernateJobStorage For(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null)
         {
             options = options ?? new FluentNHibernateStorageOptions();
-            var configurer = GetPersistenceConfigurer(providerType, connectionString, options);
+            var configurer = GetPersistenceConfigurer(providerType, nameOrConnectionString, options);
 
             return new FluentNHibernateJobStorage(configurer, options, providerType);
         }
 
+        private static string GetConnectionString(string nameOrConnectionString)
+        {
+            if (IsConnectionString(nameOrConnectionString))
+            {
+                return nameOrConnectionString;
+            }
 
+            if (IsConnectionStringInConfiguration(nameOrConnectionString))
+            {
+                return ConfigurationManager.ConnectionStrings[nameOrConnectionString].ConnectionString;
+            }
+
+            throw new ArgumentException(
+                $"Could not find connection string with name '{nameOrConnectionString}' in application config file");
+        }
+
+
+        private static bool IsConnectionString(string nameOrConnectionString)
+        {
+            return nameOrConnectionString.Contains(";");
+        }
+
+        private static bool IsConnectionStringInConfiguration(string connectionStringName)
+        {
+            var connectionStringSetting = ConfigurationManager.ConnectionStrings[connectionStringName];
+
+            return connectionStringSetting != null;
+        }
+
+
+        /// <summary>
+        ///     Return an NHibernate persistence configurerTells the bootstrapper to use a FluentNHibernate provider as a job
+        ///     storage,
+        ///     that can be accessed using the given connection string or
+        ///     its name.
+        /// </summary>
+        /// <param name="nameOrConnectionString">Connection string or its name</param>
+        /// <param name="providerType">Provider type from enumeration</param>
+        /// <param name="options">Advanced options</param>
         public static IPersistenceConfigurer GetPersistenceConfigurer(ProviderTypeEnum providerType,
-            string connectionString,
+            string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null)
         {
             options = options ?? new FluentNHibernateStorageOptions();
+
+            var connectionString = GetConnectionString(nameOrConnectionString);
 
             IPersistenceConfigurer configurer;
             switch (providerType)
             {
                 case ProviderTypeEnum.OracleClient10Managed:
-                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options).Driver<OracleManagedDataClientDriver>();
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options)
+                        .Driver<OracleManagedDataClientDriver>();
 
                     break;
                 case ProviderTypeEnum.OracleClient9Managed:
-                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options).Driver<OracleManagedDataClientDriver>();
+                    configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options)
+                        .Driver<OracleManagedDataClientDriver>();
                     break;
 
                 case ProviderTypeEnum.OracleClient10:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle10, connectionString, options);
-                    
+
                     break;
                 case ProviderTypeEnum.OracleClient9:
                     configurer = ConfigureProvider(() => OracleClientConfiguration.Oracle9, connectionString, options);
@@ -71,7 +120,7 @@ namespace Hangfire.FluentNHibernateStorage
                     configurer = ConfigureProvider(() => new FirebirdConfiguration(), connectionString, options);
 
                     break;
- 
+
                 case ProviderTypeEnum.DB2Informix1150:
                     configurer = ConfigureProvider(() => DB2Configuration.Informix1150, connectionString, options);
 
