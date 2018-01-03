@@ -365,7 +365,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public SessionWrapper GetSession()
         {
-            return new SessionWrapper(GetSessionFactory().OpenSession(), ProviderType, this);
+            return new SessionWrapper(GetSessionFactory().OpenSession(), this);
         }
     }
 }

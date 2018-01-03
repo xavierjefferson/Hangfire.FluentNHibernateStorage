@@ -10,7 +10,7 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private readonly ISession _session;
 
-        public SessionWrapper(ISession session, ProviderTypeEnum type, FluentNHibernateJobStorage storage)
+        public SessionWrapper(ISession session, FluentNHibernateJobStorage storage)
         {
             _session = session;
             Storage = storage;
