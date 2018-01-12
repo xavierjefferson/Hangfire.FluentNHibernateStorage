@@ -2,6 +2,7 @@
 using System.Data.SqlClient;
 using System.IO;
 using FluentNHibernate.Cfg.Db;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
@@ -53,10 +54,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         {
             lock (Mutex)
             {
-                var connectionString = GetConnectionString();
                 return _configurer ?? (_configurer = FluentNHibernateStorageFactory.GetPersistenceConfigurer(
                            ProviderTypeEnum.MsSql2008,
-                           connectionString));
+                           GetConnectionString()));
             }
         }
     }

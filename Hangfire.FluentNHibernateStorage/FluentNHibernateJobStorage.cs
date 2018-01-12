@@ -9,12 +9,12 @@ using FluentNHibernate.Cfg.Db;
 using Hangfire.Annotations;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
 using NHibernate;
-using NHibernate.Tool.hbm2ddl;
 using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
@@ -31,25 +31,25 @@ namespace Hangfire.FluentNHibernateStorage
 
         private readonly ServerTimeSyncManager _serverTimeSyncManager;
 
-        private ISessionFactory _sessionFactory;
+        private readonly ISessionFactory _sessionFactory;
 
 
         private TimeSpan _utcOffset = TimeSpan.Zero;
 
-
-        public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer)
-            : this(persistenceConfigurer, new FluentNHibernateStorageOptions())
+        public FluentNHibernateJobStorage(ProviderTypeEnum providerType, string nameOrConnectionString,
+            FluentNHibernateStorageOptions options = null) : this(
+            SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(providerType, nameOrConnectionString, options))
         {
         }
 
         public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
-            FluentNHibernateStorageOptions options) : this(persistenceConfigurer, options,
-            InferProviderType(persistenceConfigurer))
+            FluentNHibernateStorageOptions options = null) : this(SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(
+            persistenceConfigurer, options))
         {
         }
 
 
-        internal FluentNHibernateJobStorage(SessionFactoryInfo info)
+        public FluentNHibernateJobStorage(SessionFactoryInfo info)
         {
             ProviderType = info.ProviderType;
             _sessionFactory = info.SessionFactory;
@@ -66,31 +66,6 @@ namespace Hangfire.FluentNHibernateStorage
             //escalate session factory issues early
             try
             {
-                EnsureDualHasOneRow();
-                RefreshUtcOffset();
-            }
-            catch (FluentConfigurationException ex)
-            {
-                throw ex.InnerException ?? ex;
-            }
-        }
-
-        internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
-            FluentNHibernateStorageOptions options, ProviderTypeEnum providerType)
-        {
-            ProviderType = providerType;
-
-            _options = options ?? new FluentNHibernateStorageOptions();
-
-            InitializeQueueProviders();
-            _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
-            _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
-            _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
-
-            //escalate session factory issues early
-            try
-            {
-                _sessionFactory = GetSessionFactory(persistenceConfigurer);
                 EnsureDualHasOneRow();
                 RefreshUtcOffset();
             }
@@ -347,48 +322,6 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 var result = func(session);
                 return result;
-            }
-        }
-
-        private ISessionFactory GetSessionFactory(IPersistenceConfigurer persistenceConfigurer)
-        {
-            lock (SessionFactoryMutex)
-            {
-                if (_sessionFactory != null)
-                {
-                    return _sessionFactory;
-                }
-
-                var fluentConfiguration =
-                    Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>());
-
-                _sessionFactory = fluentConfiguration
-                    .Database(persistenceConfigurer)
-                    .ExposeConfiguration(cfg =>
-                    {
-                        if (!_options.PrepareSchemaIfNecessary)
-                        {
-                            return;
-                        }
-                        Logger.Info("Start schema check...");
-                        var schemaUpdate = new SchemaUpdate(cfg);
-
-                        string lastStatement = null;
-                        try
-                        {
-                            schemaUpdate.Execute(i => { lastStatement = i; }, true);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.ErrorException(string.Format("Can't do schema update '{0}'", lastStatement), ex);
-                            throw;
-                        }
-
-                        _options.PrepareSchemaIfNecessary = false;
-                        Logger.Info("Schema check done.");
-                    })
-                    .BuildSessionFactory();
-                return _sessionFactory;
             }
         }
 
