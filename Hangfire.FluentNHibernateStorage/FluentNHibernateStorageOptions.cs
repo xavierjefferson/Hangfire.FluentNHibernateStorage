@@ -1,9 +1,10 @@
 using System;
 using System.Transactions;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class FluentNHibernateStorageOptions
+    public class FluentNHibernateStorageOptions:FluentNHibernatePersistenceBuilderOptions
     {
         private TimeSpan _queuePollInterval;
 
@@ -38,7 +39,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        public string DefaultSchema { get; set; }
+       
 
         public bool PrepareSchemaIfNecessary { get; set; }
 

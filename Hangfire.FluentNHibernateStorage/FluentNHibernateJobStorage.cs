@@ -15,6 +15,7 @@ using Hangfire.Server;
 using Hangfire.Storage;
 using NHibernate;
 using NHibernate.Tool.hbm2ddl;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -47,11 +48,38 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
+
+        internal FluentNHibernateJobStorage(SessionFactoryInfo info)
+        {
+            ProviderType = info.ProviderType;
+            _sessionFactory = info.SessionFactory;
+
+            var tmp = info.Options as FluentNHibernateStorageOptions;
+            _options = tmp ?? throw new ArgumentException("options");
+
+            InitializeQueueProviders();
+            _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
+            _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
+            _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
+
+
+            //escalate session factory issues early
+            try
+            {
+                EnsureDualHasOneRow();
+                RefreshUtcOffset();
+            }
+            catch (FluentConfigurationException ex)
+            {
+                throw ex.InnerException ?? ex;
+            }
+        }
+
         internal FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
             FluentNHibernateStorageOptions options, ProviderTypeEnum providerType)
         {
             ProviderType = providerType;
-            PersistenceConfigurer = persistenceConfigurer ?? throw new ArgumentNullException("persistenceConfigurer");
+
             _options = options ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
@@ -62,17 +90,16 @@ namespace Hangfire.FluentNHibernateStorage
             //escalate session factory issues early
             try
             {
-                var tmp = GetSessionFactory();
+                _sessionFactory = GetSessionFactory(persistenceConfigurer);
                 EnsureDualHasOneRow();
                 RefreshUtcOffset();
             }
             catch (FluentConfigurationException ex)
             {
-                throw ex.InnerException??ex;
+                throw ex.InnerException ?? ex;
             }
         }
 
-        protected IPersistenceConfigurer PersistenceConfigurer { get; set; }
 
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
 
@@ -212,11 +239,13 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 #pragma warning disable 618
+
         public override IEnumerable<IServerComponent> GetComponents()
 
         {
             return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
         }
+
 #pragma warning restore 618
 
         public List<IBackgroundProcess> GetBackgroundProcesses()
@@ -229,7 +258,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             logger.Info("Using the following options for job storage:");
             logger.InfoFormat("    Queue poll interval: {0}.", _options.QueuePollInterval);
-            logger.InfoFormat("    Schema: {0}", _options.DefaultSchema??"(not specified)");
+            logger.InfoFormat("    Schema: {0}", _options.DefaultSchema ?? "(not specified)");
         }
 
 
@@ -321,7 +350,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        private ISessionFactory GetSessionFactory()
+        private ISessionFactory GetSessionFactory(IPersistenceConfigurer persistenceConfigurer)
         {
             lock (SessionFactoryMutex)
             {
@@ -334,7 +363,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Fluently.Configure().Mappings(i => i.FluentMappings.AddFromAssemblyOf<_Hash>());
 
                 _sessionFactory = fluentConfiguration
-                    .Database(PersistenceConfigurer)
+                    .Database(persistenceConfigurer)
                     .ExposeConfiguration(cfg =>
                     {
                         if (!_options.PrepareSchemaIfNecessary)
@@ -366,7 +395,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public SessionWrapper GetSession()
         {
-            return new SessionWrapper(GetSessionFactory().OpenSession(), this);
+            return new SessionWrapper(_sessionFactory.OpenSession(), this);
         }
     }
 }

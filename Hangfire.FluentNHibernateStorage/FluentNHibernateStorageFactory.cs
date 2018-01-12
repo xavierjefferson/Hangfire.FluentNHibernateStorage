@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Configuration;
 using FluentNHibernate.Cfg.Db;
+using Hangfire.FluentNHibernateStorage.Maps;
 using NHibernate.Driver;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -30,9 +32,12 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options = null)
         {
             options = options ?? new FluentNHibernateStorageOptions();
-            var configurer = GetPersistenceConfigurer(providerType, nameOrConnectionString, options);
+            var sessionFactoryInfo =
+                SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(providerType,
+                    nameOrConnectionString, options);
 
-            return new FluentNHibernateJobStorage(configurer, options, providerType);
+
+            return new FluentNHibernateJobStorage(sessionFactoryInfo);
         }
 
         private static string GetConnectionString(string nameOrConnectionString)

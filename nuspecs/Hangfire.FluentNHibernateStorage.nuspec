@@ -25,6 +25,7 @@
 		<dependency id="Newtonsoft.Json" version="5.0.1"   />
 		<dependency id="NHibernate" version="4.0.0.4000"  />
 		<dependency id="Owin" version="1.0"  />
+    <dependency id="Snork.FluentNHibernateTools" version="1.0.3" />
     </dependencies>
 
 
