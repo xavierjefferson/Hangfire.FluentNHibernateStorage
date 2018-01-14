@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.1.2045</version>
+    <version>1.1.2046</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -12,11 +12,9 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
     <releaseNotes>
-      * Fixed bug in GetRangeFromSet
-      * Simplify code in ExpirationManager
-      * Code cleanup
+      Throw fewer exceptions when a distributed lock can't be acquired
     </releaseNotes>
-    <copyright>Copyright © 2017 Xavier Jefferson</copyright>
+    <copyright>Copyright © 2018 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
     <dependencies>
 		<dependency id="FluentNHibernate" version="2.0.3.0"   />
@@ -25,7 +23,7 @@
 		<dependency id="Newtonsoft.Json" version="5.0.1"   />
 		<dependency id="NHibernate" version="4.0.0.4000"  />
 		<dependency id="Owin" version="1.0"  />
-    <dependency id="Snork.FluentNHibernateTools" version="1.0.3" />
+    <dependency id="Snork.FluentNHibernateTools" version="1.1.6600" />
     </dependencies>
 
 

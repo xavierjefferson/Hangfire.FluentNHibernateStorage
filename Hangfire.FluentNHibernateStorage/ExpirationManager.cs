@@ -136,6 +136,10 @@ namespace Hangfire.FluentNHibernateStorage
 
                             Logger.InfoFormat("removed records count={0}", removedCount);
                         }
+                        catch (FluentNHibernateDistributedLockException)
+                        {
+                            // do nothing
+                        }
                         catch (Exception ex)
                         {
                             Logger.Error(ex.ToString());

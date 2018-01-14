@@ -87,6 +87,10 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         }
                     }
                 }
+                catch (FluentNHibernateDistributedLockException)
+                {
+                    // do nothing
+                }
                 catch (Exception ex)
                 {
                     Logger.ErrorException(ex.Message, ex);
