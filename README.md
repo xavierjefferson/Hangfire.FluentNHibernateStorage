@@ -16,27 +16,9 @@ Run the following command in the NuGet Package Manager console to install Hangfi
 Install-Package Hangfire.FluentNHibernateStorage
 ```
 
-IMPORTANT!  For the use of any database other than SQL Server, you must also install an appropriate driver package:
+You will need to install an [additional driver package](DriverPackage.md) for all RDBMS systems except SQL Server.
 
-### For MySQL:
-```
-Install-Package MySql.Data
-```
-
-### For PostgreSQL:
-```
-Install-Package Npgsql
-```
-
-### For Oracle Managed Provider):
-```
-Install-Package Oracle.ManagedDataAccess
-```
-
-### For Firebird:
-```
-Install-Package FirebirdSql.Data.FirebirdClient
-```
+ 
 
 
 ## Database Implementation Notes

@@ -9,6 +9,7 @@ using Hangfire.FluentNHibernate.SampleApplication.Properties;
 using Hangfire.FluentNHibernateStorage;
 using log4net;
 using Newtonsoft.Json;
+using Snork.FluentNHibernateTools;
 using Timer = System.Timers.Timer;
 
 namespace Hangfire.FluentNHibernate.SampleApplication

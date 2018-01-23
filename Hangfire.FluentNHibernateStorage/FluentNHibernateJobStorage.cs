@@ -22,7 +22,7 @@ namespace Hangfire.FluentNHibernateStorage
     public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
-        private static readonly object SessionFactoryMutex = new object();
+        
         private readonly CountersAggregator _countersAggregator;
         private readonly object _dateOffsetMutex = new object();
 
@@ -55,7 +55,7 @@ namespace Hangfire.FluentNHibernateStorage
             _sessionFactory = info.SessionFactory;
 
             var tmp = info.Options as FluentNHibernateStorageOptions;
-            _options = tmp ?? throw new ArgumentException("options");
+            _options = tmp ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
             _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
@@ -175,36 +175,6 @@ namespace Hangfire.FluentNHibernateStorage
                 throw;
             }
         }
-
-        private static ProviderTypeEnum InferProviderType(IPersistenceConfigurer config)
-        {
-            if (config is MsSqlConfiguration)
-            {
-                return ProviderTypeEnum.MsSql2000;
-            }
-            if (config is PostgreSQLConfiguration)
-            {
-                return ProviderTypeEnum.PostgreSQLStandard;
-            }
-            if (config is JetDriverConfiguration || config is SQLiteConfiguration || config is MsSqlCeConfiguration)
-            {
-                throw new ArgumentException($"{config.GetType().Name} is explicitly not supported.");
-            }
-            if (config is DB2Configuration)
-            {
-                return ProviderTypeEnum.DB2Standard;
-            }
-            if (config is OracleClientConfiguration)
-            {
-                return ProviderTypeEnum.OracleClient9;
-            }
-            if (config is FirebirdConfiguration)
-            {
-                return ProviderTypeEnum.Firebird;
-            }
-            return ProviderTypeEnum.None;
-        }
-
 
         private void InitializeQueueProviders()
         {
