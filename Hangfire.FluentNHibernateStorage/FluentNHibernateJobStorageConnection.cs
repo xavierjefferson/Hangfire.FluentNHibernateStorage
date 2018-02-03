@@ -318,7 +318,7 @@ namespace Hangfire.FluentNHibernateStorage
                         .OrderBy(i => i.Score)
                         .Where(i => i.Key == key && i.Score >= fromScore && i.Score <= toScore)
                         .Select(i => i.Value)
-                        .SingleOrDefault());
+                        .FirstOrDefault());
         }
 
         public override long GetCounter(string key)
