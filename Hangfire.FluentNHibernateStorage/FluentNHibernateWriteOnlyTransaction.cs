@@ -385,7 +385,7 @@ namespace Hangfire.FluentNHibernateStorage
                     command(session);
                     session.Flush();
                 }
-            }, IsolationLevel.RepeatableRead);
+            }, _storage.Options.TransactionIsolationLevel);
         }
 
         internal void QueueCommand(Action<SessionWrapper> action)

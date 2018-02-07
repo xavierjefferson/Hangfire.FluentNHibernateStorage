@@ -27,7 +27,7 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly object _dateOffsetMutex = new object();
 
         private readonly ExpirationManager _expirationManager;
-        private readonly FluentNHibernateStorageOptions _options;
+        public FluentNHibernateStorageOptions Options { get; }
 
         private readonly ServerTimeSyncManager _serverTimeSyncManager;
 
@@ -55,11 +55,11 @@ namespace Hangfire.FluentNHibernateStorage
             _sessionFactory = info.SessionFactory;
 
             var tmp = info.Options as FluentNHibernateStorageOptions;
-            _options = tmp ?? new FluentNHibernateStorageOptions();
+            Options = tmp ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
-            _expirationManager = new ExpirationManager(this, _options.JobExpirationCheckInterval);
-            _countersAggregator = new CountersAggregator(this, _options.CountersAggregateInterval);
+            _expirationManager = new ExpirationManager(this, Options.JobExpirationCheckInterval);
+            _countersAggregator = new CountersAggregator(this, Options.CountersAggregateInterval);
             _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
 
 
@@ -180,7 +180,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             QueueProviders =
                 new PersistentJobQueueProviderCollection(
-                    new FluentNHibernateJobQueueProvider(this, _options));
+                    new FluentNHibernateJobQueueProvider(this, Options));
         }
 
 #pragma warning disable 618
@@ -202,14 +202,14 @@ namespace Hangfire.FluentNHibernateStorage
         public override void WriteOptionsToLog(ILog logger)
         {
             logger.Info("Using the following options for job storage:");
-            logger.InfoFormat("    Queue poll interval: {0}.", _options.QueuePollInterval);
-            logger.InfoFormat("    Schema: {0}", _options.DefaultSchema ?? "(not specified)");
+            logger.InfoFormat("    Queue poll interval: {0}.", Options.QueuePollInterval);
+            logger.InfoFormat("    Schema: {0}", Options.DefaultSchema ?? "(not specified)");
         }
 
 
         public override IMonitoringApi GetMonitoringApi()
         {
-            return new FluentNHibernateMonitoringApi(this, _options.DashboardJobListLimit);
+            return new FluentNHibernateMonitoringApi(this, Options.DashboardJobListLimit);
         }
 
         public override IStorageConnection GetConnection()
@@ -229,7 +229,7 @@ namespace Hangfire.FluentNHibernateStorage
         internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func,
             IsolationLevel? isolationLevel = null)
         {
-            using (var transaction = CreateTransaction(isolationLevel ?? _options.TransactionIsolationLevel))
+            using (var transaction = CreateTransaction(isolationLevel ?? Options.TransactionIsolationLevel))
             {
                 var result = UseSession(func);
                 transaction.Complete();
@@ -244,7 +244,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 action(session);
                 return true;
-            }, isolationLevel);
+            }, isolationLevel ?? Options.TransactionIsolationLevel);
         }
 
         private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)
@@ -254,7 +254,7 @@ namespace Hangfire.FluentNHibernateStorage
                     new TransactionOptions
                     {
                         IsolationLevel = isolationLevel.Value,
-                        Timeout = _options.TransactionTimeout
+                        Timeout = Options.TransactionTimeout
                     })
                 : new TransactionScope();
         }
