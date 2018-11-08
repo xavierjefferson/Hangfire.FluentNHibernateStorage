@@ -10,7 +10,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateStorageOptions()
         {
-            TransactionIsolationLevel = IsolationLevel.ReadCommitted;
+            TransactionIsolationLevel = IsolationLevel.Serializable;
             QueuePollInterval = TimeSpan.FromSeconds(15);
             JobExpirationCheckInterval = TimeSpan.FromHours(1);
             CountersAggregateInterval = TimeSpan.FromMinutes(5);

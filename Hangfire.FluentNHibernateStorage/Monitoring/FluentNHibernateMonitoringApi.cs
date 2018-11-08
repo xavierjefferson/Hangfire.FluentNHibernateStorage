@@ -448,38 +448,54 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             SessionWrapper session,
             IEnumerable<long> jobIds)
         {
-            var jobs = session.Query<_Job>().Where(i => jobIds.Contains(i.Id)).ToList();
+            var list = jobIds.ToList();
+            if (list.Any())
+            {
+                var jobs = session.Query<_Job>().Where(i => list.Contains(i.Id)).ToList();
 
-            return DeserializeJobs(
-                jobs,
-                (sqlJob, job, stateData) => new EnqueuedJobDto
-                {
-                    Job = job,
-                    State = sqlJob.StateName,
-                    EnqueuedAt = sqlJob.StateName == EnqueuedState.StateName
-                        ? JobHelper.DeserializeNullableDateTime(stateData["EnqueuedAt"])
-                        : null
-                });
+                return DeserializeJobs(
+                    jobs,
+                    (sqlJob, job, stateData) => new EnqueuedJobDto
+                    {
+                        Job = job,
+                        State = sqlJob.StateName,
+                        EnqueuedAt = sqlJob.StateName == EnqueuedState.StateName
+                            ? JobHelper.DeserializeNullableDateTime(stateData["EnqueuedAt"])
+                            : null
+                    });
+            }
+            else
+            {
+                return new JobList<EnqueuedJobDto>(new List<KeyValuePair<string, EnqueuedJobDto>>());
+            }
         }
 
         private JobList<FetchedJobDto> FetchedJobs(
             SessionWrapper session,
             IEnumerable<long> jobIds)
         {
-            var result = new List<KeyValuePair<string, FetchedJobDto>>();
-
-            foreach (var job in session.Query<_Job>().Where(i => jobIds.Contains(i.Id)))
+            var list = jobIds.ToList();
+            if (list.Any())
             {
-                result.Add(new KeyValuePair<string, FetchedJobDto>(
-                    job.Id.ToString(),
-                    new FetchedJobDto
-                    {
-                        Job = DeserializeJob(job.InvocationData, job.Arguments),
-                        State = job.StateName
-                    }));
-            }
+                var result = new List<KeyValuePair<string, FetchedJobDto>>();
 
-            return new JobList<FetchedJobDto>(result);
+                foreach (var job in session.Query<_Job>().Where(i => list.Contains(i.Id)))
+                {
+                    result.Add(new KeyValuePair<string, FetchedJobDto>(
+                        job.Id.ToString(),
+                        new FetchedJobDto
+                        {
+                            Job = DeserializeJob(job.InvocationData, job.Arguments),
+                            State = job.StateName
+                        }));
+                }
+
+                return new JobList<FetchedJobDto>(result);
+            }
+            else
+            {
+                return new JobList<FetchedJobDto>(new List<KeyValuePair<string, FetchedJobDto>>());
+            }
         }
 
         private Dictionary<DateTime, long> GetHourlyTimelineStats(
