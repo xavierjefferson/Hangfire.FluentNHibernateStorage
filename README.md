@@ -74,7 +74,7 @@ I may simplify the implementation later, but I think this code is pretty painles
             //Configure properties (this is optional)
             var options = new FluentNHibernateStorageOptions
             {
-                TransactionIsolationLevel = IsolationLevel.ReadCommitted,
+                TransactionIsolationLevel = IsolationLevel.Serializable,
                 QueuePollInterval = TimeSpan.FromSeconds(15),
                 JobExpirationCheckInterval = TimeSpan.FromHours(1),
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
@@ -108,7 +108,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             //Configure properties (this is optional)
             var options = new FluentNHibernateStorageOptions
             {
-                TransactionIsolationLevel = IsolationLevel.ReadCommitted,
+                TransactionIsolationLevel = IsolationLevel.Serializable,
                 QueuePollInterval = TimeSpan.FromSeconds(15),
                 JobExpirationCheckInterval = TimeSpan.FromHours(1),
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
