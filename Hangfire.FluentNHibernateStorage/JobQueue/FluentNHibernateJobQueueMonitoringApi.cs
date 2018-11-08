@@ -43,7 +43,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 return session.Query<_JobQueue>()
                     .OrderBy(i => i.Id)
                     .Where(i => i.Queue == queue)
-                    .Select(i => i.Job.Id)
+                    .Select(i => Convert.ToInt64( i.Job.Id))
                     .Skip(from)
                     .Take(perPage)
                     .ToList();
@@ -61,7 +61,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     .OrderBy(i => i.Id)
                     .Skip(from)
                     .Take(perPage)
-                    .Select(i => i.Id)
+                    .Select(i => Convert.ToInt64( i.Id))
                     .ToList();
             });
         }

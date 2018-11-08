@@ -2,7 +2,7 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _JobParameterMap : Int64IdMapBase<_JobParameter>
+    internal class _JobParameterMap : Int32IdMapBase<_JobParameter>
     {
         public _JobParameterMap()
         {

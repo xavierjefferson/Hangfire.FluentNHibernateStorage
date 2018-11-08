@@ -2,7 +2,7 @@
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _JobQueue : Int64IdBase
+    public class _JobQueue : Int32IdBase
     {
         public virtual _Job Job { get; set; }
         public virtual string Queue { get; set; }

@@ -26,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public virtual DateTime? LastStateChangedAt { get; set; }
         public virtual string StateData { get; set; }
 
-        public virtual long Id { get; set; }
+        public virtual int Id { get; set; }
         public virtual DateTime? ExpireAt { get; set; }
     }
 }

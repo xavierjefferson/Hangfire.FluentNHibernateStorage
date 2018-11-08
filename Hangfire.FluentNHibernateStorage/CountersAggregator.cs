@@ -80,7 +80,7 @@ namespace Hangfire.FluentNHibernateStorage
                             ;
                         }
                         removedCount =
-                            session.DeleteByInt64Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
+                            session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
                         transaction.Commit();
                     }

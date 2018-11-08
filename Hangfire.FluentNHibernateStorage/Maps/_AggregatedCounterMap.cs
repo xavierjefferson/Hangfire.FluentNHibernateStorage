@@ -2,7 +2,7 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _AggregatedCounterMap : KeyValueTypeMapBase<_AggregatedCounter, long>
+    internal class _AggregatedCounterMap : KeyValueTypeMapBase<_AggregatedCounter, int>
     {
         public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
 

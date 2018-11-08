@@ -161,7 +161,7 @@ namespace Hangfire.FluentNHibernateStorage
                                 session.Flush();
                                 break;
                             default:
-                                session.DeleteByInt64Id<_Dual>(
+                                session.DeleteByInt32Id<_Dual>(
                                     session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
                                 break;
                         }

@@ -2,7 +2,7 @@ using System;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _DistributedLock : Int64IdBase
+    public class _DistributedLock : Int32IdBase
     {
         public _DistributedLock()
         {

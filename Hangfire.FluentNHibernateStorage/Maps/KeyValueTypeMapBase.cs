@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="U"></typeparam>
-    internal abstract class KeyValueTypeMapBase<T, U> : Int64IdMapBase<T> where T : KeyValueTypeBase<U>
+    internal abstract class KeyValueTypeMapBase<T, U> : Int32IdMapBase<T> where T : KeyValueTypeBase<U>
     {
         protected KeyValueTypeMapBase()
         {

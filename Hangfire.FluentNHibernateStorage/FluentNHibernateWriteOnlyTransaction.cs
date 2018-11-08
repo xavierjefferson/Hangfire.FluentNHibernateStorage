@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void ExpireJob(string jobId, TimeSpan expireIn)
         {
             Logger.TraceFormat("ExpireJob jobId={0}", jobId);
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -73,7 +73,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void PersistJob(string jobId)
         {
             Logger.TraceFormat("PersistJob jobId={0}", jobId);
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -90,7 +90,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void SetJobState(string jobId, IState state)
         {
             Logger.TraceFormat("SetJobState jobId={0}", jobId);
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -127,7 +127,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void AddJobState(string jobId, IState state)
         {
             Logger.TraceFormat("AddJobState jobId={0}, state={1}", jobId, state);
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return;
@@ -288,7 +288,7 @@ namespace Hangfire.FluentNHibernateStorage
                 var before = idList.Where(i => i.index < keepStartingFrom ||  i.index > keepEndingAt)
                     .Select(i => i.id)
                     .ToList();
-                session.DeleteByInt64Id<_List>(before);
+                session.DeleteByInt32Id<_List>(before);
             });
         }
 

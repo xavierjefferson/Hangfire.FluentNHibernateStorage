@@ -168,13 +168,13 @@ namespace Hangfire.FluentNHibernateStorage
 
 
         /// <summary>
-        /// delete entities that implement IInt64Id, by using the value stored in their Id property.
+        /// delete entities that implement IInt32Id, by using the value stored in their Id property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="session">Sessionwrapper instance to act upon</param>
         /// <param name="id">Collection of ids to delete</param>
         /// <returns>the number of rows deleted</returns>
-        public static long DeleteByInt64Id<T>(this SessionWrapper session, ICollection<long> id) where T : IInt64Id
+        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> id) where T : IInt32Id
         {
             if (!id.Any())
             {
@@ -191,7 +191,7 @@ namespace Hangfire.FluentNHibernateStorage
                 else
                 {
                     queryString = string.Format("delete from {0} where {1} in (:{2})", typeName.Name.WrapObjectName(),
-                        nameof(IInt64Id.Id).WrapObjectName(), IdParameterName);
+                        nameof(IInt32Id.Id).WrapObjectName(), IdParameterName);
                     DeleteByIdCommands[typeName] = queryString;
                 }
             }
@@ -224,7 +224,7 @@ namespace Hangfire.FluentNHibernateStorage
                 .Take(count)
                 .Select(i => i.Id)
                 .ToList();
-            return session.DeleteByInt64Id<T>(ids);
+            return session.DeleteByInt32Id<T>(ids);
         }
 
         /// <summary>

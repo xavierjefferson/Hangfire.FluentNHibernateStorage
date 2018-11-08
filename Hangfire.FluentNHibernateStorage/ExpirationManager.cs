@@ -51,7 +51,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .Take(NumberOfRecordsInSinglePass)
                     .Select(i => i.Id)
                     .ToList();
-                return session.DeleteByInt64Id<_JobState>(idList);
+                return session.DeleteByInt32Id<_JobState>(idList);
             });
             
             EnqueueBatchDelete<_JobQueue>(actions, cancellationToken, session =>
@@ -61,7 +61,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .Take(NumberOfRecordsInSinglePass)
                     .Select(i => i.Id)
                     .ToList();
-                return session.DeleteByInt64Id<_JobState>(idList);
+                return session.DeleteByInt32Id<_JobState>(idList);
             });
           
             EnqueueBatchDelete<_JobParameter>(actions, cancellationToken, session =>
@@ -71,7 +71,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .Take(NumberOfRecordsInSinglePass)
                     .Select(i => i.Id)
                     .ToList();
-                return session.DeleteByInt64Id<_JobParameter>(idList);
+                return session.DeleteByInt32Id<_JobParameter>(idList);
             });
             
             EnqueueBatchDelete<_DistributedLock>(actions, cancellationToken, session =>
@@ -81,7 +81,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .Take(NumberOfRecordsInSinglePass)
                     .Select(i => i.Id)
                     .ToList();
-                return session.DeleteByInt64Id<_DistributedLock>(idList);
+                return session.DeleteByInt32Id<_DistributedLock>(idList);
             });
             EnqueueBatchDelete<_AggregatedCounter>(actions, cancellationToken, DeleteExpirableWithId<_AggregatedCounter>);
             EnqueueBatchDelete<_Job>(actions, cancellationToken, DeleteExpirableWithId<_Job>);

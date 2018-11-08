@@ -2,7 +2,7 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    public class _DistributedLockMap : Int64IdMapBase<_DistributedLock>
+    public class _DistributedLockMap : Int32IdMapBase<_DistributedLock>
     {
         public _DistributedLockMap()
         {

@@ -2,7 +2,7 @@ using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _JobMap : Int64IdMapBase<_Job>
+    internal class _JobMap : Int32IdMapBase<_Job>
     {
         public _JobMap()
         {

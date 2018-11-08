@@ -95,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (id == null) throw new ArgumentNullException("id");
             if (name == null) throw new ArgumentNullException("name");
-            var converter = StringToInt64Converter.Convert(id);
+            var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid)
             {
                 return;
@@ -115,7 +115,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override string GetJobParameter(string id, string name)
         {
             if (id == null) throw new ArgumentNullException("id");
-            var converter = StringToInt64Converter.Convert(id);
+            var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid)
             {
                 return null;
@@ -132,7 +132,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override JobData GetJobData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
 
             if (!converter.Valid)
             {
@@ -177,7 +177,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override StateData GetStateData(string jobId)
         {
             if (jobId == null) throw new ArgumentNullException("jobId");
-            var converter = StringToInt64Converter.Convert(jobId);
+            var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
                 return null;
