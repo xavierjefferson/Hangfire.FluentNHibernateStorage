@@ -136,7 +136,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 }
 ```
 Description of optional parameters:
-- `TransactionIsolationLevel` - transaction isolation level. Default is read committed.
+- `TransactionIsolationLevel` - transaction isolation level. Default is Serializable.
 - `QueuePollInterval` - job queue polling interval. Default is 15 seconds.
 - `JobExpirationCheckInterval` - job expiration check interval (manages expired records). Default is 1 hour.
 - `CountersAggregateInterval` - interval to aggregate counter. Default is 5 minutes.
