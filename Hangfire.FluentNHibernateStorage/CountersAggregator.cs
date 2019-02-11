@@ -10,7 +10,6 @@ namespace Hangfire.FluentNHibernateStorage
 #pragma warning disable 618
     public class CountersAggregator : IBackgroundProcess, IServerComponent
     {
-#pragma warning restore 618
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
@@ -27,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(BackgroundProcessContext context)
         {
-           Execute(context.CancellationToken);
+            Execute(context.CancellationToken);
         }
 
         public void Execute(CancellationToken cancellationToken)
@@ -66,6 +65,7 @@ namespace Hangfire.FluentNHibernateStorage
                             {
                                 query.SetParameter(SqlUtil.ValueParameter2Name, null);
                             }
+
                             if (query.SetString(SqlUtil.IdParameterName, item.Key)
                                     .SetParameter(SqlUtil.ValueParameterName, item.value)
                                     .ExecuteUpdate() == 0)
@@ -77,8 +77,8 @@ namespace Hangfire.FluentNHibernateStorage
                                     ExpireAt = item.expireAt
                                 });
                             }
-                            ;
                         }
+
                         removedCount =
                             session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
 
@@ -100,5 +100,6 @@ namespace Hangfire.FluentNHibernateStorage
         {
             return GetType().ToString();
         }
+#pragma warning restore 618
     }
 }

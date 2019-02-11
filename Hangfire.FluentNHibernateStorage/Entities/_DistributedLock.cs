@@ -11,10 +11,11 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         }
 
         /// <summary>
-        /// This is a long integer because NHibernate's default storage for dates
-        /// doesn't have accuracy smaller than 1 second.
+        ///     This is a long integer because NHibernate's default storage for dates
+        ///     doesn't have accuracy smaller than 1 second.
         /// </summary>
         public virtual long ExpireAtAsLong { get; set; }
+
         public virtual string Resource { get; set; }
         public virtual DateTime CreatedAt { get; set; }
     }

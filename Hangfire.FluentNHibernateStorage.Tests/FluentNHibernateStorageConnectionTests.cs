@@ -7,7 +7,6 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.Server;
 using Hangfire.Storage;
-using Hangfire.Storage.Monitoring;
 using Moq;
 using Xunit;
 
@@ -92,8 +91,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Assert.Equal("server", server.Id);
                 Assert.NotNull(server.Data);
                 var serverData1 = JobHelper.FromJson<ServerData>(server.Data);
-                Assert.Equal(4,serverData1.WorkerCount);
-                Assert.Equal(queues,serverData1.Queues);
+                Assert.Equal(4, serverData1.WorkerCount);
+                Assert.Equal(queues, serverData1.Queues);
                 Assert.NotNull(server.LastHeartbeat);
 
                 var context2 = new ServerContext
@@ -101,12 +100,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     Queues = new[] {"default"},
                     WorkerCount = 1000
                 };
-                jobStorage.AnnounceServer("server", context2); session.Clear();
+                jobStorage.AnnounceServer("server", context2);
+                session.Clear();
                 var sameServer = session.Query<_Server>().Single();
                 Assert.Equal("server", sameServer.Id);
                 Assert.NotNull(sameServer.Data);
                 var serverData2 = JobHelper.FromJson<ServerData>(sameServer.Data);
-                Assert.Equal(1000,serverData2.WorkerCount);
+                Assert.Equal(1000, serverData2.WorkerCount);
             });
         }
 
@@ -276,7 +276,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 session.Flush();
                 // Act
-                session.Clear(); var result = jobStorage.GetAllEntriesFromHash("some-hash");
+                session.Clear();
+                var result = jobStorage.GetAllEntriesFromHash("some-hash");
 
                 // Assert
                 Assert.NotNull(result);
@@ -539,7 +540,8 @@ values (@Key, @Field)";
                 });
                 session.Flush();
                 // Act
-                session.Clear(); var result = jobStorage.GetHashCount("hash-1");
+                session.Clear();
+                var result = jobStorage.GetHashCount("hash-1");
 
                 // Assert
                 Assert.Equal(2, result);
@@ -571,8 +573,6 @@ values (@Key, @Field)";
         [CleanDatabase]
         public void GetHashTtl_ReturnsExpirationTimeForHash()
         {
-             
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
@@ -661,7 +661,8 @@ values (@Key, @Field)";
                 };
                 session.Insert(newJob);
                 session.Flush();
-                var jobId = newJob.Id; session.Clear();
+                var jobId = newJob.Id;
+                session.Clear();
 
                 var result = jobStorage.GetJobData(jobId.ToString());
 
@@ -742,7 +743,8 @@ values (@Key, @Field)";
                 });
                 session.Flush();
                 // Act
-                session.Clear(); var result = jobStorage.GetListTtl("list-1");
+                session.Clear();
+                var result = jobStorage.GetListTtl("list-1");
 
                 // Assert
                 Assert.True(TimeSpan.FromMinutes(59) < result);
@@ -793,7 +795,8 @@ values (@Key, @Field)";
                 session.Insert(new _JobParameter {Job = newJob, Name = "name", Value = "Value"});
                 session.Flush();
 
-                session.Clear(); var Value = jobStorage.GetJobParameter(newJob.Id.ToString(), "name");
+                session.Clear();
+                var Value = jobStorage.GetJobParameter(newJob.Id.ToString(), "name");
 
                 Assert.Equal("Value", Value);
             });
@@ -840,9 +843,10 @@ values (@Key, @Field)";
                     new _List {Key = "list-1", Value = "4"},
                     new _List {Key = "list-1", Value = "5"}
                 });
-session.Flush();
+                session.Flush();
                 // Act
-                session.Clear(); var result = jobStorage.GetRangeFromList("list-1", 1, 2);
+                session.Clear();
+                var result = jobStorage.GetRangeFromList("list-1", 1, 2);
 
                 // Assert
                 Assert.Equal(new[] {"4", "3"}, result);
@@ -916,7 +920,8 @@ values (@Key, @Value, 0.0)";
                     new {Key = "set-1", Value = "5"},
                     new {Key = "set-2", Value = "2"},
                     new {Key = "set-1", Value = "3"}
-                });session.Flush();
+                });
+                session.Flush();
                 session.Clear();
                 var result = jobStorage.GetRangeFromSet("set-1", 0, 4);
 
@@ -1223,9 +1228,9 @@ values (@Key, @Value, @ExpireAt, 0.0)";
                     LastHeartbeat = new DateTime(2012, 12, 12, 12, 12, 12)
                 });
                 session.Flush();
-               
+
                 jobStorage.Heartbeat("server1");
- session.Clear();
+                session.Clear();
                 var servers = session.Query<_Server>()
                     .ToDictionary(x => x.Id, x => x.LastHeartbeat.Value);
 

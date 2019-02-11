@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.1.2099</version>
+    <version>1.1.2105</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -12,15 +12,9 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
     <releaseNotes>
-        This is a breaking change!  All ID columns were reverted from Int64 to Int32.
-		
-		In FluentNHibernateMonitoringApi, it now correctly uses whatever transaction storage level the user has specified in options.  The default transaction isolation level has been changed to Serializable instead of Read Committed.
-		
-		A mutex has been added to the code that grants distributed locks, so there's less of a chance of encountering deadlocks in this portion of the code for all the threads on a single Hangfire server instance.
-		
-		
+       In the FluentNHibernateStorageOptions class, obsolete the PrepareSchemaIfNecessary property in favor of the UpdateSchema property.  Both will still work.
     </releaseNotes>
-    <copyright>Copyright © 2018 Xavier Jefferson</copyright>
+    <copyright>Copyright © 2019 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
     <dependencies>
 		<dependency id="FluentNHibernate" version="2.0.3.0"   />

@@ -19,12 +19,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         public override void Before(MethodInfo methodUnderTest)
         {
             ConnectionUtils.GetStorage().ResetAll();
-
         }
 
         public override void After(MethodInfo methodUnderTest)
         {
-            
         }
     }
 }

@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Data.SqlClient;
- 
-using System.IO;
 using System.Threading;
-using Hangfire.FluentNHibernateStorage.Entities;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
@@ -29,7 +26,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             {
                 connection.Open();
                 using (var sc = new SqlCommand(
-                   string.Format( "if not EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') Create Database [{0}]", ConnectionUtils.GetDatabaseName()), connection))
+                    string.Format(
+                        "if not EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') Create Database [{0}]",
+                        ConnectionUtils.GetDatabaseName()), connection))
                 {
                     sc.ExecuteNonQuery();
                 }

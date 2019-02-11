@@ -22,12 +22,11 @@ namespace Hangfire.FluentNHibernateStorage
     public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
-        
+
         private readonly CountersAggregator _countersAggregator;
         private readonly object _dateOffsetMutex = new object();
 
         private readonly ExpirationManager _expirationManager;
-        public FluentNHibernateStorageOptions Options { get; }
 
         private readonly ServerTimeSyncManager _serverTimeSyncManager;
 
@@ -74,6 +73,8 @@ namespace Hangfire.FluentNHibernateStorage
                 throw ex.InnerException ?? ex;
             }
         }
+
+        public FluentNHibernateStorageOptions Options { get; }
 
 
         public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
@@ -133,6 +134,7 @@ namespace Hangfire.FluentNHibernateStorage
                                     nameof(_Dual)));
                             break;
                     }
+
                     var stopwatch = new Stopwatch();
                     var current = DateTime.UtcNow;
                     stopwatch.Start();
@@ -149,7 +151,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 using (var session = GetSession())
                 {
-                    using (var tx = session.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                    using (var transaction = session.BeginTransaction(System.Data.IsolationLevel.Serializable))
                     {
                         var count = session.Query<_Dual>().Count();
                         switch (count)
@@ -165,7 +167,8 @@ namespace Hangfire.FluentNHibernateStorage
                                     session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
                                 break;
                         }
-                        tx.Commit();
+
+                        transaction.Commit();
                     }
                 }
             }
@@ -241,10 +244,10 @@ namespace Hangfire.FluentNHibernateStorage
             IsolationLevel? isolationLevel = null)
         {
             UseTransaction(session =>
-            {
-                action(session);
-                return true;
-            }, isolationLevel ?? Options.TransactionIsolationLevel);
+                {
+                    action(session);
+                    return true;
+                }, isolationLevel ?? Options.TransactionIsolationLevel);
         }
 
         private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)

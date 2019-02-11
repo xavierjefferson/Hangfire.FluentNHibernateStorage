@@ -46,6 +46,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     insertTwoJobsResult.JobId2 = newJob.Id.ToString();
                 }
             }
+
             return insertTwoJobsResult;
         }
 

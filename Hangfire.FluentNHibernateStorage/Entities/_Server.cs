@@ -1,5 +1,4 @@
 using System;
-using System.Data.SqlTypes;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
@@ -7,6 +6,6 @@ namespace Hangfire.FluentNHibernateStorage.Entities
     {
         public virtual string Id { get; set; }
         public virtual string Data { get; set; }
-        public virtual DateTime? LastHeartbeat { get; set; } 
+        public virtual DateTime? LastHeartbeat { get; set; }
     }
 }

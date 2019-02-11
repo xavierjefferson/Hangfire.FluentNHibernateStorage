@@ -48,16 +48,17 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedJobIds_ReturnsCorrectResult()
         {
-            long[] result = null;  List<_Job> jobs = new List<_Job>(); 
+            long[] result = null;
+            var jobs = new List<_Job>();
             _storage.UseSession(session =>
             {
-              
                 for (var i = 1; i <= 10; i++)
                 {
                     var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                     jobs.Add(newJob);
                     session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }
+
                 session.Flush();
                 result = _sut.GetEnqueuedJobIds(_queue, 3, 2).ToArray();
 

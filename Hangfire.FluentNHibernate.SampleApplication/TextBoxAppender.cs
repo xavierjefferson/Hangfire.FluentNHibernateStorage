@@ -35,6 +35,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 {
                     _textBox = null;
                 }
+
                 var hierarchy = (Hierarchy) LogManager.GetRepository();
                 hierarchy.Root.RemoveAppender(this);
             }
@@ -51,8 +52,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             {
                 if (_textBox == null)
                     return;
-    
-       
+
+
                 var msg = string.Format("{0:O} [{3}] {1} {2}\r\n", loggingEvent.TimeStamp, loggingEvent.LoggerName,
                     loggingEvent.RenderedMessage, loggingEvent.ThreadName);
                 lock (_lockObj)
@@ -68,6 +69,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     var del = new Action<string>(s => _textBox.AppendText(s));
                     _textBox.BeginInvoke(del, msg);
                 }
+
                 Application.DoEvents();
             }
             catch

@@ -36,6 +36,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 Requeue();
             }
+
             _disposed = true;
         }
 
@@ -48,6 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     .SetParameter(SqlUtil.IdParameterName, _id)
                     .ExecuteUpdate();
             }
+
             _removedFromQueue = true;
         }
 
@@ -56,12 +58,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             Logger.TraceFormat("Requeue JobId={0}", JobId);
             using (var session = _storage.GetSession())
             {
-                
                 session.CreateQuery(SqlUtil.UpdateJobQueueFetchedAtStatement)
                     .SetParameter(SqlUtil.ValueParameterName, null)
                     .SetParameter(SqlUtil.IdParameterName, _id)
                     .ExecuteUpdate();
             }
+
             _requeued = true;
         }
 

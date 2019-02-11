@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Transactions;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
@@ -61,6 +60,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return;
             }
+
             AcquireJobLock();
 
             QueueCommand(session =>
@@ -78,6 +78,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return;
             }
+
             AcquireJobLock();
 
             QueueCommand(session =>
@@ -95,6 +96,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return;
             }
+
             AcquireStateLock();
             AcquireJobLock();
             QueueCommand(session =>
@@ -132,6 +134,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return;
             }
+
             AcquireStateLock();
             QueueCommand(session =>
             {
@@ -285,7 +288,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .OrderBy(i => i.Id)
                     .Where(i => i.Key == key).ToList()
                     .Select((i, j) => new {index = j, id = i.Id}).ToList();
-                var before = idList.Where(i => i.index < keepStartingFrom ||  i.index > keepEndingAt)
+                var before = idList.Where(i => i.index < keepStartingFrom || i.index > keepEndingAt)
                     .Select(i => i.id)
                     .ToList();
                 session.DeleteByInt32Id<_List>(before);

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Transactions;
 using Hangfire.Annotations;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -82,6 +81,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             {
                 return null;
             }
+
             return UseStatefulTransaction(session =>
             {
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
@@ -129,6 +129,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             {
                                 return statesDictionary[key];
                             }
+
                             return 0;
                         }
 
@@ -142,7 +143,6 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                         return new StatisticsDto
                         {
-                            
                             Enqueued = GetJobStatusCount("Enqueued"),
                             Failed = GetJobStatusCount("Failed"),
                             Processing = GetJobStatusCount("Processing"),
@@ -339,6 +339,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             {
                 return Math.Max(count, _jobListLimit.Value);
             }
+
             return count;
         }
 
@@ -464,10 +465,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             : null
                     });
             }
-            else
-            {
-                return new JobList<EnqueuedJobDto>(new List<KeyValuePair<string, EnqueuedJobDto>>());
-            }
+
+            return new JobList<EnqueuedJobDto>(new List<KeyValuePair<string, EnqueuedJobDto>>());
         }
 
         private JobList<FetchedJobDto> FetchedJobs(
@@ -492,10 +491,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                 return new JobList<FetchedJobDto>(result);
             }
-            else
-            {
-                return new JobList<FetchedJobDto>(new List<KeyValuePair<string, FetchedJobDto>>());
-            }
+
+            return new JobList<FetchedJobDto>(new List<KeyValuePair<string, FetchedJobDto>>());
         }
 
         private Dictionary<DateTime, long> GetHourlyTimelineStats(

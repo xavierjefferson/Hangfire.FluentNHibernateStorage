@@ -41,7 +41,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(CancellationToken cancellationToken)
         {
-            List<Action> actions = new List<Action>();
+            var actions = new List<Action>();
 
 
             EnqueueBatchDelete<_JobState>(actions, cancellationToken, session =>
@@ -53,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt32Id<_JobState>(idList);
             });
-            
+
             EnqueueBatchDelete<_JobQueue>(actions, cancellationToken, session =>
             {
                 var idList = session.Query<_JobQueue>()
@@ -63,7 +63,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt32Id<_JobState>(idList);
             });
-          
+
             EnqueueBatchDelete<_JobParameter>(actions, cancellationToken, session =>
             {
                 var idList = session.Query<_JobParameter>()
@@ -73,7 +73,7 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt32Id<_JobParameter>(idList);
             });
-            
+
             EnqueueBatchDelete<_DistributedLock>(actions, cancellationToken, session =>
             {
                 var idList = session.Query<_DistributedLock>()
@@ -83,18 +83,20 @@ namespace Hangfire.FluentNHibernateStorage
                     .ToList();
                 return session.DeleteByInt32Id<_DistributedLock>(idList);
             });
-            EnqueueBatchDelete<_AggregatedCounter>(actions, cancellationToken, DeleteExpirableWithId<_AggregatedCounter>);
+            EnqueueBatchDelete<_AggregatedCounter>(actions, cancellationToken,
+                DeleteExpirableWithId<_AggregatedCounter>);
             EnqueueBatchDelete<_Job>(actions, cancellationToken, DeleteExpirableWithId<_Job>);
             EnqueueBatchDelete<_List>(actions, cancellationToken, DeleteExpirableWithId<_List>);
             EnqueueBatchDelete<_Set>(actions, cancellationToken, DeleteExpirableWithId<_Set>);
             EnqueueBatchDelete<_Hash>(actions, cancellationToken, DeleteExpirableWithId<_Hash>);
 
-            foreach(var action in actions)
+            foreach (var action in actions)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     break;
-                }         
+                }
+
                 action();
             }
 

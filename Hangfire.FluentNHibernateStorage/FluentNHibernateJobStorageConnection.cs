@@ -63,6 +63,7 @@ namespace Hangfire.FluentNHibernateStorage
                             Value = keyValuePair.Value
                         });
                     }
+
                     session.Flush();
 
                     transaction.Commit();
@@ -100,6 +101,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return;
             }
+
             Storage.UseSession(session =>
             {
                 session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value,
@@ -120,6 +122,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return null;
             }
+
             if (name == null) throw new ArgumentNullException("name");
 
             return Storage.UseSession(session =>
@@ -138,6 +141,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return null;
             }
+
             Logger.InfoFormat("Get job data for job '{0}'", jobId);
 
             return Storage.UseSession(session =>
@@ -182,6 +186,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 return null;
             }
+
             return Storage.UseSession(session =>
             {
                 var job = session.Query<_Job>()
@@ -417,6 +422,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     return TimeSpan.FromSeconds(-1);
                 }
+
                 return item.Value - session.Storage.UtcNow;
             });
         }

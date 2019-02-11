@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
- 
 using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
@@ -16,11 +15,22 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 {
     public partial class Form1 : Form
     {
+        public enum StateEnum
+        {
+            Stopped = 0,
+            Starting,
+            Started
+        }
+
         private static readonly ILog loggerNew = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
 
         private BackgroundJobServer _backgroundJobServer;
 
+        private StateEnum _currentState;
+
         private Timer _timer;
+
+        private FluentNHibernateJobStorage storage;
 
 
         public Form1()
@@ -28,16 +38,9 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             InitializeComponent();
         }
 
-        public enum StateEnum
-        {
-            Stopped=0,Starting,Started
-        }
-
-        private StateEnum _currentState;
-
         private StateEnum State
         {
-            get { return _currentState; }
+            get => _currentState;
             set
             {
                 _currentState = value;
@@ -47,7 +50,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 HQLButton.Enabled = value == StateEnum.Started;
             }
         }
-    
+
         private ProviderTypeEnum ProviderType
         {
             get => (ProviderTypeEnum) DataProviderComboBox.SelectedItem;
@@ -89,17 +92,18 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 {
                     return tmp;
                 }
-
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 loggerNew.Error("Error reading settings", ex);
             }
+
             return new Dictionary<ProviderTypeEnum, ProviderSetting>
             {
                 {
                     ProviderTypeEnum.MsSql2012,
-                    new ProviderSetting(){ConnectionString = "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"}
+                    new ProviderSetting
+                        {ConnectionString = "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"}
                 }
             };
         }
@@ -107,7 +111,9 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         private ProviderSetting LoadProviderSetting(ProviderTypeEnum persistenceConfigurer)
         {
             var settings = GetSettings();
-            return settings.ContainsKey(persistenceConfigurer) ? settings[persistenceConfigurer] : new ProviderSetting();
+            return settings.ContainsKey(persistenceConfigurer)
+                ? settings[persistenceConfigurer]
+                : new ProviderSetting();
         }
 
         private void Form1_Load(object sender, EventArgs e1)
@@ -137,8 +143,6 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 LoadProviderSetting((ProviderTypeEnum) DataProviderComboBox.SelectedItem).ConnectionString;
         }
 
-        private FluentNHibernateJobStorage storage = null;
-
         private void StartButton_Click(object sender, EventArgs e)
         {
             try
@@ -149,6 +153,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     MessageBox.Show(this, "connection string cannot be blank");
                     return;
                 }
+
                 SaveConnectionString(ProviderType, connectionString);
 
                 Settings.Default.DataSource = ProviderType.ToString();
@@ -163,40 +168,35 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
                     GlobalConfiguration.Configuration.UseLog4NetLogProvider()
                         .UseStorage(storage);
-                  
-                        _timer = new Timer(60000);
-                        _timer.Elapsed += (a, b) =>
-                        {
-                            BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString()));
-                        };
-                        _timer.Start();
-                        /*THIS LINE STARTS THE BACKGROUND SERVER*/
-                        _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
-                            storage.GetBackgroundProcesses());
 
-                        /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
-                        RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
-                        RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
-                        loggerNew.Info("Background server started");
-                        State = StateEnum.Started;
+                    _timer = new Timer(60000);
+                    _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
+                    _timer.Start();
+                    /*THIS LINE STARTS THE BACKGROUND SERVER*/
+                    _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
+                        storage.GetBackgroundProcesses());
 
-                   
+                    /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
+                    RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
+                    RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
+                    loggerNew.Info("Background server started");
+                    State = StateEnum.Started;
                 }
             }
             catch (Exception ex)
             {
-                  loggerNew.Error("Server start failed", ex);
-                        StopButton_Click(null, new EventArgs());
-                        State = StateEnum.Stopped;
-                        storage?.Dispose();
-                        storage = null;
+                loggerNew.Error("Server start failed", ex);
+                StopButton_Click(null, new EventArgs());
+                State = StateEnum.Stopped;
+                storage?.Dispose();
+                storage = null;
             }
         }
 
         private void SaveConnectionString(ProviderTypeEnum providerType, string connectionString)
         {
             var dictionary = GetSettings();
-            dictionary[providerType] = new ProviderSetting() {ConnectionString = connectionString};
+            dictionary[providerType] = new ProviderSetting {ConnectionString = connectionString};
             Settings.Default.ProviderSettings = JsonConvert.SerializeObject(dictionary);
             Settings.Default.Save();
         }
@@ -210,11 +210,13 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     _timer.Stop();
                     _timer = null;
                 }
+
                 if (_backgroundJobServer != null)
                 {
                     _backgroundJobServer.SendStop();
                     _backgroundJobServer.Dispose();
                 }
+
                 _backgroundJobServer = null;
                 State = StateEnum.Stopped;
             }
@@ -226,7 +228,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
         private void HQLButton_Click(object sender, EventArgs e)
         {
-            var f = new HQLForm(this.storage);
+            var f = new HQLForm(storage);
             f.ShowDialog(this);
         }
 

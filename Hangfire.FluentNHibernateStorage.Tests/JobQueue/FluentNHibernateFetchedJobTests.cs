@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Moq;
 using Xunit;
@@ -11,7 +10,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public FluentNHibernateFetchedJobTests()
         {
             _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
-         
+
             var options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
             _storage = new Mock<FluentNHibernateJobStorage>(ConnectionUtils.GetPersistenceConfigurer(), options);
         }
@@ -19,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         private const int JobId = 1;
         private const string Queue = "queue";
 
-  
+
         private readonly FetchedJob _fetchedJob;
         private readonly int _id = 0;
         private readonly Mock<FluentNHibernateJobStorage> _storage;

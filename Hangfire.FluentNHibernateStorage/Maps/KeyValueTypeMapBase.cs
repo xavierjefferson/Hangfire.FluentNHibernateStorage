@@ -3,7 +3,7 @@
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
     /// <summary>
-    /// base mapping class for Counter, AggregatedCounter, Set, Hash, List
+    ///     base mapping class for Counter, AggregatedCounter, Set, Hash, List
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="U"></typeparam>
@@ -30,6 +30,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             {
                 valuePropertyPart.UniqueKey(KeyColumnIndexName);
             }
+
             if (ValueNullable)
             {
                 valuePropertyPart.Nullable();
@@ -38,10 +39,12 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             {
                 valuePropertyPart.Not.Nullable();
             }
+
             if (ValueLength.HasValue)
             {
                 valuePropertyPart.Length(ValueLength.Value);
             }
+
             Map(i => i.ExpireAt).Column("ExpireAt".WrapObjectName()).Nullable();
         }
 

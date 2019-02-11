@@ -4,7 +4,7 @@ using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class FluentNHibernateStorageOptions:FluentNHibernatePersistenceBuilderOptions
+    public class FluentNHibernateStorageOptions : FluentNHibernatePersistenceBuilderOptions
     {
         private TimeSpan _queuePollInterval;
 
@@ -14,7 +14,7 @@ namespace Hangfire.FluentNHibernateStorage
             QueuePollInterval = TimeSpan.FromSeconds(15);
             JobExpirationCheckInterval = TimeSpan.FromHours(1);
             CountersAggregateInterval = TimeSpan.FromMinutes(5);
-            PrepareSchemaIfNecessary = true;
+            UpdateSchema = true;
             DashboardJobListLimit = 50000;
             TransactionTimeout = TimeSpan.FromMinutes(1);
             InvisibilityTimeout = TimeSpan.FromMinutes(30);
@@ -39,9 +39,15 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-       
-
-        public bool PrepareSchemaIfNecessary { get; set; }
+        /// <summary>
+        /// Create the schema if it doesn't already exist.
+        /// </summary>
+        [Obsolete("Use property " + nameof(UpdateSchema) + ".")]
+        public bool PrepareSchemaIfNecessary
+        {
+            get => UpdateSchema;
+            set => UpdateSchema = value;
+        }
 
         public TimeSpan JobExpirationCheckInterval { get; set; }
         public TimeSpan CountersAggregateInterval { get; set; }

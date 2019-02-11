@@ -118,6 +118,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 return;
             }
+
             session.Insert(new _JobQueue
             {
                 Job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value),

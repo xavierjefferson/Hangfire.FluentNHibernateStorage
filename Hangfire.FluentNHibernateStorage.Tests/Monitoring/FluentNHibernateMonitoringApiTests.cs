@@ -116,6 +116,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                         StateName = "Failed"
                     });
                 }
+
                 connection.Flush();
 
                 result = _sut.GetStatistics();
@@ -196,6 +197,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                         StateName = "Scheduled"
                     });
                 }
+
                 connection.Flush();
 
                 result = _sut.GetStatistics();
@@ -215,8 +217,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             {
                 for (var i = 1; i < 3; i++)
                 {
-                    connection.Insert(new _Server {Id = i.ToString(), Data = i.ToString()  });
+                    connection.Insert(new _Server {Id = i.ToString(), Data = i.ToString()});
                 }
+
                 connection.Flush();
                 result = _sut.GetStatistics();
             });
