@@ -104,7 +104,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             Storage.UseSession(session =>
             {
-                session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value,
+                session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value && i.Name == name,
                     i => i.Value = value, i =>
                     {
                         i.Job = new _Job {Id = converter.Value};
