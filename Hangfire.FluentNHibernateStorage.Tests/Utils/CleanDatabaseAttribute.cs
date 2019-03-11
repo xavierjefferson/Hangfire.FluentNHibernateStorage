@@ -8,7 +8,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
     {
         private readonly IsolationLevel _isolationLevel;
 
-        private TransactionScope _transaction;
+        
 
         public CleanDatabaseAttribute(
             IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)

@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
     {
         public FluentNHibernateStorageTests()
         {
-            _options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
+            _options = new FluentNHibernateStorageOptions {UpdateSchema = false};
         }
 
         private readonly FluentNHibernateStorageOptions _options;

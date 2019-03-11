@@ -163,7 +163,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var job = invocationData.Deserialize();
                 Assert.Equal(typeof(FluentNHibernateStorageConnectionTests), job.Type);
                 Assert.Equal("SampleMethod", job.Method.Name);
-                Assert.Equal("\"Hello\"", job.Arguments[0]);
+                Assert.Equal("\"Hello\"", job.Args[0]);
 
                 Assert.True(createdAt.AddDays(1).AddMinutes(-1) < sqlJob.ExpireAt);
                 Assert.True(sqlJob.ExpireAt < createdAt.AddDays(1).AddMinutes(1));

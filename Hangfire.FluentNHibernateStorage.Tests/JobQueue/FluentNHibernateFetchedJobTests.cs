@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
 
-            var options = new FluentNHibernateStorageOptions {PrepareSchemaIfNecessary = false};
+            var options = new FluentNHibernateStorageOptions {UpdateSchema = false};
             _storage = new Mock<FluentNHibernateJobStorage>(ConnectionUtils.GetPersistenceConfigurer(), options);
         }
 
