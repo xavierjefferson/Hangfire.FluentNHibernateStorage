@@ -39,46 +39,38 @@ namespace Hangfire.FluentNHibernateStorage
             Execute(cancellationToken);
         }
 
+        private void EnqueueBatchDeleteJobChild<T>(List<Action> actions, CancellationToken cancellationToken,
+            DateTime jobExpireDate) where T : IJobChild, IInt32Id
+
+        {
+            EnqueueBatchDelete<T>(actions, cancellationToken, session =>
+            {
+                var idList = session.Query<T>()
+                    .Where(i => i.Job.ExpireAt < jobExpireDate)
+                    .Select(i => i.Id)
+                    .ToList();
+                return session.DeleteByInt32Id<T>(idList);
+            });
+        }
+
         public void Execute(CancellationToken cancellationToken)
         {
             var actions = new List<Action>();
-
-
-            EnqueueBatchDelete<_JobState>(actions, cancellationToken, session =>
+            DateTime jobExpireDate;
+            using (var session = _storage.GetSession())
             {
-                var idList = session.Query<_JobState>()
-                    .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
-                    .Take(NumberOfRecordsInSinglePass)
-                    .Select(i => i.Id)
-                    .ToList();
-                return session.DeleteByInt32Id<_JobState>(idList);
-            });
+                jobExpireDate = session.Storage.UtcNow;
+            }
 
-            EnqueueBatchDelete<_JobQueue>(actions, cancellationToken, session =>
-            {
-                var idList = session.Query<_JobQueue>()
-                    .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
-                    .Take(NumberOfRecordsInSinglePass)
-                    .Select(i => i.Id)
-                    .ToList();
-                return session.DeleteByInt32Id<_JobState>(idList);
-            });
+            EnqueueBatchDeleteJobChild<_JobState>(actions, cancellationToken, jobExpireDate);
+            EnqueueBatchDeleteJobChild<_JobQueue>(actions, cancellationToken, jobExpireDate);
+            EnqueueBatchDeleteJobChild<_JobParameter>(actions, cancellationToken, jobExpireDate);
 
-            EnqueueBatchDelete<_JobParameter>(actions, cancellationToken, session =>
-            {
-                var idList = session.Query<_JobParameter>()
-                    .Where(i => i.Job.ExpireAt < session.Storage.UtcNow)
-                    .Take(NumberOfRecordsInSinglePass)
-                    .Select(i => i.Id)
-                    .ToList();
-                return session.DeleteByInt32Id<_JobParameter>(idList);
-            });
 
             EnqueueBatchDelete<_DistributedLock>(actions, cancellationToken, session =>
             {
                 var idList = session.Query<_DistributedLock>()
-                    .Where(i => i.ExpireAtAsLong < session.Storage.UtcNow.ToUnixDate())
-                    .Take(NumberOfRecordsInSinglePass)
+                    .Where(i => i.ExpireAtAsLong < jobExpireDate.ToUnixDate())
                     .Select(i => i.Id)
                     .ToList();
                 return session.DeleteByInt32Id<_DistributedLock>(idList);
@@ -106,7 +98,7 @@ namespace Hangfire.FluentNHibernateStorage
         internal static long DeleteExpirableWithId<T>(SessionWrapper session) where T : IExpirableWithId
 
         {
-            return session.DeleteExpirableWithId<T>(NumberOfRecordsInSinglePass);
+            return session.DeleteExpirableWithId<T>();
         }
 
 
@@ -138,9 +130,9 @@ namespace Hangfire.FluentNHibernateStorage
 
                             Logger.InfoFormat("removed records count={0}", removedCount);
                         }
-                        catch (FluentNHibernateDistributedLockException)
+                        catch (FluentNHibernateDistributedLockException ex)
                         {
-                            // do nothing
+                            Logger.Warn(string.Concat("Can't delete : ", ex.ToString()));
                         }
                         catch (Exception ex)
                         {

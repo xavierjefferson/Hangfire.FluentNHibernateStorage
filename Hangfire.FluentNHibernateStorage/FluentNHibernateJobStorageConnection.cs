@@ -104,16 +104,13 @@ namespace Hangfire.FluentNHibernateStorage
 
             Storage.UseTransaction(session =>
             {
-                
-                    session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value && i.Name == name,
-                        i => i.Value = value, i =>
-                        {
-                            i.Job = new _Job {Id = converter.Value};
-                            i.Name = name;
-                        });
-                    ;
-                  
-                 
+                var rowCount = session.CreateQuery(SqlUtil.SetJobParameterStatement)
+                    .SetParameter("value", value).SetParameter("id", converter.Value).ExecuteUpdate();
+                if (rowCount == 0)
+                {
+                    session.Insert(
+                        new _JobParameter {Job = new _Job {Id = converter.Value}, Name = name, Value = value});
+                }
             });
         }
 
@@ -220,17 +217,22 @@ namespace Hangfire.FluentNHibernateStorage
 
             Storage.UseTransaction(session =>
             {
-                session.UpsertEntity<_Server>(i => i.Id == serverId,
-                    i =>
-                    {
-                        i.Data = JobHelper.ToJson(new ServerData
-                        {
-                            WorkerCount = context.WorkerCount,
-                            Queues = context.Queues,
-                            StartedAt = session.Storage.UtcNow
-                        });
-                        i.LastHeartbeat = session.Storage.UtcNow;
-                    }, i => { i.Id = serverId; });
+                var data = JobHelper.ToJson(new ServerData
+                {
+                    WorkerCount = context.WorkerCount,
+                    Queues = context.Queues,
+                    StartedAt = session.Storage.UtcNow
+                });
+
+                var rowCount = session.CreateQuery(SqlUtil.AnnounceServerStatement)
+                    .SetParameter("id", serverId).SetParameter("data", data)
+                    .SetParameter("lastheartbeat", session.Storage.UtcNow).ExecuteUpdate();
+
+                if (rowCount == 0)
+                {
+                    session.Insert(
+                        new _Server {Id = serverId, Data = data, LastHeartbeat = session.Storage.UtcNow});
+                }
             });
         }
 

@@ -122,7 +122,12 @@ namespace Hangfire.FluentNHibernateStorage
 
         private static string _createDistributedLockStatement;
 
+        internal static readonly string SetJobParameterStatement = string.Format(
+            "update {0} set {1}=:value where {2}.{3}=:id",
+            nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id));
 
+        internal static readonly string AnnounceServerStatement = string.Format(
+            "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data), nameof(_Server.LastHeartbeat), nameof(_Server.Id));
         /// <summary>
         ///     Generate HQL to update a single property of an entity based on matched some column to a value.
         /// </summary>
@@ -168,17 +173,17 @@ namespace Hangfire.FluentNHibernateStorage
             session.Flush();
         }
 
-
+        const int DeleteBatchSize = 250;
         /// <summary>
         ///     delete entities that implement IInt32Id, by using the value stored in their Id property.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="session">Sessionwrapper instance to act upon</param>
-        /// <param name="id">Collection of ids to delete</param>
+        /// <param name="ids">Collection of ids to delete</param>
         /// <returns>the number of rows deleted</returns>
-        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> id) where T : IInt32Id
+        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> ids) where T : IInt32Id
         {
-            if (!id.Any())
+            if (!ids.Any())
             {
                 return 0;
             }
@@ -199,7 +204,15 @@ namespace Hangfire.FluentNHibernateStorage
                 }
             }
 
-            return session.CreateQuery(queryString).SetParameterList(IdParameterName, id).ExecuteUpdate();
+            
+            var query = session.CreateQuery(queryString);
+            int count = 0;
+            for (var i = 0; i < ids.Count; i+=DeleteBatchSize)
+            {
+                var batch = ids.Skip(i).Take(DeleteBatchSize).ToList();
+                count += query.SetParameterList(IdParameterName, batch).ExecuteUpdate();
+            }
+            return count;
         }
 
         public static void DoActionByExpression<T>(this SessionWrapper session, Expression<Func<T, bool>> expr,
@@ -218,14 +231,12 @@ namespace Hangfire.FluentNHibernateStorage
         /// </summary>
         /// <typeparam name="T">The type of entity</typeparam>
         /// <param name="session">Sessionwrapper instance to act upon</param>
-        /// <param name="count">Max number of entities to delete</param>
         /// <returns></returns>
-        internal static long DeleteExpirableWithId<T>(this SessionWrapper session, int count) where T : IExpirableWithId
+        internal static long DeleteExpirableWithId<T>(this SessionWrapper session) where T : IExpirableWithId
 
         {
             var ids = session.Query<T>()
                 .Where(i => i.ExpireAt < session.Storage.UtcNow)
-                .Take(count)
                 .Select(i => i.Id)
                 .ToList();
             return session.DeleteByInt32Id<T>(ids);

@@ -63,6 +63,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Entities\IJobChild.cs" />
     <Compile Include="FluentNHibernateStorageBootstrapperConfigurationExtensions.cs" />
     <Compile Include="CountersAggregator.cs" />
     <Compile Include="DateHelper.cs" />
