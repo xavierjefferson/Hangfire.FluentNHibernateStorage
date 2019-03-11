@@ -102,15 +102,18 @@ namespace Hangfire.FluentNHibernateStorage
                 return;
             }
 
-            Storage.UseSession(session =>
+            Storage.UseTransaction(session =>
             {
-                session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value && i.Name == name,
-                    i => i.Value = value, i =>
-                    {
-                        i.Job = new _Job {Id = converter.Value};
-                        i.Name = name;
-                    });
-                ;
+                
+                    session.UpsertEntity<_JobParameter>(i => i.Id == converter.Value && i.Name == name,
+                        i => i.Value = value, i =>
+                        {
+                            i.Job = new _Job {Id = converter.Value};
+                            i.Name = name;
+                        });
+                    ;
+                  
+                 
             });
         }
 
@@ -215,7 +218,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (serverId == null) throw new ArgumentNullException("serverId");
             if (context == null) throw new ArgumentNullException("context");
 
-            Storage.UseSession(session =>
+            Storage.UseTransaction(session =>
             {
                 session.UpsertEntity<_Server>(i => i.Id == serverId,
                     i =>
