@@ -20,6 +20,8 @@ namespace Hangfire.FluentNHibernateStorage
         public const string ResourceParameterName = "resource";
         public const string ExpireAtAsLongParameterName = "expireAtAsLong";
 
+        private const int DeleteBatchSize = 250;
+
 
         private static readonly Dictionary<Type, string> DeleteByIdCommands = new Dictionary<Type, string>();
 
@@ -127,7 +129,9 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id));
 
         internal static readonly string AnnounceServerStatement = string.Format(
-            "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data), nameof(_Server.LastHeartbeat), nameof(_Server.Id));
+            "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data),
+            nameof(_Server.LastHeartbeat), nameof(_Server.Id));
+
         /// <summary>
         ///     Generate HQL to update a single property of an entity based on matched some column to a value.
         /// </summary>
@@ -173,7 +177,6 @@ namespace Hangfire.FluentNHibernateStorage
             session.Flush();
         }
 
-        const int DeleteBatchSize = 250;
         /// <summary>
         ///     delete entities that implement IInt32Id, by using the value stored in their Id property.
         /// </summary>
@@ -204,26 +207,16 @@ namespace Hangfire.FluentNHibernateStorage
                 }
             }
 
-            
+
             var query = session.CreateQuery(queryString);
-            int count = 0;
-            for (var i = 0; i < ids.Count; i+=DeleteBatchSize)
+            var count = 0;
+            for (var i = 0; i < ids.Count; i += DeleteBatchSize)
             {
                 var batch = ids.Skip(i).Take(DeleteBatchSize).ToList();
                 count += query.SetParameterList(IdParameterName, batch).ExecuteUpdate();
             }
-            return count;
-        }
 
-        public static void DoActionByExpression<T>(this SessionWrapper session, Expression<Func<T, bool>> expr,
-            Action<T> action)
-            where T : IExpirableWithId
-        {
-            var entities = session.Query<T>().Where(expr);
-            foreach (var entity in entities)
-            {
-                action(entity);
-            }
+            return count;
         }
 
         /// <summary>
@@ -231,12 +224,14 @@ namespace Hangfire.FluentNHibernateStorage
         /// </summary>
         /// <typeparam name="T">The type of entity</typeparam>
         /// <param name="session">Sessionwrapper instance to act upon</param>
+        /// <param name="cutOffDate"></param>
         /// <returns></returns>
-        internal static long DeleteExpirableWithId<T>(this SessionWrapper session) where T : IExpirableWithId
+        internal static long DeleteExpirableWithId<T>(this SessionWrapper session, DateTime cutOffDate)
+            where T : IExpirableWithId
 
         {
             var ids = session.Query<T>()
-                .Where(i => i.ExpireAt < session.Storage.UtcNow)
+                .Where(i => i.ExpireAt < cutOffDate)
                 .Select(i => i.Id)
                 .ToList();
             return session.DeleteByInt32Id<T>(ids);

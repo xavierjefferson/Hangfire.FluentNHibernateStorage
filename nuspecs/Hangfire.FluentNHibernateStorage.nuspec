@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.1.2120</version>
+    <version>1.1.2222</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -12,13 +12,13 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
     <releaseNotes>
-       In the JobParameter table, make sure we can't store multiple rows of the same parameter name for a given job id.  Added an index and modified the upsert to use a transaction.
+       Updated to use Hangfire Core 1.6.24.  Tied all expiration stuff so the expiration cutoff date for entities is consistent during a run.
     </releaseNotes>
     <copyright>Copyright © 2019 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
     <dependencies>
 		<dependency id="FluentNHibernate" version="2.0.3.0"   />
-		<dependency id="Hangfire.Core" version="1.5.3"   />
+		<dependency id="Hangfire.Core" version="1.6.24"   />
 		<dependency id="Iesi.Collections" version="4.0.0.4000"   />
 		<dependency id="Newtonsoft.Json" version="5.0.1"   />
 		<dependency id="NHibernate" version="4.0.0.4000"  />

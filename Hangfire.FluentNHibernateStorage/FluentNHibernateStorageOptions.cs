@@ -17,7 +17,7 @@ namespace Hangfire.FluentNHibernateStorage
             UpdateSchema = true;
             DashboardJobListLimit = 50000;
             TransactionTimeout = TimeSpan.FromMinutes(1);
-            InvisibilityTimeout = TimeSpan.FromMinutes(30);
+            
         }
 
         public IsolationLevel? TransactionIsolationLevel { get; set; }

@@ -53,8 +53,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                             session.BeginTransaction(IsolationLevel.Serializable))
                                         {
                                             var jobQueueFetchedAt = _storage.UtcNow;
-                                            var next = jobQueueFetchedAt.AddSeconds(
-                                                _options.InvisibilityTimeout.Negate().TotalSeconds);
+                                            var next = jobQueueFetchedAt ;
                                             var jobQueue = session.Query<_JobQueue>()
                                                 .FirstOrDefault(i =>
                                                     (i.FetchedAt == null
