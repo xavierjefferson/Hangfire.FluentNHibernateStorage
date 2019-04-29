@@ -336,7 +336,7 @@ namespace Hangfire.FluentNHibernateStorage
                         {dualTableName} where not exists (select {Constants.ColumnNames.Id.WrapObjectName()} from 
                         {distributedLockTableName} as d where d.{resourceColumnName} = 
                         :{ResourceParameterName} and 
-                        d.{expireAtAsLongColumnName} > :{NowAsLongParameterName})";
+                        d.{expireAtAsLongColumnName} >= :{NowAsLongParameterName})";
                 return _createDistributedLockStatement;
             }
         }

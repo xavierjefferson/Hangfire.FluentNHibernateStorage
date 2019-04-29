@@ -46,26 +46,26 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                 var token = Guid.NewGuid().ToString();
 
                                 if (queues.Any())
-                                {
                                     using (var session = _storage.GetSession())
                                     {
                                         using (var transaction =
                                             session.BeginTransaction(IsolationLevel.Serializable))
                                         {
                                             var jobQueueFetchedAt = _storage.UtcNow;
-                                            var next = jobQueueFetchedAt ;
+                                            var cutoff = jobQueueFetchedAt.AddMinutes(-15);
+                                            
                                             var jobQueue = session.Query<_JobQueue>()
                                                 .FirstOrDefault(i =>
                                                     (i.FetchedAt == null
-                                                     || i.FetchedAt < next) && queues.Contains(i.Queue));
+                                                     || i.FetchedAt < cutoff) && queues.Contains(i.Queue));
                                             if (jobQueue != null)
                                             {
-                                                jobQueue.FetchedAt = jobQueueFetchedAt;
                                                 jobQueue.FetchToken = token;
+                                                jobQueue.FetchedAt = jobQueueFetchedAt;
                                                 session.Update(jobQueue);
-                                                session.Flush();
-
                                                 transaction.Commit();
+
+
                                                 Logger.DebugFormat("Dequeued job id {0} from queue {1}",
                                                     jobQueue.Job.Id,
                                                     jobQueue.Queue);
@@ -79,14 +79,11 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                             }
                                         }
                                     }
-                                }
 
                                 return null;
                             });
                             if (fluentNHibernateFetchedJob != null)
-                            {
                                 return fluentNHibernateFetchedJob;
-                            }
                         }
                     }
                     catch (FluentNHibernateDistributedLockException)
@@ -114,9 +111,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
-            {
                 return;
-            }
 
             session.Insert(new _JobQueue
             {

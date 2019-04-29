@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Threading;
 using Hangfire.Logging;
+using Newtonsoft.Json;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -42,9 +43,7 @@ namespace Hangfire.FluentNHibernateStorage
         public void Dispose()
         {
             if (_acquired)
-            {
                 Release();
-            }
         }
 
         internal FluentNHibernateDistributedLock Acquire()
@@ -56,49 +55,55 @@ namespace Hangfire.FluentNHibernateStorage
                 _cancellationToken.ThrowIfCancellationRequested();
 
 
-                if (SqlUtil.WrapForTransaction(() =>
+                if (SqlUtil.WrapForTransaction(CreateLockRow))
                 {
-                    lock (Mutex)
-                    {
-                        using (var session = _storage.GetSession())
-                        {
-                            using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
-                            {
-                                var utcNow = session.Storage.UtcNow;
-                                var count = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
-                                    .SetParameter(SqlUtil.ResourceParameterName, _resource)
-                                    .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
-                                        utcNow.Add(_timeout).ToUnixDate())
-                                    .SetParameter(SqlUtil.NowParameterName, utcNow)
-                                    .SetParameter(SqlUtil.NowAsLongParameterName, utcNow.ToUnixDate());
 
-
-                                if (count.ExecuteUpdate() > 0)
-                                {
-                                    transaction.Commit();
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-
-                    return false;
-                }))
-                {
                     Logger.DebugFormat("Granted distributed lock for {0}", _resource);
                     _acquired = true;
                     return this;
                 }
 
+
                 if (finish > DateTime.Now)
-                {
                     _cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
-                }
                 else
                 {
                     throw new FluentNHibernateDistributedLockException("cannot acquire lock");
                 }
             }
+        }
+
+        private bool CreateLockRow()
+        {
+            lock (Mutex)
+            {
+                using (var session = _storage.GetSession())
+                {
+                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                    {
+                        var lockResourceParams = new LockResourceParams(session, _resource, _timeout);
+
+                        var query = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
+                            .SetParameter(SqlUtil.ResourceParameterName, _resource)
+                            .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
+                                lockResourceParams.expireAtAsLong)
+                            .SetParameter(SqlUtil.NowParameterName, lockResourceParams.utcNow)
+                            .SetParameter(SqlUtil.NowAsLongParameterName, lockResourceParams.nowAsLong);
+
+
+                        var count = query.ExecuteUpdate();
+                        if (count == 1)
+                        {
+                            transaction.Commit();
+                            Logger.DebugFormat("Created distributed lock, count={0} for {1}", count,
+                                JsonConvert.SerializeObject(lockResourceParams));
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         internal void Release()
@@ -117,6 +122,23 @@ namespace Hangfire.FluentNHibernateStorage
                     }
                 }
             });
+        }
+
+        private class LockResourceParams
+        {
+            public LockResourceParams(SessionWrapper session, string resource, TimeSpan timeout)
+            {
+                Resource = resource;
+                utcNow = session.Storage.UtcNow;
+                _timeout = timeout;
+            }
+
+            public string Resource { get; }
+            public DateTime utcNow { get; }
+            public TimeSpan _timeout { get; }
+            public long expireAtAsLong => utcNow.Add(_timeout).ToUnixDate();
+
+            public long nowAsLong => utcNow.ToUnixDate();
         }
     }
 }
