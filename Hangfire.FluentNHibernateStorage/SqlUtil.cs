@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.Maps;
 using NHibernate;
@@ -187,9 +188,7 @@ namespace Hangfire.FluentNHibernateStorage
         public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> ids) where T : IInt32Id
         {
             if (!ids.Any())
-            {
                 return 0;
-            }
 
             string queryString;
             lock (GenerateStatementMutex)
@@ -297,6 +296,46 @@ namespace Hangfire.FluentNHibernateStorage
             return default(T);
         }
 
+        public static T WrapForDeadlock<T>(Func<T> safeAction, int milliseconds)
+        {
+            return WrapForDeadlock<T>(safeAction, TimeSpan.FromMilliseconds(milliseconds));
+        }
+
+        public static T WrapForDeadlock<T>(Func<T> safeAction, TimeSpan waitTimeSpan)
+        {
+            while (true)
+            {
+                try
+                {
+                    return safeAction();
+                }
+                catch (Exception ex)
+                {
+                    if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
+                        throw;
+
+                    Thread.Sleep(waitTimeSpan);
+                }
+            }
+        }
+        public static void WrapForDeadlock(Action safeAction, int milliseconds)
+        {
+            WrapForDeadlock<bool>(() =>
+            {
+                safeAction();
+                return true;
+            }, milliseconds);
+        }
+
+        public static void WrapForDeadlock(Action safeAction, TimeSpan waitTimeSpan)
+        {
+            WrapForDeadlock<bool>(() =>
+            {
+                safeAction();
+                return true;
+            }, waitTimeSpan);
+        }
+
         public static void WrapForTransaction(Action safeAction)
         {
             WrapForTransaction(() =>
@@ -316,9 +355,7 @@ namespace Hangfire.FluentNHibernateStorage
             lock (GenerateStatementMutex)
             {
                 if (_createDistributedLockStatement != null)
-                {
                     return _createDistributedLockStatement;
-                }
 
                 var distributedLockTableName = nameof(_DistributedLock).WrapObjectName();
                 var createdAtColumnName = nameof(_DistributedLock.CreatedAt).WrapObjectName();

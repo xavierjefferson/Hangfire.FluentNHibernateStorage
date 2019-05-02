@@ -57,7 +57,6 @@ namespace Hangfire.FluentNHibernateStorage
 
                 if (SqlUtil.WrapForTransaction(CreateLockRow))
                 {
-
                     Logger.DebugFormat("Granted distributed lock for {0}", _resource);
                     _acquired = true;
                     return this;
@@ -67,60 +66,63 @@ namespace Hangfire.FluentNHibernateStorage
                 if (finish > DateTime.Now)
                     _cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
                 else
-                {
                     throw new FluentNHibernateDistributedLockException("cannot acquire lock");
-                }
             }
         }
 
         private bool CreateLockRow()
         {
-            lock (Mutex)
+            return SqlUtil.WrapForDeadlock(() =>
             {
-                using (var session = _storage.GetSession())
+                lock (Mutex)
                 {
-                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                    using (var session = _storage.GetSession())
                     {
-                        var lockResourceParams = new LockResourceParams(session, _resource, _timeout);
-
-                        var query = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
-                            .SetParameter(SqlUtil.ResourceParameterName, _resource)
-                            .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
-                                lockResourceParams.expireAtAsLong)
-                            .SetParameter(SqlUtil.NowParameterName, lockResourceParams.utcNow)
-                            .SetParameter(SqlUtil.NowAsLongParameterName, lockResourceParams.nowAsLong);
-
-
-                        var count = query.ExecuteUpdate();
-                        if (count == 1)
+                        using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                         {
-                            transaction.Commit();
-                            Logger.DebugFormat("Created distributed lock, count={0} for {1}", count,
-                                JsonConvert.SerializeObject(lockResourceParams));
-                            return true;
+                            var lockResourceParams = new LockResourceParams(session, _resource, _timeout);
+
+                            var query = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
+                                .SetParameter(SqlUtil.ResourceParameterName, _resource)
+                                .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
+                                    lockResourceParams.expireAtAsLong)
+                                .SetParameter(SqlUtil.NowParameterName, lockResourceParams.utcNow)
+                                .SetParameter(SqlUtil.NowAsLongParameterName, lockResourceParams.nowAsLong);
+
+
+                            var count = query.ExecuteUpdate();
+                            if (count == 1)
+                            {
+                                transaction.Commit();
+                                Logger.DebugFormat("Created distributed lock, count={0} for {1}", count,
+                                    JsonConvert.SerializeObject(lockResourceParams));
+                                return true;
+                            }
                         }
                     }
+                    return false;
                 }
-            }
-
-            return false;
+            }, 1000);
         }
 
         internal void Release()
         {
             SqlUtil.WrapForTransaction(() =>
             {
-                lock (Mutex)
+                SqlUtil.WrapForDeadlock(() =>
                 {
-                    using (var session = _storage.GetSession())
+                    lock (Mutex)
                     {
-                        session.CreateQuery(SqlUtil.DeleteDistributedLockSql)
-                            .SetParameter(SqlUtil.IdParameterName, _resource)
-                            .ExecuteUpdate();
-                        session.Flush();
-                        Logger.DebugFormat("Released distributed lock for {0}", _resource);
+                        using (var session = _storage.GetSession())
+                        {
+                            session.CreateQuery(SqlUtil.DeleteDistributedLockSql)
+                                .SetParameter(SqlUtil.IdParameterName, _resource)
+                                .ExecuteUpdate();
+                            session.Flush();
+                            Logger.DebugFormat("Released distributed lock for {0}", _resource);
+                        }
                     }
-                }
+                }, 1000);
             });
         }
 
