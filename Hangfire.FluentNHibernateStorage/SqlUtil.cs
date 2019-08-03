@@ -35,6 +35,7 @@ namespace Hangfire.FluentNHibernateStorage
         /// <summary>
         ///     HQL statement by which a Server entity will be deleted based on its id
         /// </summary>
+
         internal static readonly string DeleteServerByIdStatement =
             string.Format("delete from {0} where {1}=:{2}", nameof(_Server).WrapObjectName(),
                 nameof(_Server.Id).WrapObjectName(),
@@ -132,7 +133,9 @@ namespace Hangfire.FluentNHibernateStorage
         internal static readonly string AnnounceServerStatement = string.Format(
             "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data),
             nameof(_Server.LastHeartbeat), nameof(_Server.Id));
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Generate HQL to update a single property of an entity based on matched some column to a value.
         /// </summary>
@@ -147,7 +150,9 @@ namespace Hangfire.FluentNHibernateStorage
                 ValueParameterName,
                 IdParameterName);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
 
         /// <summary>
         ///     do an upsert into a table
@@ -177,7 +182,9 @@ namespace Hangfire.FluentNHibernateStorage
 
             session.Flush();
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     delete entities that implement IInt32Id, by using the value stored in their Id property.
         /// </summary>
@@ -217,7 +224,9 @@ namespace Hangfire.FluentNHibernateStorage
 
             return count;
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Delete entities that implement iexpirablewithid and have expired based on server's system date
         /// </summary>
@@ -235,7 +244,9 @@ namespace Hangfire.FluentNHibernateStorage
                 .ToList();
             return session.DeleteByInt32Id<T>(ids);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Generate a HQL statement that sets ExpireAt property of entity that implements IExpirableWithKey
         /// </summary>
@@ -248,7 +259,9 @@ namespace Hangfire.FluentNHibernateStorage
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 IdParameterName);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Generate a HQL statement that deletes entities that implement IExpirableWithKey and match a given key
         /// </summary>
@@ -260,7 +273,9 @@ namespace Hangfire.FluentNHibernateStorage
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 ValueParameterName);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Generate a HQL statement that deletes entities that implement IExpirableWithKey and match a given key and
         ///     value
@@ -273,7 +288,9 @@ namespace Hangfire.FluentNHibernateStorage
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 ValueParameterName, nameof(IKeyWithStringValue.Value).WrapObjectName(), ValueParameter2Name);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         public static T WrapForTransaction<T>(Func<T> safeFunc)
         {
             try
@@ -300,7 +317,9 @@ namespace Hangfire.FluentNHibernateStorage
         {
             return WrapForDeadlock<T>(safeAction, TimeSpan.FromMilliseconds(milliseconds));
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif 
         public static T WrapForDeadlock<T>(Func<T> safeAction, TimeSpan waitTimeSpan)
         {
             while (true)
@@ -318,6 +337,9 @@ namespace Hangfire.FluentNHibernateStorage
                 }
             }
         }
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         public static void WrapForDeadlock(Action safeAction, int milliseconds)
         {
             WrapForDeadlock<bool>(() =>
@@ -326,7 +348,9 @@ namespace Hangfire.FluentNHibernateStorage
                 return true;
             }, milliseconds);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         public static void WrapForDeadlock(Action safeAction, TimeSpan waitTimeSpan)
         {
             WrapForDeadlock<bool>(() =>
@@ -335,7 +359,9 @@ namespace Hangfire.FluentNHibernateStorage
                 return true;
             }, waitTimeSpan);
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         public static void WrapForTransaction(Action safeAction)
         {
             WrapForTransaction(() =>
@@ -344,7 +370,9 @@ namespace Hangfire.FluentNHibernateStorage
                 return true;
             });
         }
-
+#if !DEBUG
+[System.Diagnostics.DebuggerHidden]
+#endif
         /// <summary>
         ///     Generate a HQL statement that inserts a distributed lock entry into the table if no prior
         ///     one exists for the same resource.
