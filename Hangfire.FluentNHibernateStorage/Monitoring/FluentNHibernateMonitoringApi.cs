@@ -337,7 +337,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var count = session.Query<_Job>().Count(i => i.StateName == stateName);
             if (_jobListLimit.HasValue)
             {
-                return Math.Max(count, _jobListLimit.Value);
+                return Math.Min(count, _jobListLimit.Value);
             }
 
             return count;
