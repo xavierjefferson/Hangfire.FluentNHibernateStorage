@@ -118,7 +118,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 UseStatefulTransaction(session =>
                     {
                         var statesDictionary = session.Query<_Job>()
-                            .Where(i => i.StateName != null && i.StateName != string.Empty)
+                            .Where(i => i.StateName != null && i.StateName.Length > 0)
                             .GroupBy(i => i.StateName)
                             .Select(i => new {i.Key, Count = i.Count()})
                             .ToDictionary(i => i.Key, j => j.Count);
@@ -337,7 +337,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var count = session.Query<_Job>().Count(i => i.StateName == stateName);
             if (_jobListLimit.HasValue)
             {
-                return Math.Max(count, _jobListLimit.Value);
+                return Math.Min(count, _jobListLimit.Value);
             }
 
             return count;
@@ -359,7 +359,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             Func<_Job, Job, Dictionary<string, string>, TDto> selector)
         {
             var jobs = session.Query<_Job>()
-                .OrderBy(i => i.Id)
+                .OrderByDescending(i => i.Id)
                 .Where(i => i.StateName == stateName)
                 .Skip(from)
                 .Take(count)
