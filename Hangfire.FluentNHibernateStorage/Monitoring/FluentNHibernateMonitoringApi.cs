@@ -118,7 +118,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 UseStatefulTransaction(session =>
                     {
                         var statesDictionary = session.Query<_Job>()
-                            .Where(i => i.StateName != null && i.StateName != string.Empty)
+                            .Where(i => i.StateName != null && i.StateName.Length > 0)
                             .GroupBy(i => i.StateName)
                             .Select(i => new {i.Key, Count = i.Count()})
                             .ToDictionary(i => i.Key, j => j.Count);
