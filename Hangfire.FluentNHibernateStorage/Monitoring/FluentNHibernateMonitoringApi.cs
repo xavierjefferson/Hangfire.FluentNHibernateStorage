@@ -359,7 +359,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             Func<_Job, Job, Dictionary<string, string>, TDto> selector)
         {
             var jobs = session.Query<_Job>()
-                .OrderBy(i => i.Id)
+                .OrderByDescending(i => i.Id)
                 .Where(i => i.StateName == stateName)
                 .Skip(from)
                 .Take(count)
