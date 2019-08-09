@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.1.2394</version>
+    <version>1.1.2400</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -12,7 +12,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
     <releaseNotes>
-   Minor update.  No code changes.  This code is mature so it's being switched to a release build that won't throw exceptions from background threads while you're debugging.
+  Incorporate monitoring changes from Mateusz Bogusz
  </releaseNotes>
     <copyright>Copyright © 2019 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
