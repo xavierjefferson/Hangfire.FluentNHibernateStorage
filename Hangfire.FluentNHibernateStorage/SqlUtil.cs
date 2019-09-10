@@ -127,8 +127,8 @@ namespace Hangfire.FluentNHibernateStorage
         private static string _createDistributedLockStatement;
 
         internal static readonly string SetJobParameterStatement = string.Format(
-            "update {0} set {1}=:value where {2}.{3}=:id",
-            nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id));
+            "update {0} set {1}=:value where {2}.{3}=:id and {4}=:name",
+            nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id), nameof(_JobParameter.Name));
 
         internal static readonly string AnnounceServerStatement = string.Format(
             "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data),

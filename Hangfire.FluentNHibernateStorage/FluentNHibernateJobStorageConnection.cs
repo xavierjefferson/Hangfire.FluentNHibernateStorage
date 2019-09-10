@@ -105,7 +105,8 @@ namespace Hangfire.FluentNHibernateStorage
             Storage.UseTransaction(session =>
             {
                 var rowCount = session.CreateQuery(SqlUtil.SetJobParameterStatement)
-                    .SetParameter("value", value).SetParameter("id", converter.Value).ExecuteUpdate();
+                    .SetParameter("value", value).SetParameter("id", converter.Value).SetParameter("name", name)
+                    .ExecuteUpdate();
                 if (rowCount == 0)
                 {
                     session.Insert(
