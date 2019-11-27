@@ -16,8 +16,8 @@ namespace Hangfire.FluentNHibernateStorage
         public const string ValueParameter2Name = "newValue2";
         public const string IdParameterName = "entityId";
 
-        public const string NowAsLongParameterName = "nowAsLong";
-        public const string NowParameterName = "now";
+        public const string UtcNowAsLongParameterName = "utcNowAsLong";
+        public const string CreatedAtParameterName = "createdAt";
         public const string ResourceParameterName = "resource";
         public const string ExpireAtAsLongParameterName = "expireAtAsLong";
 
@@ -35,7 +35,6 @@ namespace Hangfire.FluentNHibernateStorage
         /// <summary>
         ///     HQL statement by which a Server entity will be deleted based on its id
         /// </summary>
-
         internal static readonly string DeleteServerByIdStatement =
             string.Format("delete from {0} where {1}=:{2}", nameof(_Server).WrapObjectName(),
                 nameof(_Server.Id).WrapObjectName(),
@@ -128,7 +127,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal static readonly string SetJobParameterStatement = string.Format(
             "update {0} set {1}=:value where {2}.{3}=:id and {4}=:name",
-            nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id), nameof(_JobParameter.Name));
+            nameof(_JobParameter), nameof(_JobParameter.Value), nameof(_JobParameter.Job), nameof(_Job.Id),
+            nameof(_JobParameter.Name));
 
         internal static readonly string AnnounceServerStatement = string.Format(
             "update {0} set {1}=:data, {2}=:lastheartbeat where {3}=:id", nameof(_Server), nameof(_Server.Data),
@@ -313,17 +313,12 @@ namespace Hangfire.FluentNHibernateStorage
             return default(T);
         }
 
-        public static T WrapForDeadlock<T>(Func<T> safeAction, int milliseconds)
-        {
-            return WrapForDeadlock<T>(safeAction, TimeSpan.FromMilliseconds(milliseconds));
-        }
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
-#endif 
-        public static T WrapForDeadlock<T>(Func<T> safeAction, TimeSpan waitTimeSpan)
+#endif
+        public static T WrapForDeadlock<T>(Func<T> safeAction, FluentNHibernateStorageOptions options)
         {
             while (true)
-            {
                 try
                 {
                     return safeAction();
@@ -333,32 +328,22 @@ namespace Hangfire.FluentNHibernateStorage
                     if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
                         throw;
 
-                    Thread.Sleep(waitTimeSpan);
+                    Thread.Sleep(options.DeadlockRetryInterval);
                 }
-            }
         }
+
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
-        public static void WrapForDeadlock(Action safeAction, int milliseconds)
+        public static void WrapForDeadlock(Action safeAction, FluentNHibernateStorageOptions options)
         {
-            WrapForDeadlock<bool>(() =>
+            WrapForDeadlock(() =>
             {
                 safeAction();
                 return true;
-            }, milliseconds);
+            }, options);
         }
-#if !DEBUG
-[System.Diagnostics.DebuggerHidden]
-#endif
-        public static void WrapForDeadlock(Action safeAction, TimeSpan waitTimeSpan)
-        {
-            WrapForDeadlock<bool>(() =>
-            {
-                safeAction();
-                return true;
-            }, waitTimeSpan);
-        }
+ 
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
@@ -396,12 +381,12 @@ namespace Hangfire.FluentNHibernateStorage
                     $@"insert into {distributedLockTableName} ({resourceColumnName}, {createdAtColumnName}, {
                             expireAtAsLongColumnName
                         })
-                        select :{ResourceParameterName}, :{NowParameterName},  
+                        select :{ResourceParameterName}, :{CreatedAtParameterName},  
                         :{ExpireAtAsLongParameterName} from 
                         {dualTableName} where not exists (select {Constants.ColumnNames.Id.WrapObjectName()} from 
                         {distributedLockTableName} as d where d.{resourceColumnName} = 
                         :{ResourceParameterName} and 
-                        d.{expireAtAsLongColumnName} >= :{NowAsLongParameterName})";
+                        d.{expireAtAsLongColumnName} >= :{UtcNowAsLongParameterName})";
                 return _createDistributedLockStatement;
             }
         }

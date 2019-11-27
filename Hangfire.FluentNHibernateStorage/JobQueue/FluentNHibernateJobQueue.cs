@@ -29,6 +29,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
             Logger.Debug("Attempting to dequeue");
 
+            var timeoutSeconds = _options.InvisibilityTimeout.Negate().TotalSeconds;
             try
             {
                 while (true)
@@ -38,7 +39,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                     try
                     {
-                        using (new FluentNHibernateDistributedLock(_storage, "JobQueue", TimeSpan.FromSeconds(60))
+                        using (new FluentNHibernateDistributedLock(_storage, "JobQueue", _options.JobQueueDistributedLockTimeout)
                             .Acquire())
                         {
                             var fluentNHibernateFetchedJob = SqlUtil.WrapForTransaction(() =>
@@ -52,8 +53,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                                             session.BeginTransaction(IsolationLevel.Serializable))
                                         {
                                             var jobQueueFetchedAt = _storage.UtcNow;
-                                            var cutoff = jobQueueFetchedAt.AddMinutes(-15);
-                                            
+
+                                            var cutoff = jobQueueFetchedAt.AddSeconds(timeoutSeconds);
+                                            if (Logger.IsDebugEnabled())
+                                                Logger.Debug(string.Format("Getting jobs where {0}=null or {0}<{1}",
+                                                    nameof(_JobQueue.FetchedAt), cutoff));
+
                                             var jobQueue = session.Query<_JobQueue>()
                                                 .FirstOrDefault(i =>
                                                     (i.FetchedAt == null

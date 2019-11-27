@@ -8,10 +8,10 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateDistributedLock : IDisposable, IComparable
     {
-        private const int DelayBetweenPasses = 100;
         private static readonly object Mutex = new object();
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private readonly CancellationToken _cancellationToken;
+        private readonly FluentNHibernateStorageOptions _options;
         private readonly string _resource;
         private readonly FluentNHibernateJobStorage _storage;
         private readonly TimeSpan _timeout;
@@ -26,6 +26,7 @@ namespace Hangfire.FluentNHibernateStorage
             _timeout = timeout;
             _cancellationToken = cancellationToken ?? new CancellationToken();
             _storage = storage;
+            _options = storage.Options;
         }
 
         public int CompareTo(object obj)
@@ -48,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         internal FluentNHibernateDistributedLock Acquire()
         {
-            var finish = DateTime.Now.Add(_timeout);
+            var finish = DateTime.UtcNow.Add(_timeout);
 
             while (true)
             {
@@ -63,8 +64,8 @@ namespace Hangfire.FluentNHibernateStorage
                 }
 
 
-                if (finish > DateTime.Now)
-                    _cancellationToken.WaitHandle.WaitOne(DelayBetweenPasses);
+                if (finish > DateTime.UtcNow)
+                    _cancellationToken.WaitHandle.WaitOne(_options.DistributedLockPollInterval);
                 else
                     throw new FluentNHibernateDistributedLockException("cannot acquire lock");
             }
@@ -83,26 +84,28 @@ namespace Hangfire.FluentNHibernateStorage
                             var lockResourceParams = new LockResourceParams(session, _resource, _timeout);
 
                             var query = session.CreateQuery(SqlUtil.GetCreateDistributedLockStatement())
-                                .SetParameter(SqlUtil.ResourceParameterName, _resource)
+                                .SetParameter(SqlUtil.ResourceParameterName, lockResourceParams.Resource)
                                 .SetParameter(SqlUtil.ExpireAtAsLongParameterName,
-                                    lockResourceParams.expireAtAsLong)
-                                .SetParameter(SqlUtil.NowParameterName, lockResourceParams.utcNow)
-                                .SetParameter(SqlUtil.NowAsLongParameterName, lockResourceParams.nowAsLong);
+                                    lockResourceParams.ExpireAtAsLong)
+                                .SetParameter(SqlUtil.CreatedAtParameterName, lockResourceParams.CreatedAt)
+                                .SetParameter(SqlUtil.UtcNowAsLongParameterName, lockResourceParams.CreatedAtAsLong);
 
 
                             var count = query.ExecuteUpdate();
                             if (count == 1)
                             {
                                 transaction.Commit();
-                                Logger.DebugFormat("Created distributed lock, count={0} for {1}", count,
-                                    JsonConvert.SerializeObject(lockResourceParams));
+                                if (Logger.IsDebugEnabled())
+                                    Logger.DebugFormat("Created distributed lock for {0}",
+                                        JsonConvert.SerializeObject(lockResourceParams));
                                 return true;
                             }
                         }
                     }
+
                     return false;
                 }
-            }, 1000);
+            }, _options);
         }
 
         internal void Release()
@@ -122,7 +125,7 @@ namespace Hangfire.FluentNHibernateStorage
                             Logger.DebugFormat("Released distributed lock for {0}", _resource);
                         }
                     }
-                }, 1000);
+                }, _options);
             });
         }
 
@@ -131,16 +134,15 @@ namespace Hangfire.FluentNHibernateStorage
             public LockResourceParams(SessionWrapper session, string resource, TimeSpan timeout)
             {
                 Resource = resource;
-                utcNow = session.Storage.UtcNow;
-                _timeout = timeout;
+                CreatedAt = session.Storage.UtcNow;
+                ExpireAtAsLong = CreatedAt.Add(timeout).ToUnixDate();
+                CreatedAtAsLong = CreatedAt.ToUnixDate();
             }
 
             public string Resource { get; }
-            public DateTime utcNow { get; }
-            public TimeSpan _timeout { get; }
-            public long expireAtAsLong => utcNow.Add(_timeout).ToUnixDate();
-
-            public long nowAsLong => utcNow.ToUnixDate();
+            public DateTime CreatedAt { get; }
+            public long ExpireAtAsLong { get; }
+            public long CreatedAtAsLong { get; }
         }
     }
 }

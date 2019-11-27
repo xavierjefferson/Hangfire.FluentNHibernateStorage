@@ -6,7 +6,17 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateStorageOptions : FluentNHibernatePersistenceBuilderOptions
     {
+        private TimeSpan _countersAggregateInterval;
+        private int? _dashboardJobListLimit;
+        private TimeSpan _deadlockRetryInterval;
+        private TimeSpan _jobQueueDistributedLockTimeout;
+        private TimeSpan _invisibilityTimeout;
+
+        private TimeSpan _jobExpirationCheckInterval;
         private TimeSpan _queuePollInterval;
+        private TimeSpan _distributedLockPollInterval;
+
+        private TimeSpan _transactionTimeout;
 
         public FluentNHibernateStorageOptions()
         {
@@ -17,7 +27,62 @@ namespace Hangfire.FluentNHibernateStorage
             UpdateSchema = true;
             DashboardJobListLimit = 50000;
             TransactionTimeout = TimeSpan.FromMinutes(1);
-            
+            InvisibilityTimeout = TimeSpan.FromMinutes(15);
+            JobQueueDistributedLockTimeout = TimeSpan.FromMinutes(1);
+            DistributedLockPollInterval = TimeSpan.FromMilliseconds(100);
+            DeadlockRetryInterval = TimeSpan.FromSeconds(1);
+        }
+
+        /// <summary>
+        ///     During a distributed lock acquisition, determines how often will Hangfire poll against the database while it waits.
+        /// </summary>
+        public TimeSpan DistributedLockPollInterval
+        {
+            get => _distributedLockPollInterval;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(DistributedLockPollInterval));
+                _distributedLockPollInterval = value;
+            }
+        }
+
+        /// <summary>
+        ///     When the database encounters a deadlock state, how long to wait before retrying
+        /// </summary>
+        public TimeSpan DeadlockRetryInterval
+        {
+            get => _deadlockRetryInterval;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(DeadlockRetryInterval));
+                _deadlockRetryInterval = value;
+            }
+        }
+
+        /// <summary>
+        ///     How long to wait to get a distributed lock for the job queue
+        /// </summary>
+        public TimeSpan JobQueueDistributedLockTimeout
+        {
+            get => _jobQueueDistributedLockTimeout;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(JobQueueDistributedLockTimeout));
+                _jobQueueDistributedLockTimeout = value;
+            }
+        }
+
+        /// <summary>
+        ///     How long a job can run before Hangfire tries to re-queue it
+        /// </summary>
+        public TimeSpan InvisibilityTimeout
+        {
+            get => _invisibilityTimeout;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(InvisibilityTimeout));
+                _invisibilityTimeout = value;
+            }
         }
 
         public IsolationLevel? TransactionIsolationLevel { get; set; }
@@ -27,20 +92,13 @@ namespace Hangfire.FluentNHibernateStorage
             get => _queuePollInterval;
             set
             {
-                if (value == TimeSpan.Zero || value != value.Duration())
-                {
-                    var message = string.Format(
-                        "The QueuePollInterval property value should be positive. Given: {0}.",
-                        value);
-                    throw new ArgumentException(message, "value");
-                }
-
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(QueuePollInterval));
                 _queuePollInterval = value;
             }
         }
 
         /// <summary>
-        /// Create the schema if it doesn't already exist.
+        ///     Create the schema if it doesn't already exist.
         /// </summary>
         [Obsolete("Use property " + nameof(UpdateSchema) + ".")]
         public bool PrepareSchemaIfNecessary
@@ -49,14 +107,44 @@ namespace Hangfire.FluentNHibernateStorage
             set => UpdateSchema = value;
         }
 
-        public TimeSpan JobExpirationCheckInterval { get; set; }
-        public TimeSpan CountersAggregateInterval { get; set; }
+        public TimeSpan JobExpirationCheckInterval
+        {
+            get => _jobExpirationCheckInterval;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(JobExpirationCheckInterval));
+                _jobExpirationCheckInterval = value;
+            }
+        }
 
-        public int? DashboardJobListLimit { get; set; }
-        public TimeSpan TransactionTimeout { get; set; }
+        public TimeSpan CountersAggregateInterval
+        {
+            get => _countersAggregateInterval;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(CountersAggregateInterval));
+                _countersAggregateInterval = value;
+            }
+        }
 
-        [Obsolete(
-            "Does not make sense anymore. Background jobs re-queued instantly even after ungraceful shutdown now. Will be removed in 2.0.0.")]
-        public TimeSpan InvisibilityTimeout { get; set; }
+        public int? DashboardJobListLimit
+        {
+            get => _dashboardJobListLimit;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(DashboardJobListLimit));
+                _dashboardJobListLimit = value;
+            }
+        }
+
+        public TimeSpan TransactionTimeout
+        {
+            get => _transactionTimeout;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(TransactionTimeout));
+                _transactionTimeout = value;
+            }
+        }
     }
 }

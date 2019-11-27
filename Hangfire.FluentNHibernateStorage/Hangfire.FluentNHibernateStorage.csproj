@@ -71,6 +71,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArgumentHelper.cs" />
     <Compile Include="ExpirationActionQueue.cs" />
     <Compile Include="Entities\IJobChild.cs" />
     <Compile Include="FluentNHibernateStorageBootstrapperConfigurationExtensions.cs" />

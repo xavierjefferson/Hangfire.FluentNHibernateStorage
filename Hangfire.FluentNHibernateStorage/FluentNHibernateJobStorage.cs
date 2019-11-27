@@ -14,6 +14,7 @@ using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
+using Newtonsoft.Json;
 using NHibernate;
 using Snork.FluentNHibernateTools;
 
@@ -204,9 +205,9 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void WriteOptionsToLog(ILog logger)
         {
-            logger.Info("Using the following options for job storage:");
-            logger.InfoFormat("    Queue poll interval: {0}.", Options.QueuePollInterval);
-            logger.InfoFormat("    Schema: {0}", Options.DefaultSchema ?? "(not specified)");
+            if (logger.IsInfoEnabled())
+                logger.InfoFormat("Using the following options for job storage: {0}",
+                    JsonConvert.SerializeObject(Options, Formatting.Indented));
         }
 
 
