@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public FluentNHibernateMonitoringApi([NotNull] FluentNHibernateJobStorage storage, int? jobListLimit)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
             _jobListLimit = jobListLimit;
         }
 

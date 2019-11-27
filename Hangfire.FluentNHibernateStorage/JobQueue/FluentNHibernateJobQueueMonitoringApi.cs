@@ -16,7 +16,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public FluentNHibernateJobQueueMonitoringApi(FluentNHibernateJobStorage storage)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         public IEnumerable<string> GetQueues()

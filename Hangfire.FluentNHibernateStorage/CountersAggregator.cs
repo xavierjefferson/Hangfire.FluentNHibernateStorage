@@ -20,7 +20,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public CountersAggregator(FluentNHibernateJobStorage storage, TimeSpan interval)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
             _interval = interval;
         }
 

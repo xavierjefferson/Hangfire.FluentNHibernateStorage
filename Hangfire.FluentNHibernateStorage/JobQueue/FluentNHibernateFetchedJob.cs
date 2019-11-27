@@ -19,9 +19,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             FluentNHibernateJobStorage storage,
             FetchedJob fetchedJob)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
 
-            _id = fetchedJob?.Id ?? throw new ArgumentNullException("fetchedJob");
+            _id = fetchedJob?.Id ?? throw new ArgumentNullException(nameof(fetchedJob));
             JobId = fetchedJob.JobId.ToString(CultureInfo.InvariantCulture);
             Queue = fetchedJob.Queue;
         }

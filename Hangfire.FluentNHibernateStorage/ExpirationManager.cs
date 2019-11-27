@@ -28,7 +28,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public ExpirationManager(FluentNHibernateJobStorage storage, TimeSpan checkInterval)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
             _checkInterval = checkInterval;
         }
 

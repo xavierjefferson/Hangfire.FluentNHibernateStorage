@@ -22,7 +22,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateWriteOnlyTransaction(FluentNHibernateJobStorage storage)
         {
-            _storage = storage ?? throw new ArgumentNullException("storage");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         private void SetExpireAt<T>(string key, DateTime? expire, SessionWrapper session) where T : IExpirableWithKey
@@ -218,8 +218,8 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("AddRangeToSet key={0}", key);
 
-            if (key == null) throw new ArgumentNullException("key");
-            if (items == null) throw new ArgumentNullException("items");
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (items == null) throw new ArgumentNullException(nameof(items));
 
             AcquireSetLock();
             QueueCommand(session =>
@@ -244,7 +244,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("ExpireSet key={0} expirein={1}", key, expireIn);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
             QueueCommand(session => { SetExpireAt<_Set>(key, session.Storage.UtcNow.Add(expireIn), session); });
@@ -261,7 +261,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void ExpireList(string key, TimeSpan expireIn)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             Logger.TraceFormat("ExpireList key={0} expirein={1}", key, expireIn);
 
@@ -299,7 +299,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("PersistHash key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
             QueueCommand(session => { SetExpireAt<_Hash>(key, null, session); });
@@ -309,7 +309,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("PersistSet key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
             QueueCommand(session => { SetExpireAt<_Set>(key, null, session); });
@@ -319,7 +319,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("RemoveSet key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
             QueueCommand(session => { DeleteByKey<_Set>(key, session); });
@@ -329,7 +329,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("PersistList key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireListLock();
             QueueCommand(session => { SetExpireAt<_List>(key, null, session); });
@@ -339,8 +339,8 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("SetRangeInHash key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
-            if (keyValuePairs == null) throw new ArgumentNullException("keyValuePairs");
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
 
             AcquireHashLock();
             QueueCommand(session =>
@@ -363,7 +363,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("ExpireHash key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
             QueueCommand(session => { SetExpireAt<_Hash>(key, session.Storage.UtcNow.Add(expireIn), session); });
@@ -373,7 +373,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.TraceFormat("RemoveHash key={0} ", key);
 
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
             QueueCommand(session => { DeleteByKey<_Hash>(key, session); });

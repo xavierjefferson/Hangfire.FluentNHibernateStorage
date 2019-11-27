@@ -16,7 +16,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateJobStorageConnection(FluentNHibernateJobStorage storage)
         {
-            Storage = storage ?? throw new ArgumentNullException("storage");
+            Storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         public FluentNHibernateJobStorage Storage { get; }
@@ -34,8 +34,8 @@ namespace Hangfire.FluentNHibernateStorage
         public override string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt,
             TimeSpan expireIn)
         {
-            if (job == null) throw new ArgumentNullException("job");
-            if (parameters == null) throw new ArgumentNullException("parameters");
+            if (job == null) throw new ArgumentNullException(nameof(job));
+            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
             var invocationData = InvocationData.Serialize(job);
 
@@ -74,7 +74,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IFetchedJob FetchNextJob(string[] queues, CancellationToken cancellationToken)
         {
-            if (queues == null || queues.Length == 0) throw new ArgumentNullException("queues");
+            if (queues == null || queues.Length == 0) throw new ArgumentNullException(nameof(queues));
 
             var providers = queues
                 .Select(queue => Storage.QueueProviders.GetProvider(queue))
@@ -94,8 +94,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void SetJobParameter(string id, string name, string value)
         {
-            if (id == null) throw new ArgumentNullException("id");
-            if (name == null) throw new ArgumentNullException("name");
+            if (id == null) throw new ArgumentNullException(nameof(id));
+            if (name == null) throw new ArgumentNullException(nameof(name));
             var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid)
             {
@@ -117,14 +117,15 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override string GetJobParameter(string id, string name)
         {
-            if (id == null) throw new ArgumentNullException("id");
+            if (id == null) throw new ArgumentNullException(nameof(id));
+            if (name == null) throw new ArgumentNullException(nameof(name));
             var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid)
             {
                 return null;
             }
 
-            if (name == null) throw new ArgumentNullException("name");
+            
 
             return Storage.UseSession(session =>
                 session.Query<_JobParameter>()
@@ -135,7 +136,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override JobData GetJobData(string jobId)
         {
-            if (jobId == null) throw new ArgumentNullException("jobId");
+            if (jobId == null) throw new ArgumentNullException(nameof(jobId));
             var converter = StringToInt32Converter.Convert(jobId);
 
             if (!converter.Valid)
@@ -181,7 +182,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override StateData GetStateData(string jobId)
         {
-            if (jobId == null) throw new ArgumentNullException("jobId");
+            if (jobId == null) throw new ArgumentNullException(nameof(Job));
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
@@ -213,8 +214,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void AnnounceServer(string serverId, ServerContext context)
         {
-            if (serverId == null) throw new ArgumentNullException("serverId");
-            if (context == null) throw new ArgumentNullException("context");
+            if (serverId == null) throw new ArgumentNullException(nameof(serverId));
+            if (context == null) throw new ArgumentNullException(nameof(context));
 
             Storage.UseTransaction(session =>
             {
@@ -239,7 +240,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void RemoveServer(string serverId)
         {
-            if (serverId == null) throw new ArgumentNullException("serverId");
+            if (serverId == null) throw new ArgumentNullException(nameof(serverId));
 
             Storage.UseSession(
                 session =>
@@ -252,7 +253,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void Heartbeat(string serverId)
         {
-            if (serverId == null) throw new ArgumentNullException("serverId");
+            if (serverId == null) throw new ArgumentNullException(nameof(serverId));
 
             Storage.UseSession(session =>
             {
@@ -267,7 +268,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (timeOut.Duration() != timeOut)
             {
-                throw new ArgumentException("The `timeOut` value must be positive.", "timeOut");
+                throw new ArgumentException(string.Format("The `{0}` value must be positive.", nameof(timeOut)), nameof(timeOut));
             }
 
             return
@@ -279,7 +280,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override long GetSetCount(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
                 Storage.UseSession(session =>
@@ -288,7 +289,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override List<string> GetRangeFromSet(string key, int startingFrom, int endingAt)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
             return Storage.UseSession(session =>
             {
                 return session.Query<_Set>()
@@ -303,7 +304,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override HashSet<string> GetAllItemsFromSet(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
                 Storage.UseSession(session =>
@@ -319,9 +320,9 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override string GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
             if (toScore < fromScore)
-                throw new ArgumentException("The `toScore` value must be higher or equal to the `fromScore` value.");
+                throw new ArgumentException(string.Format("The `{0}` value must be higher or equal to the `{1}` value.", nameof(toScore), nameof(fromScore)));
 
             return
                 Storage.UseSession(session =>
@@ -334,7 +335,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override long GetCounter(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
             return
                 Storage.UseSession(session =>
                 {
@@ -345,7 +346,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override long GetHashCount(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
                 Storage.UseSession(session =>
@@ -359,7 +360,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override long GetListCount(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
                 Storage.UseSession(session =>
@@ -373,8 +374,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override string GetValueFromHash(string key, string name)
         {
-            if (key == null) throw new ArgumentNullException("key");
-            if (name == null) throw new ArgumentNullException("name");
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (name == null) throw new ArgumentNullException(nameof(name));
 
             return
                 Storage.UseSession(session =>
@@ -386,7 +387,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override List<string> GetRangeFromList(string key, int startingFrom, int endingAt)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
             return Storage.UseSession(session =>
             {
                 return
@@ -402,7 +403,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override List<string> GetAllItemsFromList(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return Storage.UseSession(session =>
             {
@@ -419,7 +420,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private TimeSpan GetTTL<T>(string key) where T : IExpirableWithKey
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return Storage.UseSession(session =>
             {
@@ -440,8 +441,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void SetRangeInHash(string key, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
         {
-            if (key == null) throw new ArgumentNullException("key");
-            if (keyValuePairs == null) throw new ArgumentNullException("keyValuePairs");
+            if (key == null) throw new ArgumentNullException(nameof(key));
+            if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
 
             Storage.UseTransaction(session =>
             {
@@ -460,7 +461,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override Dictionary<string, string> GetAllEntriesFromHash(string key)
         {
-            if (key == null) throw new ArgumentNullException("key");
+            if (key == null) throw new ArgumentNullException(nameof(key));
 
             return Storage.UseSession(session =>
             {

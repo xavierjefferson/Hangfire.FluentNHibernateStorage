@@ -19,13 +19,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public FluentNHibernateJobQueue(FluentNHibernateJobStorage storage, FluentNHibernateStorageOptions options)
         {
             Logger.Info("Job queue initialized");
-            _storage = storage ?? throw new ArgumentNullException("storage");
-            _options = options ?? throw new ArgumentNullException("options");
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         public IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken)
         {
-            if (queues == null) throw new ArgumentNullException("queues");
+            if (queues == null) throw new ArgumentNullException(nameof(queues));
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
             Logger.Debug("Attempting to dequeue");
 
