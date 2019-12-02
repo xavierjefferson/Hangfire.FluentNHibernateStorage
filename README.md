@@ -82,7 +82,7 @@ I may simplify the implementation later, but I think this code is pretty painles
                 DashboardJobListLimit = 50000,
 		InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-				DefaultSchema = null // use database provider's default schema
+		DefaultSchema = null // use database provider's default schema
             };           
             var storage = FluentNHibernateStorageFactory.For(ProviderTypeEnum.MySQL, "MyConnectionStringHere", options);
             GlobalConfiguration.Configuration
@@ -117,7 +117,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 DashboardJobListLimit = 50000,
 		InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-				DefaultSchema = null // use database provider's default schema
+		DefaultSchema = null // use database provider's default schema
             };
 
             //THIS SECTION GETS THE STORAGE PROVIDER
