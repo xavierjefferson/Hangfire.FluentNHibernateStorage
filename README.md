@@ -80,14 +80,14 @@ I may simplify the implementation later, but I think this code is pretty painles
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
                 UpdateSchema = true,
                 DashboardJobListLimit = 50000,
-				InvisibilityTimeout = TimeSpan.FromMinutes(15),
+                InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-				DefaultSchema = null, // use database provider's default schema
-				TablePrefix = "Hangfire_"
+                DefaultSchema = null, // use database provider's default schema
+                TablePrefix = "Hangfire_"
             };           
 
-			//THIS SECTION GETS THE STORAGE PROVIDER.  CHANGE THE ENUM VALUE ON THE NEXT LINE FOR
-			//YOUR PARTICULAR RDBMS
+            //THIS SECTION GETS THE STORAGE PROVIDER.  CHANGE THE ENUM VALUE ON THE NEXT LINE FOR
+            //YOUR PARTICULAR RDBMS
 
             var storage = FluentNHibernateStorageFactory.For(ProviderTypeEnum.MySQL, "MyConnectionStringHere", options);
 
@@ -121,14 +121,14 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
                 UpdateSchema = true,
                 DashboardJobListLimit = 50000,
-				InvisibilityTimeout = TimeSpan.FromMinutes(15),
+                InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-				DefaultSchema = null, // use database provider's default schema
-				TablePrefix = "Hangfire_"
+                DefaultSchema = null, // use database provider's default schema
+                TablePrefix = "Hangfire_"
             };
 
             //THIS SECTION GETS THE STORAGE PROVIDER.  CHANGE THE ENUM VALUE ON THE NEXT LINE FOR
-			//YOUR PARTICULAR RDBMS
+            //YOUR PARTICULAR RDBMS
 
             var PersistenceConfigurerType = ProviderTypeEnum.MsSql2012;
             var connectionString = ConfigurationManager.ConnectionStrings["someConnectionString"].ConnectionString;
