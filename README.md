@@ -49,7 +49,7 @@ The package includes an enumeration of database providers AND their specific fla
 The enumeration values correspond to the list of providers NHibernate supports.  When you instantiate a provider, you'll pass the best enumeration value to the FluentNHibernateStorageFactory.For method, along with your connection string.  I wrote it this way so you don't have to be concerned with the underlying implementation details for the various providers, which can be a little messy.  
 
 ### MS Sql Server
-You'll note that four versions of SQL Server are included.  If you're using MS SQL Server 2000 (and I hope you're not), you may have a rough time because the database does not support strings longer than 8000 characters.  This implementation was tested against MS Sql Server 2012 and 2008.
+You'll note that four versions of SQL Server are in the enumeration, and these directly correlate to NHibernate's built-in storage provider set.  This implementation was tested against only MS Sql Server 2012 and 2008.  If you're using MS SQL Server 2000 (*and I sincerely hope you're not*), you may have a rough time because the database does not support strings longer than 8000 characters.
 
 ### Oracle
 Be advised that two of the four Oracle options (OracleClient9Managed, OracleClient10Managed) use the **Oracle.ManagedDataAccess** client library internally, while the other two (OracleClient9, OracleClient10) use the **System.Data.OracleClient** client library.  I'm not Oracle savvy, and I could only get **Oracle.ManagedDataAccess** to work properly (the other is NHibernate's default).  You may have a different experience.  This implementation was tested against Oracle 11g Express on Oracle Linux.
@@ -80,13 +80,19 @@ I may simplify the implementation later, but I think this code is pretty painles
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
                 UpdateSchema = true,
                 DashboardJobListLimit = 50000,
-		InvisibilityTimeout = TimeSpan.FromMinutes(15),
+				InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-		DefaultSchema = null // use database provider's default schema
+				DefaultSchema = null, // use database provider's default schema
+				TablePrefix = "Hangfire_"
             };           
+
+			//THIS SECTION GETS THE STORAGE PROVIDER.  CHANGE THE ENUM VALUE ON THE NEXT LINE FOR
+			//YOUR PARTICULAR RDBMS
+
             var storage = FluentNHibernateStorageFactory.For(ProviderTypeEnum.MySQL, "MyConnectionStringHere", options);
-            GlobalConfiguration.Configuration
-                .UseStorage(storage);
+
+            GlobalConfiguration.Configuration.UseStorage(storage);
+
             /*** More Hangfire configuration stuff 
             would go in this same method ***/
          }
@@ -115,22 +121,28 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 CountersAggregateInterval = TimeSpan.FromMinutes(5),
                 UpdateSchema = true,
                 DashboardJobListLimit = 50000,
-		InvisibilityTimeout = TimeSpan.FromMinutes(15),
+				InvisibilityTimeout = TimeSpan.FromMinutes(15),
                 TransactionTimeout = TimeSpan.FromMinutes(1),
-		DefaultSchema = null // use database provider's default schema
+				DefaultSchema = null, // use database provider's default schema
+				TablePrefix = "Hangfire_"
             };
 
-            //THIS SECTION GETS THE STORAGE PROVIDER
+            //THIS SECTION GETS THE STORAGE PROVIDER.  CHANGE THE ENUM VALUE ON THE NEXT LINE FOR
+			//YOUR PARTICULAR RDBMS
+
             var PersistenceConfigurerType = ProviderTypeEnum.MsSql2012;
             var connectionString = ConfigurationManager.ConnectionStrings["someConnectionString"].ConnectionString;
             var storage = FluentNHibernateStorageFactory.For(PersistenceConfigurerType, connectionString, options);
 
             //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
             GlobalConfiguration.Configuration.UseStorage(storage);
+
             /*THIS LINE STARTS THE BACKGROUND SERVER*/
             _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                 storage.GetBackgroundProcesses());
+
             /*AND... DONE.*/
+
             Console.WriteLine("Background job server is running.  Press [ENTER] to quit.");
             Console.ReadLine();
         }
@@ -147,6 +159,7 @@ Description of optional parameters:
 - `TransactionTimeout` - transaction timeout. Default is 1 minute.
 - `InvisibilityTimeout` - If your jobs run long, Hangfire will assume they've failed if the duration is longer than this value.  Increase this value so Hangfire try to re-queue them too early. Default is 15 minutes.
 - `DefaultSchema` - database schema into which the Hangfire tables will be created.  Default is database provider specific ("dbo" for SQL Server, "public" for PostgreSQL, etc).
+- `TablePrefix` - Table name prefix for Hangfire tables that will be created.  Default is 'Hangfire_'.  This cannot be null or blank.
 
 ### How to limit number of open connections
 
@@ -183,7 +196,7 @@ In order to run unit tests and integrational tests set the following variables i
  - Since this uses an OR/M, there are no stored procedures or views to be installed.
  - All dates stored in the tables are UTC, for consistency; except for the Firebird implementation because Firebird lacks a "current UTC date" function.
  - This implementation uses database transactions to cleanly distribute pending jobs between various workers threads.  You may witness, if you turn on a logger, lots of failed transactions.  For now, this is expected.  Don't panic.
- - Old records are automatically cleaned up.  Most of the cleanup parameters are specified by the Hangfire engine itself, and this implementation does its best to not lock up your RDDMS while old records are being purged.  For more information on specific cleanup parameters, consult the Hangfire forums.
+ - Old records are automatically cleaned up.  Most of the cleanup parameters are specified by the Hangfire engine itself, and this implementation does its best to not lock up your RDBMS while old records are being purged.  For more information on specific cleanup parameters, consult the Hangfire forums.
  - Table Hangfire_Dual should contain one and only one row - this is by design, and it's required in order to support the various RDBMSs.
 
 ## Tables Created:

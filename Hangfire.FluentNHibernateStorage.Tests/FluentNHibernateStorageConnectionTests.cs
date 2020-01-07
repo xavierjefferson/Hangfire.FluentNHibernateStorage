@@ -355,9 +355,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void GetAllItemsFromSet_ReturnsAllItems()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, Score, Value)
-values (@Key, 0.0, @Value)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
@@ -525,9 +522,6 @@ values (@Key, 0.0, @Value)";
         [CleanDatabase]
         public void GetHashCount_ReturnsNumber_OfHashFields()
         {
-            const string arrangeSql = @"
-insert into Hash (`Key`, `Field`)
-values (@Key, @Field)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
@@ -943,9 +937,6 @@ values (@Key, @Value, 0.0)";
         [CleanDatabase]
         public void GetSetCount_ReturnsNumberOfElements_InASet()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, `Score`)
-values (@Key, @Value, 0.0)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
@@ -989,9 +980,6 @@ values (@Key, @Value, 0.0)";
         [CleanDatabase]
         public void GetSetTtl_ReturnsExpirationTime_OfAGivenSet()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, `ExpireAt`, `Score`)
-values (@Key, @Value, @ExpireAt, 0.0)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {

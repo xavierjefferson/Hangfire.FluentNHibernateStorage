@@ -24,13 +24,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                 .Returns(persistentJobQueueMonitoringApiMock.Object);
 
-            var mySqlStorageMock = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
-            mySqlStorageMock
+            var storageMock = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
+            storageMock
                 .Setup(m => m.QueueProviders)
                 .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
 
-            _storage = mySqlStorageMock.Object;
-            _sut = new FluentNHibernateMonitoringApi(_storage, _jobListLimit);
+            _storage = storageMock.Object;
+            _sut = new FluentNHibernateMonitoringApi(_storage);
             _createdAt = _storage.UtcNow;
             _expireAt = _storage.UtcNow.AddMinutes(1);
         }
@@ -51,7 +51,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             "\"ParameterTypes\":\"[\\\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\\\"]\"," +
             "\"Arguments\":\"[\\\"\\\"test\\\"\\\"]\"}";
 
-        private readonly int? _jobListLimit = 1000;
         private readonly FluentNHibernateJobStorage _storage;
         private readonly FluentNHibernateMonitoringApi _sut;
 

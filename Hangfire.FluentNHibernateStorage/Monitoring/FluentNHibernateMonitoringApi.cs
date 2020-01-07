@@ -13,13 +13,11 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 {
     public class FluentNHibernateMonitoringApi : IMonitoringApi
     {
-        private readonly int? _jobListLimit;
         private readonly FluentNHibernateJobStorage _storage;
 
-        public FluentNHibernateMonitoringApi([NotNull] FluentNHibernateJobStorage storage, int? jobListLimit)
+        public FluentNHibernateMonitoringApi([NotNull] FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            _jobListLimit = jobListLimit;
         }
 
         public IList<QueueWithTopEnqueuedJobsDto> Queues()
@@ -329,15 +327,16 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private T UseStatefulTransaction<T>(Func<SessionWrapper, T> action)
         {
-            return _storage.UseTransaction(action, _storage.Options.TransactionIsolationLevel);
+            return _storage.UseTransaction(action);
         }
 
         private long GetNumberOfJobsByStateName(SessionWrapper session, string stateName)
         {
             var count = session.Query<_Job>().Count(i => i.StateName == stateName);
-            if (_jobListLimit.HasValue)
+            var jobListLimit = _storage.Options.DashboardJobListLimit;
+            if (jobListLimit.HasValue)
             {
-                return Math.Min(count, _jobListLimit.Value);
+                return Math.Min(count, jobListLimit.Value);
             }
 
             return count;

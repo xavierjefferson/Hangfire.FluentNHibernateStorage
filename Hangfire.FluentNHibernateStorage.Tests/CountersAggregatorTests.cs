@@ -13,7 +13,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         public CountersAggregatorTests()
         {
             _storage = ConnectionUtils.GetStorage();
-            _sut = new CountersAggregator(_storage, TimeSpan.Zero);
+            _countersAggregator = new CountersAggregator(_storage);
         }
 
         public void Dispose()
@@ -22,7 +22,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         }
 
         private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
-        private readonly CountersAggregator _sut;
+        private readonly CountersAggregator _countersAggregator;
 
         [Fact]
         [CleanDatabase]
@@ -38,7 +38,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
                 cts.Cancel();
 
                 // Act
-                _sut.Execute(cts.Token);
+                _countersAggregator.Execute(cts.Token);
 
                 // Assert
                 Assert.Equal(1, connection.Query<_AggregatedCounter>().Count());

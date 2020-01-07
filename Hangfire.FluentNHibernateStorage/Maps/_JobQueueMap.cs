@@ -6,7 +6,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobQueueMap()
         {
-            Table("Hangfire_JobQueue".WrapObjectName());
+            Table("JobQueue");
 
             References(i => i.Job).Cascade.Delete().Column(Constants.ColumnNames.JobId.WrapObjectName());
             Map(i => i.FetchedAt).Column("FetchedAt".WrapObjectName()).Nullable();

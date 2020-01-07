@@ -30,25 +30,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
         private static FluentNHibernateJobQueue CreateJobQueue(FluentNHibernateJobStorage storage)
         {
-            return new FluentNHibernateJobQueue(storage, new FluentNHibernateStorageOptions());
+            return new FluentNHibernateJobQueue(storage);
         }
 
-        [Fact]
-        [CleanDatabase]
-        public void Ctor_ThrowsAnException_WhenOptionsValueIsNull()
-        {
-            var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateJobQueue(_storage, null));
-
-            Assert.Equal("options", exception.ParamName);
-        }
-
-        [Fact]
+         [Fact]
         [CleanDatabase]
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
             var exception = Assert.Throws<ArgumentNullException>(
-                () => new FluentNHibernateJobQueue(null, new FluentNHibernateStorageOptions()));
+                () => new FluentNHibernateJobQueue(null));
 
             Assert.Equal("storage", exception.ParamName);
         }

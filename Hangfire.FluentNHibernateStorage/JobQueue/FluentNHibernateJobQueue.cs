@@ -12,15 +12,12 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
     {
         private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobQueue));
 
-        private readonly FluentNHibernateStorageOptions _options;
-
         private readonly FluentNHibernateJobStorage _storage;
 
-        public FluentNHibernateJobQueue(FluentNHibernateJobStorage storage, FluentNHibernateStorageOptions options)
+        public FluentNHibernateJobQueue(FluentNHibernateJobStorage storage)
         {
             Logger.Info("Job queue initialized");
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
         public IFetchedJob Dequeue(string[] queues, CancellationToken cancellationToken)
@@ -29,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             if (queues.Length == 0) throw new ArgumentException("Queue array must be non-empty.", "queues");
             Logger.Debug("Attempting to dequeue");
 
-            var timeoutSeconds = _options.InvisibilityTimeout.Negate().TotalSeconds;
+            var timeoutSeconds = _storage.Options.InvisibilityTimeout.Negate().TotalSeconds;
             try
             {
                 while (true)
@@ -39,7 +36,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
                     try
                     {
-                        using (new FluentNHibernateDistributedLock(_storage, "JobQueue", _options.JobQueueDistributedLockTimeout)
+                        using (new FluentNHibernateDistributedLock(_storage, "JobQueue", _storage.Options.JobQueueDistributedLockTimeout)
                             .Acquire())
                         {
                             var fluentNHibernateFetchedJob = SqlUtil.WrapForTransaction(() =>
@@ -101,7 +98,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         throw;
                     }
 
-                    cancellationToken.WaitHandle.WaitOne(_options.QueuePollInterval);
+                    cancellationToken.WaitHandle.WaitOne(_storage.Options.QueuePollInterval);
                     cancellationToken.ThrowIfCancellationRequested();
                 }
             }

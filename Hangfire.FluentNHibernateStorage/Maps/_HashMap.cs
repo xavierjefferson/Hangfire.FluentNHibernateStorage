@@ -15,7 +15,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string KeyColumnIndexName => IndexName;
 
-        protected override string TableName => "Hangfire_Hash".WrapObjectName();
+        protected override string TableName => "Hash";
 
         protected override bool ValueNullable => true;
 

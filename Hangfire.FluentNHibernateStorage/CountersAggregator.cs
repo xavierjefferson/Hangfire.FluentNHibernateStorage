@@ -14,14 +14,11 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
 
-        private readonly TimeSpan _interval;
-
         private readonly FluentNHibernateJobStorage _storage;
 
-        public CountersAggregator(FluentNHibernateJobStorage storage, TimeSpan interval)
+        public CountersAggregator(FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            _interval = interval;
         }
 
         public void Execute(BackgroundProcessContext context)
@@ -93,7 +90,7 @@ namespace Hangfire.FluentNHibernateStorage
                 }
             } while (removedCount >= NumberOfRecordsInSinglePass);
 
-            token.WaitHandle.WaitOne(_interval);
+            token.WaitHandle.WaitOne(_storage.Options.CountersAggregateInterval);
         }
 
         public override string ToString()

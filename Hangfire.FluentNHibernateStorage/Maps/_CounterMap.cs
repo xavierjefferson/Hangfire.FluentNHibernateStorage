@@ -8,7 +8,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string KeyColumnIndexName => "IX_Counter_Key";
 
-        protected override string TableName => "Hangfire_Counter".WrapObjectName();
+        protected override string TableName => "Counter";
 
         protected override bool ValueNullable => false;
 

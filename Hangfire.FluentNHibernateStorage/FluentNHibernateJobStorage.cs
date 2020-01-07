@@ -58,9 +58,9 @@ namespace Hangfire.FluentNHibernateStorage
             Options = tmp ?? new FluentNHibernateStorageOptions();
 
             InitializeQueueProviders();
-            _expirationManager = new ExpirationManager(this, Options.JobExpirationCheckInterval);
-            _countersAggregator = new CountersAggregator(this, Options.CountersAggregateInterval);
-            _serverTimeSyncManager = new ServerTimeSyncManager(this, TimeSpan.FromMinutes(5));
+            _expirationManager = new ExpirationManager(this);
+            _countersAggregator = new CountersAggregator(this);
+            _serverTimeSyncManager = new ServerTimeSyncManager(this);
 
 
             //escalate session factory issues early
@@ -108,6 +108,9 @@ namespace Hangfire.FluentNHibernateStorage
                     IQuery query;
                     switch (ProviderType)
                     {
+                        case ProviderTypeEnum.None:
+                            throw new ArgumentException(string.Format("This won't work with {0} set to '{1}'",
+                                nameof(ProviderType), ProviderTypeEnum.None));
                         case ProviderTypeEnum.OracleClient10Managed:
                         case ProviderTypeEnum.OracleClient9Managed:
 
@@ -184,7 +187,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             QueueProviders =
                 new PersistentJobQueueProviderCollection(
-                    new FluentNHibernateJobQueueProvider(this, Options));
+                    new FluentNHibernateJobQueueProvider(this));
         }
 
 #pragma warning disable 618
@@ -213,7 +216,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IMonitoringApi GetMonitoringApi()
         {
-            return new FluentNHibernateMonitoringApi(this, Options.DashboardJobListLimit);
+            return new FluentNHibernateMonitoringApi(this);
         }
 
         public override IStorageConnection GetConnection()
@@ -230,10 +233,9 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func,
-            IsolationLevel? isolationLevel = null)
+        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func)
         {
-            using (var transaction = CreateTransaction(isolationLevel ?? Options.TransactionIsolationLevel))
+            using (var transaction = CreateTransaction())
             {
                 var result = UseSession(func);
                 transaction.Complete();
@@ -241,26 +243,24 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action,
-            IsolationLevel? isolationLevel = null)
+        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action)
         {
             UseTransaction(session =>
                 {
                     action(session);
                     return true;
-                }, isolationLevel ?? Options.TransactionIsolationLevel);
+                });
         }
 
-        private TransactionScope CreateTransaction(IsolationLevel? isolationLevel)
+        private TransactionScope CreateTransaction()
         {
-            return isolationLevel != null
-                ? new TransactionScope(TransactionScopeOption.Required,
-                    new TransactionOptions
-                    {
-                        IsolationLevel = isolationLevel.Value,
-                        Timeout = Options.TransactionTimeout
-                    })
-                : new TransactionScope();
+            return new TransactionScope(TransactionScopeOption.Required,
+                new TransactionOptions
+                {
+                    IsolationLevel = Options.TransactionIsolationLevel,
+                    Timeout = Options.TransactionTimeout
+                });
+
         }
 
         public void ResetAll()

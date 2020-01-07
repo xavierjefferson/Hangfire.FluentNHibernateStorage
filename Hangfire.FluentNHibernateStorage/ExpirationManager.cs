@@ -17,19 +17,11 @@ namespace Hangfire.FluentNHibernateStorage
         internal static readonly TimeSpan DefaultLockTimeout = TimeSpan.FromSeconds(30);
         internal static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromSeconds(1);
 
-        private readonly TimeSpan _checkInterval;
-
         private readonly FluentNHibernateJobStorage _storage;
 
         public ExpirationManager(FluentNHibernateJobStorage storage)
-            : this(storage, TimeSpan.FromHours(1))
-        {
-        }
-
-        public ExpirationManager(FluentNHibernateJobStorage storage, TimeSpan checkInterval)
         {
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-            _checkInterval = checkInterval;
         }
 
         public void Execute(BackgroundProcessContext context)
@@ -69,7 +61,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             actionQueue.Run();
 
-            cancellationToken.WaitHandle.WaitOne(_checkInterval);
+            cancellationToken.WaitHandle.WaitOne(_storage.Options.JobExpirationCheckInterval);
         }
 
         public override string ToString()

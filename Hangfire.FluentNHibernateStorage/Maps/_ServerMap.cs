@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _ServerMap()
         {
-            Table("Hangfire_Server".WrapObjectName());
+            Table("Server");
             Id(i => i.Id).Length(100).GeneratedBy.Assigned().Column(Constants.ColumnNames.Id.WrapObjectName());
             Map(i => i.Data).Length(Constants.VarcharMaxLength).Not.Nullable()
                 .Column(Constants.ColumnNames.Data.WrapObjectName());

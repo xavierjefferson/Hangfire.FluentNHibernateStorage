@@ -94,7 +94,7 @@
       <HintPath>..\packages\NHibernate.4.0.0.4000\lib\net40\NHibernate.dll</HintPath>
     </Reference>
     <Reference Include="Snork.FluentNHibernateTools, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Snork.FluentNHibernateTools.1.1.6600\lib\net40\Snork.FluentNHibernateTools.dll</HintPath>
+      <HintPath>..\packages\Snork.FluentNHibernateTools.1.1.8700\lib\net40\Snork.FluentNHibernateTools.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />

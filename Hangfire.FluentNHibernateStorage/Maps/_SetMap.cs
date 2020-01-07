@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string KeyColumnIndexName => "IX_Set_Key_Value";
         public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
-        protected override string TableName => "Hangfire_Set".WrapObjectName();
+        protected override string TableName => "Set";
 
         protected override bool ValueNullable => false;
 

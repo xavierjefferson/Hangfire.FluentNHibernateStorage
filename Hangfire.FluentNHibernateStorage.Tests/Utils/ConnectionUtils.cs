@@ -49,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         public static FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
-            return new FluentNHibernateJobStorage(GetPersistenceConfigurer());
+            return new FluentNHibernateJobStorage(GetPersistenceConfigurer(), options);
         }
 
         public static IPersistenceConfigurer GetPersistenceConfigurer()

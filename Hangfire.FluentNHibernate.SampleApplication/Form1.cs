@@ -88,10 +88,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             try
             {
                 var tmp = JsonConvert.DeserializeObject<Dictionary<ProviderTypeEnum, ProviderSetting>>(a);
-                if (tmp != null)
-                {
-                    return tmp;
-                }
+                if (tmp != null) return tmp;
             }
             catch (Exception ex)
             {
@@ -131,7 +128,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             ProviderType = Enum.TryParse(Settings.Default.DataSource, out type)
                 ? type
                 : ProviderTypeEnum.MsSql2012;
-
+            TableNamePrefixTextBox.Text = Settings.Default.TableNamePrefix;
 
             TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
             State = StateEnum.Stopped;
@@ -154,14 +151,22 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     return;
                 }
 
-                SaveConnectionString(ProviderType, connectionString);
+                var tableNamePrefix = TableNamePrefixTextBox.Text.Trim();
+                if (string.IsNullOrWhiteSpace(tableNamePrefix))
+                {
+                    MessageBox.Show(this, "Table name prefix cannot be blank");
+                    return;
+                }
 
+                SaveConnectionString(ProviderType, connectionString);
+                Settings.Default.TableNamePrefix = tableNamePrefix;
                 Settings.Default.DataSource = ProviderType.ToString();
                 Settings.Default.Save();
 
 
                 //THIS LINE GETS THE STORAGE PROVIDER
-                storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString);
+                storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString,
+                    new FluentNHibernateStorageOptions {TablePrefix = tableNamePrefix});
                 if (storage != null)
                 {
                     State = StateEnum.Starting;

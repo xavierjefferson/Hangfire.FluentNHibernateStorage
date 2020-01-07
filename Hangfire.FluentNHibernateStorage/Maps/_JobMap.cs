@@ -6,7 +6,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobMap()
         {
-            Table("Hangfire_Job".WrapObjectName());
+            Table("Job");
             LazyLoad();
             Map(i => i.LastStateChangedAt).Column("`LastStateChangedAt`").Nullable();
             Map(i => i.StateData).Column("`StateData`").Length(Constants.StateDataLength).Nullable();

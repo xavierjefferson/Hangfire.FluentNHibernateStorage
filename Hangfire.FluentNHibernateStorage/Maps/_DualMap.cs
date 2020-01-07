@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _DualMap()
         {
-            Table("Hangfire_Dual".WrapObjectName());
+            Table("Dual");
             Id(i => i.Id).Column(Constants.ColumnNames.Id.WrapObjectName()).GeneratedBy.Assigned();
         }
     }

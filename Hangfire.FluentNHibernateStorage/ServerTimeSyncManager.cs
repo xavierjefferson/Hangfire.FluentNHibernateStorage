@@ -7,13 +7,11 @@ namespace Hangfire.FluentNHibernateStorage
 #pragma warning disable 618
     public class ServerTimeSyncManager : IBackgroundProcess, IServerComponent
     {
-        private readonly TimeSpan _checkInterval;
         private readonly FluentNHibernateJobStorage _storage;
 
-        public ServerTimeSyncManager(FluentNHibernateJobStorage storage, TimeSpan checkInterval)
+        public ServerTimeSyncManager(FluentNHibernateJobStorage storage)
         {
             _storage = storage;
-            _checkInterval = checkInterval;
         }
 
         public void Execute(BackgroundProcessContext context)
@@ -24,7 +22,7 @@ namespace Hangfire.FluentNHibernateStorage
         public void Execute(CancellationToken cancellationToken)
         {
             _storage.RefreshUtcOffset();
-            cancellationToken.WaitHandle.WaitOne(_checkInterval);
+            cancellationToken.WaitHandle.WaitOne(_storage.Options.DbmsTimeSyncInterval);
         }
 #pragma warning restore 618
     }

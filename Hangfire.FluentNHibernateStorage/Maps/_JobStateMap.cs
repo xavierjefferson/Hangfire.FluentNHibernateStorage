@@ -6,7 +6,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobStateMap()
         {
-            Table("Hangfire_JobState".WrapObjectName());
+            Table("JobState");
             Map(i => i.Name).Column("Name".WrapObjectName()).Length(Constants.StateNameLength).Not.Nullable();
             Map(i => i.Reason).Column("Reason".WrapObjectName()).Length(Constants.StateReasonLength).Nullable();
             Map(i => i.Data).Column(Constants.ColumnNames.Data.WrapObjectName()).Length(Constants.StateDataLength)

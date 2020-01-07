@@ -6,7 +6,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _ListMap()
         {
-            Table("Hangfire_List".WrapObjectName());
+            Table("List");
         }
 
         public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Nonunique;
@@ -15,7 +15,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 
         protected override string KeyColumnIndexName => "IX_LIST_KEY";
 
-        protected override string TableName => "List".WrapObjectName();
+        protected override string TableName => "List";
 
         protected override bool ValueNullable => true;
     }

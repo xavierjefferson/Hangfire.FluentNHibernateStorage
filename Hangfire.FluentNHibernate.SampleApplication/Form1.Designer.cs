@@ -36,6 +36,8 @@
             this.DataProviderComboBox = new System.Windows.Forms.ComboBox();
             this.label2 = new System.Windows.Forms.Label();
             this.HQLButton = new System.Windows.Forms.Button();
+            this.TableNamePrefixTextBox = new System.Windows.Forms.TextBox();
+            this.label3 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -116,11 +118,31 @@
             this.HQLButton.UseVisualStyleBackColor = true;
             this.HQLButton.Click += new System.EventHandler(this.HQLButton_Click);
             // 
+            // TableNamePrefixTextBox
+            // 
+            this.TableNamePrefixTextBox.Location = new System.Drawing.Point(134, 122);
+            this.TableNamePrefixTextBox.Multiline = true;
+            this.TableNamePrefixTextBox.Name = "TableNamePrefixTextBox";
+            this.TableNamePrefixTextBox.Size = new System.Drawing.Size(342, 22);
+            this.TableNamePrefixTextBox.TabIndex = 10;
+            this.TableNamePrefixTextBox.Text = "Hangfire_";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(12, 125);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(94, 13);
+            this.label3.TabIndex = 9;
+            this.label3.Text = "Table Name Prefix";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(749, 425);
+            this.Controls.Add(this.TableNamePrefixTextBox);
+            this.Controls.Add(this.label3);
             this.Controls.Add(this.HQLButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.DataProviderComboBox);
@@ -147,6 +169,8 @@
         private System.Windows.Forms.ComboBox DataProviderComboBox;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button HQLButton;
+        private System.Windows.Forms.TextBox TableNamePrefixTextBox;
+        private System.Windows.Forms.Label label3;
     }
 }
 
