@@ -898,9 +898,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void GetRangeFromSet_ReturnsPagedElements2()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, `Score`)
-values (@Key, @Value, 0.0)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {

@@ -21,7 +21,7 @@
 		<dependency id="Hangfire.Core" version="1.7.17"   />
     <dependency id="Hangfire" version="1.7.17"   />
 		<dependency id="Newtonsoft.Json" version="11.0.1"   />
-    <dependency id="Snork.FluentNHibernateTools" version="2.0.2030" />
+    <dependency id="Snork.FluentNHibernateTools" version="2.0.2033" />
     </dependencies>
 
 

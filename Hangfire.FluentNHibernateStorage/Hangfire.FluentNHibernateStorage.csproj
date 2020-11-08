@@ -13,7 +13,7 @@
     <PackageReference Include="hangfire" Version="1.7.17" />
     <PackageReference Include="hangfire.core" Version="1.7.17" />
     <PackageReference Include="newtonsoft.json" Version="11.0.1" />
-    <PackageReference Include="snork.fluentnhibernatetools" Version="2.0.2030" />
+    <PackageReference Include="snork.fluentnhibernatetools" Version="2.0.2033" />
   </ItemGroup>
 
   <ItemGroup>
