@@ -182,8 +182,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                         storage.GetBackgroundProcesses());
 
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
-                    RecurringJob.AddOrUpdate(() => HelloWorld(), Cron.MinuteInterval(2));
-                    RecurringJob.AddOrUpdate(() => HelloWorld5(), Cron.MinuteInterval(5));
+                    RecurringJob.AddOrUpdate(() => HelloWorld(), "2 * * * *");
+                    RecurringJob.AddOrUpdate(() => HelloWorld5(), "5 * * * *");
                     loggerNew.Info("Background server started");
                     State = StateEnum.Started;
                 }

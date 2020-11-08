@@ -57,7 +57,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                 foreach (var server in session.Query<_Server>())
                 {
-                    var data = JobHelper.FromJson<ServerData>(server.Data);
+                    var data = SerializationHelper.Deserialize<ServerData>(server.Data);
                     result.Add(new ServerDto
                     {
                         Name = server.Id,
@@ -94,7 +94,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             CreatedAt = jobState.CreatedAt,
                             Reason = jobState.Reason,
                             Data = new Dictionary<string, string>(
-                                JobHelper.FromJson<Dictionary<string, string>>(jobState.Data),
+                                SerializationHelper.Deserialize<Dictionary<string, string>>(jobState.Data),
                                 StringComparer.OrdinalIgnoreCase)
                         })
                         .ToList();
@@ -375,7 +375,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
             foreach (var job in jobs)
             {
-                var deserializedData = JobHelper.FromJson<Dictionary<string, string>>(job.StateData);
+                var deserializedData = SerializationHelper.Deserialize<Dictionary<string, string>>(job.StateData);
                 var stateData = deserializedData != null
                     ? new Dictionary<string, string>(deserializedData, StringComparer.OrdinalIgnoreCase)
                     : null;
@@ -391,12 +391,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         private static Job DeserializeJob(string invocationData, string arguments)
         {
-            var data = JobHelper.FromJson<InvocationData>(invocationData);
+            var data = SerializationHelper.Deserialize<InvocationData>(invocationData);
             data.Arguments = arguments;
 
             try
             {
-                return data.Deserialize();
+                return data.DeserializeJob();
             }
             catch (JobLoadException)
             {

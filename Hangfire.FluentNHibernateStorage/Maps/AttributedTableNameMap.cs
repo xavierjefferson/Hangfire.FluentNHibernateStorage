@@ -14,7 +14,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
         {
             if (_tableName == null)
             {
-                _tableName = string.Concat(FluentNHibernateJobStorage.DefaultTableNamePrefix,
+                _tableName = string.Concat(FluentNHibernateStorageOptions.DefaultTablePrefix,
                     TableNameHelper.GetTableName(typeof(T)));
             }
             return _tableName;

@@ -110,7 +110,7 @@ namespace Hangfire.FluentNHibernateStorage
                         Reason = state.Reason,
                         Name = state.Name,
                         CreatedAt = session.Storage.UtcNow,
-                        Data = JobHelper.ToJson(state.SerializeData())
+                        Data = SerializationHelper.Serialize(state.SerializeData())
                     };
                     session.Insert(jobState);
                     session.Flush();
@@ -144,7 +144,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Name = state.Name,
                     Reason = state.Reason,
                     CreatedAt = session.Storage.UtcNow,
-                    Data = JobHelper.ToJson(state.SerializeData())
+                    Data = SerializationHelper.Serialize(state.SerializeData())
                 });
             });
         }

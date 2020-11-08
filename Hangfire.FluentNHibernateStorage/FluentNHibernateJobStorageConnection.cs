@@ -37,9 +37,9 @@ namespace Hangfire.FluentNHibernateStorage
             if (job == null) throw new ArgumentNullException(nameof(job));
             if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
-            var invocationData = InvocationData.Serialize(job);
+            var invocationData = InvocationData.SerializeJob(job);
 
-            Logger.TraceFormat("CreateExpiredJob={0}", JobHelper.ToJson(invocationData));
+            Logger.TraceFormat("CreateExpiredJob={0}", SerializationHelper.Serialize(invocationData));
 
             return Storage.UseSession(session =>
             {
@@ -47,7 +47,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     var jobEntity = new _Job
                     {
-                        InvocationData = JobHelper.ToJson(invocationData),
+                        InvocationData = SerializationHelper.Serialize(invocationData),
                         Arguments = invocationData.Arguments,
                         CreatedAt = createdAt,
                         ExpireAt = createdAt.Add(expireIn)
@@ -139,8 +139,8 @@ namespace Hangfire.FluentNHibernateStorage
                         .SingleOrDefault(i => i.Id == converter.Value);
 
                 if (jobData == null) return null;
-
-                var invocationData = JobHelper.FromJson<InvocationData>(jobData.InvocationData);
+                var invocationData = SerializationHelper.Deserialize<InvocationData>(jobData.InvocationData);
+              
                 invocationData.Arguments = jobData.Arguments;
 
                 Job job = null;
@@ -148,7 +148,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                 try
                 {
-                    job = invocationData.Deserialize();
+                    job = invocationData.DeserializeJob();
                 }
                 catch (JobLoadException ex)
                 {
@@ -185,7 +185,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Name = job.StateName,
                     Reason = job.StateReason,
                     Data = new Dictionary<string, string>(
-                        JobHelper.FromJson<Dictionary<string, string>>(job.StateData),
+                        SerializationHelper.Deserialize<Dictionary<string, string>>(job.StateData),
                         StringComparer.OrdinalIgnoreCase)
                 };
             });
@@ -198,7 +198,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             Storage.UseTransaction(session =>
             {
-                var data = JobHelper.ToJson(new ServerData
+                var data = SerializationHelper.Serialize(new ServerData
                 {
                     WorkerCount = context.WorkerCount,
                     Queues = context.Queues,
