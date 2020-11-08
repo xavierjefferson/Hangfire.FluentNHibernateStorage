@@ -10,9 +10,9 @@ namespace Hangfire.FluentNHibernate.ConsoleApplication
 {
     internal class Program
     {
-        public static void HelloWorld(DateTime whenQueued, int interval)
+        public static void HelloWorld(DateTime whenQueued, TimeSpan interval)
         {
-            Log.Logger.Information(null, "Hello world at {2} min intervals.  Enqueued={0}, Now={1}", whenQueued,
+            Log.Logger.Information(null, "Hello world at {2} intervals.  Enqueued={0}, Now={1}", whenQueued,
                 DateTime.Now,
                 interval);
         }
@@ -46,10 +46,11 @@ namespace Hangfire.FluentNHibernate.ConsoleApplication
 
                 using (var server = new BackgroundJobServer())
                 {
-                    RecurringJob.AddOrUpdate("h2",() => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
-                    RecurringJob.AddOrUpdate("h5",() => HelloWorld(DateTime.Now, 5), "*/5 * * * *");
-                    RecurringJob.AddOrUpdate("h1",() => HelloWorld(DateTime.Now, 1), "* * * * *");
-                    RecurringJob.AddOrUpdate("h7",() => HelloWorld(DateTime.Now, 7), "*/7 * * * *");
+                    RecurringJob.AddOrUpdate("h2",() => HelloWorld(DateTime.Now, TimeSpan.FromMinutes(2)), "*/2 * * * *");
+                    RecurringJob.AddOrUpdate("h5",() => HelloWorld(DateTime.Now, TimeSpan.FromMinutes(5)), "*/5 * * * *");
+                    RecurringJob.AddOrUpdate("h1",() => HelloWorld(DateTime.Now, TimeSpan.FromMinutes(1)), "* * * * *");
+                    RecurringJob.AddOrUpdate("h7",() => HelloWorld(DateTime.Now, TimeSpan.FromMinutes(7)), "*/7 * * * *");
+                    RecurringJob.AddOrUpdate("h7", () => HelloWorld(DateTime.Now, TimeSpan.FromSeconds(30)), "*/30 * * * * *");
                     Console.WriteLine("Hangfire Server started. Press any key to exit...");
                     Console.ReadKey();
                 }

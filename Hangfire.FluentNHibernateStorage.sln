@@ -18,7 +18,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documents", "Documents", "{
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernateStorage", "Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj", "{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.ConsoleApplication", "Hangfire.FluentNHibernate.ConsoleApplication\Hangfire.FluentNHibernate.ConsoleApplication.csproj", "{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernate.ConsoleApplication", "Hangfire.FluentNHibernate.ConsoleApplication\Hangfire.FluentNHibernate.ConsoleApplication.csproj", "{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

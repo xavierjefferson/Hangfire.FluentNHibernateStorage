@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.2.1013</version>
+    <version>1.2.1014</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -21,7 +21,7 @@
 		<dependency id="Hangfire.Core" version="1.7.17"   />
     <dependency id="Hangfire" version="1.7.17"   />
 		<dependency id="Newtonsoft.Json" version="11.0.1"   />
-    <dependency id="Snork.FluentNHibernateTools" version="1.2.1013" />
+    <dependency id="Snork.FluentNHibernateTools" version="1.2.1014" />
     </dependencies>
 
 
