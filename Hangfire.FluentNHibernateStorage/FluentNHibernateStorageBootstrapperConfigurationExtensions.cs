@@ -1,11 +1,9 @@
-﻿using System;
-using Snork.FluentNHibernateTools;
+﻿using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     public static class FluentNHibernateStorageBootstrapperConfigurationExtensions
     {
-
         /// <summary>
         ///     Tells the bootstrapper to use FluentNHibernate provider as a job storage,
         ///     that can be accessed using the given connection string or
@@ -19,7 +17,8 @@ namespace Hangfire.FluentNHibernateStorage
             this IGlobalConfiguration configuration,
             string nameOrConnectionString, ProviderTypeEnum providerType, FluentNHibernateStorageOptions options = null)
         {
-            var storage = FluentNHibernateStorageFactory.For(providerType, nameOrConnectionString, options);
+            var storage = FluentNHibernateStorageFactory.For(providerType, nameOrConnectionString,
+                options ?? new FluentNHibernateStorageOptions());
             configuration.UseStorage(storage);
             return storage;
         }

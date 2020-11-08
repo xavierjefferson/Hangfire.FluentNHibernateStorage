@@ -14,7 +14,8 @@ namespace Hangfire.FluentNHibernateStorage
         public static FluentNHibernateJobStorage For(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null)
         {
-            return new FluentNHibernateJobStorage(providerType, nameOrConnectionString, options);
+            return new FluentNHibernateJobStorage(providerType, nameOrConnectionString,
+                options ?? new FluentNHibernateStorageOptions());
         }
 
 
@@ -32,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options = null)
         {
             return FluentNHibernatePersistenceBuilder.GetPersistenceConfigurer(providerType,
-                nameOrConnectionString, options);
+                nameOrConnectionString, options ?? new FluentNHibernateStorageOptions());
         }
     }
 }

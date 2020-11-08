@@ -99,8 +99,8 @@
     <Reference Include="Remotion.Linq.EagerFetching, Version=2.2.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
       <HintPath>..\packages\Remotion.Linq.EagerFetching.2.2.0\lib\net45\Remotion.Linq.EagerFetching.dll</HintPath>
     </Reference>
-    <Reference Include="Snork.FluentNHibernateTools, Version=2.0.2033.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Snork.FluentNHibernateTools.2.0.2033\lib\netstandard2.0\Snork.FluentNHibernateTools.dll</HintPath>
+    <Reference Include="Snork.FluentNHibernateTools, Version=1.2.1013.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Snork.FluentNHibernateTools.1.2.1013\lib\netstandard2.0\Snork.FluentNHibernateTools.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />

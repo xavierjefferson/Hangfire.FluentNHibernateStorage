@@ -61,14 +61,10 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             }
         }
 
-        public static void HelloWorld()
+        public static void HelloWorld(DateTime whenQueued, int interval)
         {
-            loggerNew.Info("Hello world at 2 min intervals");
-        }
-
-        public static void HelloWorld5()
-        {
-            loggerNew.Info("Hello world at 5 min intervals");
+            loggerNew.InfoFormat("Hello world at {2} min intervals.  Enqueued={0}, Now={1}", whenQueued, DateTime.Now,
+                interval);
         }
 
         public static void Display(string x)
@@ -182,8 +178,10 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                         storage.GetBackgroundProcesses());
 
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
-                    RecurringJob.AddOrUpdate(() => HelloWorld(), "2 * * * *");
-                    RecurringJob.AddOrUpdate(() => HelloWorld5(), "5 * * * *");
+                    RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
+                    RecurringJob.AddOrUpdate("h5", () => HelloWorld(DateTime.Now, 5), "*/5 * * * *");
+                    RecurringJob.AddOrUpdate("h1", () => HelloWorld(DateTime.Now, 1), "* * * * *");
+                    RecurringJob.AddOrUpdate("h7", () => HelloWorld(DateTime.Now, 7), "*/7 * * * *");
                     loggerNew.Info("Background server started");
                     State = StateEnum.Started;
                 }
