@@ -27,7 +27,7 @@
 
   </metadata>
   <files>
-    <file src="..\Hangfire.FluentNHibernateStorage\bin\netstandard2.0\release\Hangfire.FluentNHibernateStorage.dll" target="lib\netstandard2.0" />
+    <file src="..\Hangfire.FluentNHibernateStorage\bin\release\netstandard2.0\Hangfire.FluentNHibernateStorage.dll" target="lib\netstandard2.0" />
     <file src="..\Hangfire.FluentNHibernateStorage\**\*.cs;" target="src" exclude="**\obj*\**\*.cs" />
   </files>
 </package>

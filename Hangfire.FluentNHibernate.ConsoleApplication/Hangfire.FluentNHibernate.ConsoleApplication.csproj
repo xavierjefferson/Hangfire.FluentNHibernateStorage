@@ -9,6 +9,7 @@
     <PackageReference Include="hangfire.core" Version="1.7.17" />
     <PackageReference Include="serilog" Version="2.10.0" />
     <PackageReference Include="serilog.sinks.console" Version="3.1.1" />
+    <PackageReference Include="snork.fluentnhibernatetools" Version="1.2.1014" />
     <PackageReference Include="system.data.sqlite" Version="1.0.113.6" />
   </ItemGroup>
 
