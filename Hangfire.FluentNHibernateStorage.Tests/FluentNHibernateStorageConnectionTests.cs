@@ -90,7 +90,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var server = session.Query<_Server>().Single();
                 Assert.Equal("server", server.Id);
                 Assert.NotNull(server.Data);
-                var serverData1 = JobHelper.FromJson<ServerData>(server.Data);
+                var serverData1 = SerializationHelper.Deserialize<ServerData>(server.Data);
                 Assert.Equal(4, serverData1.WorkerCount);
                 Assert.Equal(queues, serverData1.Queues);
                 Assert.NotNull(server.LastHeartbeat);
@@ -105,7 +105,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var sameServer = session.Query<_Server>().Single();
                 Assert.Equal("server", sameServer.Id);
                 Assert.NotNull(sameServer.Data);
-                var serverData2 = JobHelper.FromJson<ServerData>(sameServer.Data);
+                var serverData2 = SerializationHelper.Deserialize<ServerData>(sameServer.Data);
                 Assert.Equal(1000, serverData2.WorkerCount);
             });
         }
@@ -157,10 +157,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Assert.Equal(createdAt, sqlJob.CreatedAt);
                 Assert.Equal(null, sqlJob.StateName);
 
-                var invocationData = JobHelper.FromJson<InvocationData>(sqlJob.InvocationData);
+                var invocationData = SerializationHelper.Deserialize<InvocationData>(sqlJob.InvocationData);
                 invocationData.Arguments = sqlJob.Arguments;
 
-                var job = invocationData.Deserialize();
+                var job = invocationData.DeserializeJob();
                 Assert.Equal(typeof(FluentNHibernateStorageConnectionTests), job.Type);
                 Assert.Equal("SampleMethod", job.Method.Name);
                 Assert.Equal("\"Hello\"", job.Args[0]);
@@ -616,7 +616,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             {
                 var newJob = new _Job
                 {
-                    InvocationData = JobHelper.ToJson(new InvocationData(null, null, null, null)),
+                    InvocationData = SerializationHelper.Serialize(new InvocationData(null, null, null, null)),
                     StateName = "Succeeded",
                     Arguments = "['Arguments']"
                 };
@@ -649,7 +649,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var job = Job.FromExpression(() => SampleMethod("wrong"));
                 var newJob = new _Job
                 {
-                    InvocationData = JobHelper.ToJson(InvocationData.Serialize(job)),
+                    InvocationData = SerializationHelper.Serialize(InvocationData.SerializeJob(job)),
                     StateName = "Succeeded",
                     Arguments = "['Arguments']"
                 };
@@ -898,9 +898,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         [CleanDatabase]
         public void GetRangeFromSet_ReturnsPagedElements2()
         {
-            const string arrangeSql = @"
-insert into `Set` (`Key`, `Value`, `Score`)
-values (@Key, @Value, 0.0)";
 
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
@@ -1046,7 +1043,7 @@ values (@Key, @Value, 0.0)";
                     Name = "Name",
                     Reason = "Reason",
                     CreatedAt = session.Storage.UtcNow,
-                    Data = JobHelper.ToJson(data)
+                    Data = SerializationHelper.Serialize(data)
                 };
                 session.Insert(lastState);
                 session.Flush();
@@ -1088,7 +1085,7 @@ values (@Key, @Value, 0.0)";
                     Name = "Name",
                     Reason = "Reason",
                     CreatedAt = session.Storage.UtcNow,
-                    Data = JobHelper.ToJson(data)
+                    Data = SerializationHelper.Serialize(data)
                 };
                 session.Insert(jobState);
                 session.Flush();

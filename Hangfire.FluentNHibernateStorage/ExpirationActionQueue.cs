@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
+using NHibernate.Metadata;
+using NHibernate.Persister.Entity;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -13,11 +15,13 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly CancellationToken _cancellationToken;
         private readonly DateTime _cutOffDate;
         private readonly FluentNHibernateJobStorage _storage;
+        private readonly IDictionary<string, IClassMetadata> _classMetadataDictionary;
 
         public ExpirationActionQueue(FluentNHibernateJobStorage storage, DateTime cutOffDate,
             CancellationToken cancellationToken1)
         {
             _storage = storage;
+            _classMetadataDictionary = storage.SessionFactoryInfo.SessionFactory.GetAllClassMetadata();
             _cancellationToken = cancellationToken1;
             _cutOffDate = cutOffDate;
         }
@@ -27,16 +31,13 @@ namespace Hangfire.FluentNHibernateStorage
             var actionQueue = this;
             foreach (var action in actionQueue)
             {
-                if (_cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
+                if (_cancellationToken.IsCancellationRequested) break;
 
                 action();
             }
         }
 
-        public void EnqueueDeleteJobDetailEntity<T>() where T : IJobChild, IInt32Id
+        public void EnqueueDeleteJobDetailEntity<T>() where T : class, IJobChild, IInt32Id
 
         {
             EnqueueDeleteEntities<T>((session, cutoff) =>
@@ -49,20 +50,32 @@ namespace Hangfire.FluentNHibernateStorage
             });
         }
 
-        internal void EnqueueDeleteExpirableEntity<T>() where T : IExpirableWithId
+        internal void EnqueueDeleteExpirableEntity<T>() where T : class, IExpirableWithId
         {
             EnqueueDeleteEntities<T>((session, cutoff) => session.DeleteExpirableWithId<T>(cutoff));
         }
 
-        public void EnqueueDeleteEntities<T>(Func<SessionWrapper, DateTime, long> deleteFunc)
+        public void EnqueueDeleteEntities<T>(Func<SessionWrapper, DateTime, long> deleteFunc) where T : class
 
         {
             Enqueue(() =>
             {
                 try
                 {
-                    var entityName = typeof(T).Name;
-                    Logger.InfoFormat("Removing outdated records from table '{0}'...", entityName);
+                    
+                    string entityName;
+                    var fullName = typeof(T).FullName;
+                    if (_classMetadataDictionary.ContainsKey(fullName))
+                    {
+                        var classMetadata = _classMetadataDictionary[fullName] as SingleTableEntityPersister;
+                        entityName = classMetadata == null ? typeof(T).Name : classMetadata.TableName;
+                    }
+                    else
+                    {
+                        entityName = typeof(T).Name;
+                    }
+
+                    Logger.InfoFormat("Removing expired rows from table '{0}'", entityName);
 
                     long removedCount = 0;
 
@@ -80,7 +93,7 @@ namespace Hangfire.FluentNHibernateStorage
                                 }
                             }
 
-                            Logger.InfoFormat("removed records count={0}", removedCount);
+                            Logger.InfoFormat("Removed {0} expired rows from table '{1}'", removedCount, entityName);
                         }
                         catch (FluentNHibernateDistributedLockException ex)
                         {
@@ -92,13 +105,7 @@ namespace Hangfire.FluentNHibernateStorage
                         }
 
 
-                        if (removedCount <= 0)
-                        {
-                            break;
-                        }
-
-                        Logger.Info(string.Format("Removed {0} outdated record(s) from '{1}' table.", removedCount,
-                            entityName));
+                        if (removedCount <= 0) break;
 
                         _cancellationToken.WaitHandle.WaitOne(ExpirationManager.DelayBetweenPasses);
                         _cancellationToken.ThrowIfCancellationRequested();

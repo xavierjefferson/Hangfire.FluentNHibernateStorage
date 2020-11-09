@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Transactions;
 using FluentNHibernate.Cfg;
@@ -17,6 +16,7 @@ using Hangfire.Storage;
 using Newtonsoft.Json;
 using NHibernate;
 using Snork.FluentNHibernateTools;
+using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -38,7 +38,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateJobStorage(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null) : this(
-            SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(providerType, nameOrConnectionString, options))
+            SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(providerType, nameOrConnectionString,
+                options ?? new FluentNHibernateStorageOptions()))
         {
         }
 
@@ -48,9 +49,9 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
-
         public FluentNHibernateJobStorage(SessionFactoryInfo info)
         {
+            SessionFactoryInfo = info;
             ProviderType = info.ProviderType;
             _sessionFactory = info.SessionFactory;
 
@@ -67,13 +68,16 @@ namespace Hangfire.FluentNHibernateStorage
             try
             {
                 EnsureDualHasOneRow();
-                RefreshUtcOffset();
+                //try getting utc 
+                var test = UtcNow;
             }
             catch (FluentConfigurationException ex)
             {
                 throw ex.InnerException ?? ex;
             }
         }
+
+        internal SessionFactoryInfo SessionFactoryInfo { get; }
 
         public FluentNHibernateStorageOptions Options { get; }
 
@@ -82,71 +86,10 @@ namespace Hangfire.FluentNHibernateStorage
 
         public ProviderTypeEnum ProviderType { get; } = ProviderTypeEnum.None;
 
-        public DateTime UtcNow
-        {
-            get
-            {
-                lock (_dateOffsetMutex)
-                {
-                    var utcNow = DateTime.UtcNow.Add(_utcOffset);
-                    return utcNow;
-                }
-            }
-        }
+        public DateTime UtcNow => _sessionFactory.GetUtcNow(ProviderType);
 
         public void Dispose()
         {
-        }
-
-        public void RefreshUtcOffset()
-        {
-            Logger.Debug("Refreshing UTC offset");
-            lock (_dateOffsetMutex)
-            {
-                using (var session = GetSession())
-                {
-                    IQuery query;
-                    switch (ProviderType)
-                    {
-                        case ProviderTypeEnum.None:
-                            throw new ArgumentException(string.Format("This won't work with {0} set to '{1}'",
-                                nameof(ProviderType), ProviderTypeEnum.None));
-                        case ProviderTypeEnum.OracleClient10Managed:
-                        case ProviderTypeEnum.OracleClient9Managed:
-
-                        case ProviderTypeEnum.OracleClient10:
-                        case ProviderTypeEnum.OracleClient9:
-                            query = session.CreateSqlQuery("select systimestamp at time zone 'UTC' from dual");
-                            break;
-                        case ProviderTypeEnum.PostgreSQLStandard:
-                        case ProviderTypeEnum.PostgreSQL81:
-                        case ProviderTypeEnum.PostgreSQL82:
-                            query = session.CreateSqlQuery("SELECT NOW() at time zone 'utc'");
-                            break;
-                        case ProviderTypeEnum.MySQL:
-                            query = session.CreateSqlQuery("select utc_timestamp()");
-                            break;
-                        case ProviderTypeEnum.MsSql2000:
-                        case ProviderTypeEnum.MsSql2005:
-                        case ProviderTypeEnum.MsSql2008:
-                        case ProviderTypeEnum.MsSql2012:
-                            query = session.CreateSqlQuery("select getutcdate()");
-                            break;
-                        default:
-                            query =
-                                session.CreateQuery(string.Format("select current_timestamp() from {0}",
-                                    nameof(_Dual)));
-                            break;
-                    }
-
-                    var stopwatch = new Stopwatch();
-                    var current = DateTime.UtcNow;
-                    stopwatch.Start();
-                    var serverUtc = (DateTime) query.UniqueResult();
-                    stopwatch.Stop();
-                    _utcOffset = serverUtc.Subtract(current).Subtract(stopwatch.Elapsed);
-                }
-            }
         }
 
         private void EnsureDualHasOneRow()
@@ -155,7 +98,7 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 using (var session = GetSession())
                 {
-                    using (var transaction = session.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                     {
                         var count = session.Query<_Dual>().Count();
                         switch (count)
@@ -246,10 +189,10 @@ namespace Hangfire.FluentNHibernateStorage
         internal void UseTransaction([InstantHandle] Action<SessionWrapper> action)
         {
             UseTransaction(session =>
-                {
-                    action(session);
-                    return true;
-                });
+            {
+                action(session);
+                return true;
+            });
         }
 
         private TransactionScope CreateTransaction()
@@ -260,7 +203,6 @@ namespace Hangfire.FluentNHibernateStorage
                     IsolationLevel = Options.TransactionIsolationLevel,
                     Timeout = Options.TransactionTimeout
                 });
-
         }
 
         public void ResetAll()

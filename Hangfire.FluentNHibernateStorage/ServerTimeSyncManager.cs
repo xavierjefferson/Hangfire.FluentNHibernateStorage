@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Hangfire.Server;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -21,7 +22,8 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(CancellationToken cancellationToken)
         {
-            _storage.RefreshUtcOffset();
+            var test = UtcDateHelper.GetUtcNow(_storage.SessionFactoryInfo.SessionFactory,
+                _storage.SessionFactoryInfo.ProviderType);
             cancellationToken.WaitHandle.WaitOne(_storage.Options.DbmsTimeSyncInterval);
         }
 #pragma warning restore 618

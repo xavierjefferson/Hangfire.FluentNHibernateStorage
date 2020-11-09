@@ -35,7 +35,9 @@ namespace Hangfire.FluentNHibernateStorage
             JobQueueDistributedLockTimeout = TimeSpan.FromMinutes(1);
             DistributedLockPollInterval = TimeSpan.FromMilliseconds(100);
             DeadlockRetryInterval = TimeSpan.FromSeconds(1);
+#pragma warning disable 618
             DbmsTimeSyncInterval = TimeSpan.FromMinutes(5);
+#pragma warning restore 618
             TablePrefix = DefaultTablePrefix;
         }
 

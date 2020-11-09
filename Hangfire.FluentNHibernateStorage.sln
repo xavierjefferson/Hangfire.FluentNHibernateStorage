@@ -1,10 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.26730.10
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29905.134
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage", "Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj", "{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.Tests", "Hangfire.FluentNHibernateStorage.Tests\Hangfire.FluentNHibernateStorage.Tests.csproj", "{6DFFA275-C483-4501-823A-741AC9EC0846}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.SampleApplication", "Hangfire.FluentNHibernate.SampleApplication\Hangfire.FluentNHibernate.SampleApplication.csproj", "{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}"
@@ -18,16 +16,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documents", "Documents", "{
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernateStorage", "Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj", "{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernate.ConsoleApplication", "Hangfire.FluentNHibernate.ConsoleApplication\Hangfire.FluentNHibernate.ConsoleApplication.csproj", "{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A4D8007C-A2E5-4BD9-A707-87BA00EB6B7A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -36,6 +34,14 @@ Global
 		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A133D2D4-003A-4F3C-A9C0-DAD797172E0D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
