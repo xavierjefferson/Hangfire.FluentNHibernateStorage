@@ -77,6 +77,7 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
+        internal TimeSpan UtcOffset { get; set; }
         internal SessionFactoryInfo SessionFactoryInfo { get; }
 
         public FluentNHibernateStorageOptions Options { get; }
@@ -86,7 +87,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public ProviderTypeEnum ProviderType { get; } = ProviderTypeEnum.None;
 
-        public DateTime UtcNow => _sessionFactory.GetUtcNow(ProviderType);
+        public DateTime UtcNow => DateTime.UtcNow.Add(UtcOffset);
 
         public void Dispose()
         {
