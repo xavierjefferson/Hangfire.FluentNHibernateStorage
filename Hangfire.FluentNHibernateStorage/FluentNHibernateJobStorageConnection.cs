@@ -39,7 +39,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             var invocationData = InvocationData.SerializeJob(job);
 
-            Logger.TraceFormat("CreateExpiredJob={0}", SerializationHelper.Serialize(invocationData));
+            Logger.DebugFormat("CreateExpiredJob={0}", SerializationHelper.Serialize(invocationData));
 
             return Storage.UseSession(session =>
             {

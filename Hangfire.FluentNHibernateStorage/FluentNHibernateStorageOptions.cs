@@ -26,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             TransactionIsolationLevel = IsolationLevel.Serializable;
             QueuePollInterval = TimeSpan.FromSeconds(15);
-            JobExpirationCheckInterval = TimeSpan.FromHours(1);
+            JobExpirationCheckInterval = TimeSpan.FromMinutes(15);
             CountersAggregateInterval = TimeSpan.FromMinutes(5);
             UpdateSchema = true;
             DashboardJobListLimit = 50000;

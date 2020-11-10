@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Windows.Forms;
 using Hangfire.FluentNHibernate.SampleApplication.Properties;
 using Hangfire.FluentNHibernateStorage;
@@ -136,6 +137,12 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 LoadProviderSetting((ProviderTypeEnum) DataProviderComboBox.SelectedItem).ConnectionString;
         }
 
+        public static void Show(int c)
+        {
+            Console.WriteLine(c);
+            Thread.Sleep(1000 * c);
+        }
+
         private void StartButton_Click(object sender, EventArgs e)
         {
             try
@@ -176,6 +183,14 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());
+                    string parent = null;
+                    for (var i = 0; i < 100; i++)
+                    {
+                        var k = i;
+                        parent = i == 0
+                            ? BackgroundJob.Enqueue(() => Show(k))
+                            : BackgroundJob.ContinueJobWith(parent, () => Show(k));
+                    }
 
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
                     RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");

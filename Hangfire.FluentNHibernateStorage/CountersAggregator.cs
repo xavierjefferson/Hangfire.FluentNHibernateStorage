@@ -28,13 +28,10 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(CancellationToken cancellationToken)
         {
-            var token = cancellationToken;
-            Logger.Info("Aggregating records in 'Counter' table...");
+            Logger.Info("Aggregating records in 'Counter' table");
 
-            long removedCount = 0;
-
-            do
-            {
+            long removedCount = int.MaxValue;
+            while (removedCount >= NumberOfRecordsInSinglePass && !cancellationToken.IsCancellationRequested)
                 _storage.UseSession(session =>
                 {
                     using (var transaction = session.BeginTransaction())
@@ -55,25 +52,19 @@ namespace Hangfire.FluentNHibernateStorage
                         foreach (var item in countersByName)
                         {
                             if (item.expireAt.HasValue)
-                            {
                                 query.SetParameter(SqlUtil.ValueParameter2Name, item.expireAt.Value);
-                            }
                             else
-                            {
                                 query.SetParameter(SqlUtil.ValueParameter2Name, null);
-                            }
 
                             if (query.SetString(SqlUtil.IdParameterName, item.Key)
-                                    .SetParameter(SqlUtil.ValueParameterName, item.value)
-                                    .ExecuteUpdate() == 0)
-                            {
+                                .SetParameter(SqlUtil.ValueParameterName, item.value)
+                                .ExecuteUpdate() == 0)
                                 session.Insert(new _AggregatedCounter
                                 {
                                     Key = item.Key,
                                     Value = item.value,
                                     ExpireAt = item.expireAt
                                 });
-                            }
                         }
 
                         removedCount =
@@ -82,15 +73,10 @@ namespace Hangfire.FluentNHibernateStorage
                         transaction.Commit();
                     }
                 });
+            Logger.InfoFormat("Done aggregating records in 'Counter' table.  Waiting {0}",
+                _storage.Options.CountersAggregateInterval);
 
-                if (removedCount >= NumberOfRecordsInSinglePass)
-                {
-                    token.WaitHandle.WaitOne(DelayBetweenPasses);
-                    token.ThrowIfCancellationRequested();
-                }
-            } while (removedCount >= NumberOfRecordsInSinglePass);
-
-            token.WaitHandle.WaitOne(_storage.Options.CountersAggregateInterval);
+            cancellationToken.WaitHandle.WaitOne(_storage.Options.CountersAggregateInterval);
         }
 
         public override string ToString()

@@ -39,7 +39,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             if (provider == null) throw new ArgumentNullException(nameof(provider));
             if (queues == null) throw new ArgumentNullException(nameof(queues));
 
-            Logger.TraceFormat("Add providers");
+            Logger.DebugFormat("Add providers");
 
             _providers.Add(provider);
 

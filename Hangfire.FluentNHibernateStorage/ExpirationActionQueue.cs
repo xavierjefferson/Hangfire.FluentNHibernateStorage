@@ -13,9 +13,9 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
         private readonly CancellationToken _cancellationToken;
+        private readonly IDictionary<string, IClassMetadata> _classMetadataDictionary;
         private readonly DateTime _cutOffDate;
         private readonly FluentNHibernateJobStorage _storage;
-        private readonly IDictionary<string, IClassMetadata> _classMetadataDictionary;
 
         public ExpirationActionQueue(FluentNHibernateJobStorage storage, DateTime cutOffDate,
             CancellationToken cancellationToken1)
@@ -60,60 +60,43 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Enqueue(() =>
             {
-                try
+                string entityName;
+                var fullName = typeof(T).FullName;
+                if (_classMetadataDictionary.ContainsKey(fullName))
                 {
-                    
-                    string entityName;
-                    var fullName = typeof(T).FullName;
-                    if (_classMetadataDictionary.ContainsKey(fullName))
-                    {
-                        var classMetadata = _classMetadataDictionary[fullName] as SingleTableEntityPersister;
-                        entityName = classMetadata == null ? typeof(T).Name : classMetadata.TableName;
-                    }
-                    else
-                    {
-                        entityName = typeof(T).Name;
-                    }
-
-                    Logger.InfoFormat("Removing expired rows from table '{0}'", entityName);
-
-                    long removedCount = 0;
-
-                    while (true)
-                    {
-                        try
-                        {
-                            using (new FluentNHibernateDistributedLock(_storage, ExpirationManager.DistributedLockKey,
-                                ExpirationManager.DefaultLockTimeout,
-                                _cancellationToken).Acquire())
-                            {
-                                using (var session = _storage.GetSession())
-                                {
-                                    removedCount = deleteFunc(session, _cutOffDate);
-                                }
-                            }
-
-                            Logger.InfoFormat("Removed {0} expired rows from table '{1}'", removedCount, entityName);
-                        }
-                        catch (FluentNHibernateDistributedLockException ex)
-                        {
-                            Logger.Warn(string.Concat("Can't delete : ", ex.ToString()));
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error(ex.ToString());
-                        }
-
-
-                        if (removedCount <= 0) break;
-
-                        _cancellationToken.WaitHandle.WaitOne(ExpirationManager.DelayBetweenPasses);
-                        _cancellationToken.ThrowIfCancellationRequested();
-                    }
+                    var classMetadata = _classMetadataDictionary[fullName] as SingleTableEntityPersister;
+                    entityName = classMetadata == null ? typeof(T).Name : classMetadata.TableName;
                 }
-                catch (Exception) when (_cancellationToken.IsCancellationRequested)
+                else
                 {
-                    Logger.Warn("Cancellation was requested");
+                    entityName = typeof(T).Name;
+                }
+
+                Logger.InfoFormat("Removing expired rows from table '{0}'", entityName);
+
+                long removedCount = 0;
+
+                while (!_cancellationToken.IsCancellationRequested)
+                {
+                    var fluentNHibernateDistributedLock = new FluentNHibernateDistributedLock(_storage,
+                        ExpirationManager.DistributedLockKey,
+                        ExpirationManager.DefaultLockTimeout,
+                        _cancellationToken).Acquire();
+                    if (fluentNHibernateDistributedLock != null)
+                        using (fluentNHibernateDistributedLock)
+                        {
+                            using (var session = _storage.GetSession())
+                            {
+                                removedCount = deleteFunc(session, _cutOffDate);
+                                Logger.InfoFormat("Removed {0} expired rows from table '{1}'", removedCount,
+                                    entityName);
+                            }
+                        }
+
+
+                    if (removedCount <= 0) break;
+
+                    _cancellationToken.WaitHandle.WaitOne(ExpirationManager.DelayBetweenPasses);
                 }
             });
         }

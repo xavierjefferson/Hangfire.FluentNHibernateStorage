@@ -42,7 +42,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public void RemoveFromQueue()
         {
-            Logger.TraceFormat("RemoveFromQueue JobId={0}", JobId);
+            Logger.DebugFormat("RemoveFromQueue JobId={0}", JobId);
             using (var session = _storage.GetSession())
             {
                 session.CreateQuery(SqlUtil.DeleteJobQueueStatement)
@@ -55,7 +55,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public void Requeue()
         {
-            Logger.TraceFormat("Requeue JobId={0}", JobId);
+            Logger.DebugFormat("Requeue JobId={0}", JobId);
             using (var session = _storage.GetSession())
             {
                 session.CreateQuery(SqlUtil.UpdateJobQueueFetchedAtStatement)

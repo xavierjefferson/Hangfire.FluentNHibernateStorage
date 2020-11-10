@@ -2,9 +2,9 @@
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class FluentNHibernateDistributedLockException : Exception
+    public class FluentNHibernateDistributedLockTimeoutException : Exception
     {
-        public FluentNHibernateDistributedLockException(string message) : base(message)
+        public FluentNHibernateDistributedLockTimeoutException(string message) : base(message)
         {
         }
     }

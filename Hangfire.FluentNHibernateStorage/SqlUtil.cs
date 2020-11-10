@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.Maps;
+using Hangfire.Logging;
 using NHibernate;
 using NHibernate.Exceptions;
 
@@ -22,7 +23,7 @@ namespace Hangfire.FluentNHibernateStorage
         public const string ExpireAtAsLongParameterName = "expireAtAsLong";
 
         private const int DeleteBatchSize = 250;
-
+        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
 
         private static readonly Dictionary<Type, string> DeleteByIdCommands = new Dictionary<Type, string>();
 
@@ -121,9 +122,7 @@ namespace Hangfire.FluentNHibernateStorage
         /// </summary>
         internal static readonly string DeleteDistributedLockSql = string.Format("delete from {0} where {1}=:{2}",
             nameof(_DistributedLock).WrapObjectName(),
-            nameof(_DistributedLock.Resource).WrapObjectName(), IdParameterName);
-
-        private static string _createDistributedLockStatement;
+            nameof(_DistributedLock.Id).WrapObjectName(), IdParameterName);
 
         internal static readonly string SetJobParameterStatement = string.Format(
             "update {0} set {1}=:value where {2}.{3}=:id and {4}=:name",
@@ -310,13 +309,16 @@ namespace Hangfire.FluentNHibernateStorage
                 //do nothing
             }
 
-            return default(T);
+            return default;
         }
 
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
-        public static T WrapForDeadlock<T>(Func<T> safeAction, FluentNHibernateStorageOptions options)
+
+
+        public static T WrapForDeadlock<T>(CancellationToken cancellationToken, Func<T> safeAction,
+            FluentNHibernateStorageOptions options)
         {
             while (true)
                 try
@@ -325,25 +327,27 @@ namespace Hangfire.FluentNHibernateStorage
                 }
                 catch (Exception ex)
                 {
+                    Logger.WarnException("WrapForDeadlock", ex);
                     if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
                         throw;
 
-                    Thread.Sleep(options.DeadlockRetryInterval);
+                    cancellationToken.WaitHandle.WaitOne(options.DeadlockRetryInterval);
                 }
         }
-
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
-        public static void WrapForDeadlock(Action safeAction, FluentNHibernateStorageOptions options)
+
+        public static void WrapForDeadlock(CancellationToken cancellationToken, Action safeAction,
+            FluentNHibernateStorageOptions options)
         {
-            WrapForDeadlock(() =>
+            WrapForDeadlock(cancellationToken, () =>
             {
                 safeAction();
                 return true;
             }, options);
         }
- 
+
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
@@ -354,41 +358,6 @@ namespace Hangfire.FluentNHibernateStorage
                 safeAction();
                 return true;
             });
-        }
-#if !DEBUG
-[System.Diagnostics.DebuggerHidden]
-#endif
-        /// <summary>
-        ///     Generate a HQL statement that inserts a distributed lock entry into the table if no prior
-        ///     one exists for the same resource.
-        /// </summary>
-        /// <returns>The HQL statement</returns>
-        public static string GetCreateDistributedLockStatement()
-        {
-            lock (GenerateStatementMutex)
-            {
-                if (_createDistributedLockStatement != null)
-                    return _createDistributedLockStatement;
-
-                var distributedLockTableName = nameof(_DistributedLock).WrapObjectName();
-                var createdAtColumnName = nameof(_DistributedLock.CreatedAt).WrapObjectName();
-                var resourceColumnName = nameof(_DistributedLock.Resource).WrapObjectName();
-                var dualTableName = nameof(_Dual).WrapObjectName();
-                var expireAtAsLongColumnName = nameof(_DistributedLock.ExpireAtAsLong).WrapObjectName();
-
-
-                _createDistributedLockStatement =
-                    $@"insert into {distributedLockTableName} ({resourceColumnName}, {createdAtColumnName}, {
-                            expireAtAsLongColumnName
-                        })
-                        select :{ResourceParameterName}, :{CreatedAtParameterName},  
-                        :{ExpireAtAsLongParameterName} from 
-                        {dualTableName} where not exists (select {Constants.ColumnNames.Id.WrapObjectName()} from 
-                        {distributedLockTableName} as d where d.{resourceColumnName} = 
-                        :{ResourceParameterName} and 
-                        d.{expireAtAsLongColumnName} >= :{UtcNowAsLongParameterName})";
-                return _createDistributedLockStatement;
-            }
         }
     }
 }

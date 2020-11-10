@@ -54,7 +54,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
         {
-            Logger.TraceFormat("ExpireJob jobId={0}", jobId);
+            Logger.DebugFormat("ExpireJob jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
@@ -72,7 +72,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void PersistJob(string jobId)
         {
-            Logger.TraceFormat("PersistJob jobId={0}", jobId);
+            Logger.DebugFormat("PersistJob jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
@@ -90,7 +90,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void SetJobState(string jobId, IState state)
         {
-            Logger.TraceFormat("SetJobState jobId={0}", jobId);
+            Logger.DebugFormat("SetJobState jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
@@ -128,7 +128,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void AddJobState(string jobId, IState state)
         {
-            Logger.TraceFormat("AddJobState jobId={0}, state={1}", jobId, state);
+            Logger.DebugFormat("AddJobState jobId={0}, state={1}", jobId, state);
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
             {
@@ -151,7 +151,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void AddToQueue(string queue, string jobId)
         {
-            Logger.TraceFormat("AddToQueue jobId={0}", jobId);
+            Logger.DebugFormat("AddToQueue jobId={0}", jobId);
 
             var provider = _storage.QueueProviders.GetProvider(queue);
             var persistentQueue = provider.GetJobQueue();
@@ -172,7 +172,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void InsertCounter(string key, int value, TimeSpan? expireIn = null)
         {
-            Logger.TraceFormat("InsertCounter key={0}, expireIn={1}", key, expireIn);
+            Logger.DebugFormat("InsertCounter key={0}, expireIn={1}", key, expireIn);
 
             AcquireCounterLock();
             QueueCommand(session =>
@@ -201,7 +201,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void AddToSet(string key, string value, double score)
         {
-            Logger.TraceFormat("AddToSet key={0} value={1}", key, value);
+            Logger.DebugFormat("AddToSet key={0} value={1}", key, value);
 
             AcquireSetLock();
             QueueCommand(session =>
@@ -216,7 +216,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void AddRangeToSet(string key, IList<string> items)
         {
-            Logger.TraceFormat("AddRangeToSet key={0}", key);
+            Logger.DebugFormat("AddRangeToSet key={0}", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (items == null) throw new ArgumentNullException(nameof(items));
@@ -234,7 +234,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void RemoveFromSet(string key, string value)
         {
-            Logger.TraceFormat("RemoveFromSet key={0} value={1}", key, value);
+            Logger.DebugFormat("RemoveFromSet key={0} value={1}", key, value);
 
             AcquireSetLock();
             QueueCommand(session => { DeleteByKeyValue<_Set>(key, value, session); });
@@ -242,7 +242,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void ExpireSet(string key, TimeSpan expireIn)
         {
-            Logger.TraceFormat("ExpireSet key={0} expirein={1}", key, expireIn);
+            Logger.DebugFormat("ExpireSet key={0} expirein={1}", key, expireIn);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -252,7 +252,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void InsertToList(string key, string value)
         {
-            Logger.TraceFormat("InsertToList key={0} value={1}", key, value);
+            Logger.DebugFormat("InsertToList key={0} value={1}", key, value);
 
             AcquireListLock();
             QueueCommand(session => session.Insert(new _List {Key = key, Value = value}));
@@ -263,7 +263,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
-            Logger.TraceFormat("ExpireList key={0} expirein={1}", key, expireIn);
+            Logger.DebugFormat("ExpireList key={0} expirein={1}", key, expireIn);
 
             AcquireListLock();
             QueueCommand(session => { SetExpireAt<_List>(key, session.Storage.UtcNow.Add(expireIn), session); });
@@ -271,7 +271,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void RemoveFromList(string key, string value)
         {
-            Logger.TraceFormat("RemoveFromList key={0} value={1}", key, value);
+            Logger.DebugFormat("RemoveFromList key={0} value={1}", key, value);
 
             AcquireListLock();
             QueueCommand(session => { DeleteByKeyValue<_List>(key, value, session); });
@@ -279,7 +279,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void TrimList(string key, int keepStartingFrom, int keepEndingAt)
         {
-            Logger.TraceFormat("TrimList key={0} from={1} to={2}", key, keepStartingFrom, keepEndingAt);
+            Logger.DebugFormat("TrimList key={0} from={1} to={2}", key, keepStartingFrom, keepEndingAt);
 
             AcquireListLock();
             QueueCommand(session =>
@@ -297,7 +297,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void PersistHash(string key)
         {
-            Logger.TraceFormat("PersistHash key={0} ", key);
+            Logger.DebugFormat("PersistHash key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -307,7 +307,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void PersistSet(string key)
         {
-            Logger.TraceFormat("PersistSet key={0} ", key);
+            Logger.DebugFormat("PersistSet key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -317,7 +317,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void RemoveSet(string key)
         {
-            Logger.TraceFormat("RemoveSet key={0} ", key);
+            Logger.DebugFormat("RemoveSet key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -327,7 +327,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void PersistList(string key)
         {
-            Logger.TraceFormat("PersistList key={0} ", key);
+            Logger.DebugFormat("PersistList key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -337,7 +337,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void SetRangeInHash(string key, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
         {
-            Logger.TraceFormat("SetRangeInHash key={0} ", key);
+            Logger.DebugFormat("SetRangeInHash key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
@@ -361,7 +361,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void ExpireHash(string key, TimeSpan expireIn)
         {
-            Logger.TraceFormat("ExpireHash key={0} ", key);
+            Logger.DebugFormat("ExpireHash key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
@@ -371,7 +371,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void RemoveHash(string key)
         {
-            Logger.TraceFormat("RemoveHash key={0} ", key);
+            Logger.DebugFormat("RemoveHash key={0} ", key);
 
             if (key == null) throw new ArgumentNullException(nameof(key));
 
