@@ -6,17 +6,18 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.States;
 using Hangfire.Storage;
+using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateWriteOnlyTransaction : JobStorageTransaction
     {
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateWriteOnlyTransaction>();
 
 
         //transactional command queue.
-        private readonly Queue<Action<SessionWrapper>> _commandQueue
-            = new Queue<Action<SessionWrapper>>();
+        private readonly Queue<Action<StatelessSessionWrapper>> _commandQueue
+            = new Queue<Action<StatelessSessionWrapper>>();
 
         private readonly FluentNHibernateJobStorage _storage;
 
@@ -25,41 +26,33 @@ namespace Hangfire.FluentNHibernateStorage
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
-        private void SetExpireAt<T>(string key, DateTime? expire, SessionWrapper session) where T : IExpirableWithKey
+        private void SetExpireAt<T>(string key, DateTime? expire, StatelessSessionWrapper session) where T : IExpirableWithKey
         {
             var queryString = SqlUtil.SetExpireAtByKeyStatementDictionary[typeof(T)];
             session.CreateQuery(queryString)
                 .SetParameter(SqlUtil.ValueParameterName, expire)
                 .SetParameter(SqlUtil.IdParameterName, key)
                 .ExecuteUpdate();
-            session.Flush();
+            //does nothing
         }
 
-        private void DeleteByKey<T>(string key, SessionWrapper session) where T : IExpirableWithKey
+        private void DeleteByKey<T>(string key, StatelessSessionWrapper session) where T : IExpirableWithKey
         {
-            session.CreateQuery(SqlUtil.DeleteByKeyStatementDictionary[typeof(T)])
-                .SetParameter(SqlUtil.ValueParameterName, key)
-                .ExecuteUpdate();
-            session.Flush();
+            session.Query<T>().Where(i => i.Key == key).Delete();
+            //does nothing
         }
 
-        private void DeleteByKeyValue<T>(string key, string value, SessionWrapper session) where T : IExpirableWithKey
+        private void DeleteByKeyValue<T>(string key, string value, StatelessSessionWrapper session) where T : IKeyWithStringValue
         {
-            session.CreateQuery(SqlUtil.DeleteByKeyAndValueStatementDictionary[typeof(T)])
-                .SetParameter(SqlUtil.ValueParameterName, key)
-                .SetParameter(SqlUtil.ValueParameter2Name, value)
-                .ExecuteUpdate();
-            session.Flush();
+            session.Query<T>().Where(i => i.Key == key && i.Value == value).Delete();
+            //does nothing
         }
 
         public override void ExpireJob(string jobId, TimeSpan expireIn)
         {
             Logger.DebugFormat("ExpireJob jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
-            if (!converter.Valid)
-            {
-                return;
-            }
+            if (!converter.Valid) return;
 
             AcquireJobLock();
 
@@ -74,10 +67,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.DebugFormat("PersistJob jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
-            if (!converter.Valid)
-            {
-                return;
-            }
+            if (!converter.Valid) return;
 
             AcquireJobLock();
 
@@ -92,10 +82,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.DebugFormat("SetJobState jobId={0}", jobId);
             var converter = StringToInt32Converter.Convert(jobId);
-            if (!converter.Valid)
-            {
-                return;
-            }
+            if (!converter.Valid) return;
 
             AcquireStateLock();
             AcquireJobLock();
@@ -113,7 +100,7 @@ namespace Hangfire.FluentNHibernateStorage
                         Data = SerializationHelper.Serialize(state.SerializeData())
                     };
                     session.Insert(jobState);
-                    session.Flush();
+                
 
                     job.StateData = jobState.Data;
                     job.StateReason = jobState.Reason;
@@ -121,7 +108,7 @@ namespace Hangfire.FluentNHibernateStorage
                     job.LastStateChangedAt = session.Storage.UtcNow;
 
                     session.Update(job);
-                    session.Flush();
+                    //does nothing
                 }
             });
         }
@@ -130,10 +117,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             Logger.DebugFormat("AddJobState jobId={0}, state={1}", jobId, state);
             var converter = StringToInt32Converter.Convert(jobId);
-            if (!converter.Valid)
-            {
-                return;
-            }
+            if (!converter.Valid) return;
 
             AcquireStateLock();
             QueueCommand(session =>
@@ -224,10 +208,7 @@ namespace Hangfire.FluentNHibernateStorage
             AcquireSetLock();
             QueueCommand(session =>
             {
-                foreach (var i in items)
-                {
-                    session.Insert(new _Set {Key = key, Value = i, Score = 0});
-                }
+                foreach (var i in items) session.Insert(new _Set {Key = key, Value = i, Score = 0});
             });
         }
 
@@ -346,7 +327,6 @@ namespace Hangfire.FluentNHibernateStorage
             QueueCommand(session =>
             {
                 foreach (var keyValuePair in keyValuePairs)
-                {
                     session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
                         i => i.Value = keyValuePair.Value,
                         i =>
@@ -355,7 +335,6 @@ namespace Hangfire.FluentNHibernateStorage
                             i.Key = key;
                         }
                     );
-                }
             });
         }
 
@@ -381,17 +360,17 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override void Commit()
         {
-            _storage.UseTransaction(session =>
+            _storage.UseStatelessTransaction( session =>
             {
                 foreach (var command in _commandQueue)
                 {
                     command(session);
-                    session.Flush();
+                    //does nothing
                 }
             });
         }
 
-        internal void QueueCommand(Action<SessionWrapper> action)
+        internal void QueueCommand(Action<StatelessSessionWrapper> action)
         {
             _commandQueue.Enqueue(action);
         }

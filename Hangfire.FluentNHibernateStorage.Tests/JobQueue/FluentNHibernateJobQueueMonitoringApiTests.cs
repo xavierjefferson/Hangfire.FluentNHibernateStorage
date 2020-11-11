@@ -31,11 +31,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             EnqueuedAndFetchedCountDto result = null;
 
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
-                session.Flush();
+               
                 result = _sut.GetEnqueuedAndFetchedCount(_queue);
 
                 session.DeleteAll<_JobQueue>();
@@ -50,7 +50,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         {
             long[] result = null;
             var jobs = new List<_Job>();
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 for (var i = 1; i <= 10; i++)
                 {
@@ -59,7 +59,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }
 
-                session.Flush();
+                //does nothing
                 result = _sut.GetEnqueuedJobIds(_queue, 3, 2).ToArray();
 
                 session.DeleteAll<_JobQueue>();

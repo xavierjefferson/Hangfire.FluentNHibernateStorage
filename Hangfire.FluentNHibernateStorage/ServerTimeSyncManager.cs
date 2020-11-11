@@ -18,7 +18,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(BackgroundProcessContext context)
         {
-            Execute(context.CancellationToken);
+            Execute(context.StoppedToken);
         }
 
         public void Execute(CancellationToken cancellationToken)

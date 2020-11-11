@@ -142,7 +142,7 @@
     <Compile Include="HQLForm.Designer.cs">
       <DependentUpon>HQLForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="TextBoxAppender.cs" />
+    <Compile Include="DataGridViewAppender.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
     </Compile>

@@ -10,13 +10,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public class FluentNHibernateJobQueue : IPersistentJobQueue
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobQueue));
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobQueue>();
 
         private readonly FluentNHibernateJobStorage _storage;
 
         public FluentNHibernateJobQueue(FluentNHibernateJobStorage storage)
         {
-            Logger.Info("Job queue initialized");
+            Logger.Debug("Job queue initialized");
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
@@ -34,7 +34,13 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                         _storage.Options.JobQueueDistributedLockTimeout)
                     .Acquire();
                 if (fluentNHibernateDistributedLock == null)
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return null;
+                    }
                     cancellationToken.WaitHandle.WaitOne(_storage.Options.QueuePollInterval);
+                }
                 else
                     using (fluentNHibernateDistributedLock)
                     {
@@ -43,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                             var token = Guid.NewGuid().ToString();
 
 
-                            using (var session = _storage.GetSession())
+                            using (var session = _storage.GetStatelessSession())
                             {
                                 using (var transaction =
                                     session.BeginTransaction(IsolationLevel.Serializable))
@@ -91,7 +97,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             return null;
         }
 
-        public void Enqueue(SessionWrapper session, string queue, string jobId)
+        public void Enqueue(StatelessSessionWrapper session, string queue, string jobId)
         {
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid)
@@ -102,8 +108,8 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 Job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value),
                 Queue = queue
             });
-            session.Flush();
-            Logger.InfoFormat("Enqueued JobId={0} Queue={1}", jobId, queue);
+            
+            Logger.DebugFormat("Enqueued JobId={0} Queue={1}", jobId, queue);
         }
     }
 }

@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public class PersistentJobQueueProviderCollection : IEnumerable<IPersistentJobQueueProvider>
     {
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.For<PersistentJobQueueProviderCollection>();
 
         private readonly IPersistentJobQueueProvider _defaultProvider;
 

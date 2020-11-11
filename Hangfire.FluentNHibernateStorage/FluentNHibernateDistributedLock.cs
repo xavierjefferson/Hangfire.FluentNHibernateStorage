@@ -5,13 +5,14 @@ using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Newtonsoft.Json;
+using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateDistributedLock : IDisposable, IComparable
     {
         private static readonly object Mutex = new object();
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateDistributedLock>();
         private readonly CancellationToken _cancellationToken;
         private readonly FluentNHibernateStorageOptions _options;
         private readonly string _resource;
@@ -71,35 +72,32 @@ namespace Hangfire.FluentNHibernateStorage
         {
             return SqlUtil.WrapForTransaction(() => SqlUtil.WrapForDeadlock(_cancellationToken, () =>
             {
-                lock (Mutex)
+                using (var session = _storage.GetStatelessSession())
                 {
-                    using (var session = _storage.GetSession())
+                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                     {
-                        using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                        var count = session.Query<_DistributedLock>()
+                            .Count(i => i.Resource == _resource);
+                        if (count == 0)
                         {
-                            var count = session.Query<_DistributedLock>()
-                                .Count(i => i.Resource == _resource);
-                            if (count == 0)
+                            var distributedLock = new _DistributedLock
                             {
-                                var distributedLock = new _DistributedLock
-                                {
-                                    CreatedAt = session.Storage.UtcNow, Resource = _resource,
-                                    ExpireAtAsLong = session.Storage.UtcNow.Add(_timeout).ToUnixDate()
-                                };
-                                session.Insert(distributedLock);
-                                session.Flush();
-                                _lockId = distributedLock.Id;
-                                transaction.Commit();
-                                if (Logger.IsDebugEnabled())
-                                    Logger.DebugFormat("Created distributed lock for {0}",
-                                        JsonConvert.SerializeObject(distributedLock));
-                                return true;
-                            }
+                                CreatedAt = session.Storage.UtcNow, Resource = _resource,
+                                ExpireAtAsLong = session.Storage.UtcNow.Add(_timeout).ToEpochDate()
+                            };
+                            session.Insert(distributedLock);
+                          
+                            _lockId = distributedLock.Id;
+                            transaction.Commit();
+                            if (Logger.IsDebugEnabled())
+                                Logger.DebugFormat("Created distributed lock for {0}",
+                                    JsonConvert.SerializeObject(distributedLock));
+                            return true;
                         }
                     }
-
-                    return false;
                 }
+
+                return false;
             }, _options));
         }
 
@@ -109,19 +107,14 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 SqlUtil.WrapForDeadlock(_cancellationToken, () =>
                 {
-                    lock (Mutex)
-                    {
-                        if (_lockId.HasValue)
-                            using (var session = _storage.GetSession())
-                            {
-                                session.CreateQuery(SqlUtil.DeleteDistributedLockSql)
-                                    .SetParameter(SqlUtil.IdParameterName, _lockId)
-                                    .ExecuteUpdate();
-                                session.Flush();
-                                Logger.DebugFormat("Released distributed lock for {0}", _resource);
-                                _lockId = null;
-                            }
-                    }
+                    if (_lockId.HasValue)
+                        using (var session = _storage.GetStatelessSession())
+                        {
+                            session.Query<_DistributedLock>().Where(i => i.Id == _lockId).Delete();
+                          
+                            Logger.DebugFormat("Released distributed lock for {0}", _resource);
+                            _lockId = null;
+                        }
                 }, _options);
             });
         }

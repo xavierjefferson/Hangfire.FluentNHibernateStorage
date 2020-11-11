@@ -11,28 +11,28 @@ namespace Hangfire.FluentNHibernateStorage
     public class CountersAggregator : IBackgroundProcess, IServerComponent
     {
         private const int NumberOfRecordsInSinglePass = 1000;
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
-        private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
-
+        private static readonly ILog Logger = LogProvider.For<CountersAggregator>();
+        private readonly string _tableName;
         private readonly FluentNHibernateJobStorage _storage;
 
         public CountersAggregator(FluentNHibernateJobStorage storage)
         {
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            _tableName = _storage.GetTableName<_Counter>();
         }
 
         public void Execute(BackgroundProcessContext context)
         {
-            Execute(context.CancellationToken);
+            Execute(context.StoppedToken);
         }
 
         public void Execute(CancellationToken cancellationToken)
         {
-            Logger.Info("Aggregating records in 'Counter' table");
+            Logger.DebugFormat("Aggregating records in '{0}' table", _tableName);
 
             long removedCount = int.MaxValue;
             while (removedCount >= NumberOfRecordsInSinglePass && !cancellationToken.IsCancellationRequested)
-                _storage.UseSession(session =>
+                _storage.UseStatelessSession(session =>
                 {
                     using (var transaction = session.BeginTransaction())
                     {
@@ -46,26 +46,14 @@ namespace Hangfire.FluentNHibernateStorage
                                     expireAt = i.Max(counter => counter.ExpireAt)
                                 })
                             .ToList();
-                        var query = session.CreateQuery(SqlUtil.UpdateAggregateCounterStatement);
 
-                        //TODO: Consider using upsert approach
                         foreach (var item in countersByName)
-                        {
-                            if (item.expireAt.HasValue)
-                                query.SetParameter(SqlUtil.ValueParameter2Name, item.expireAt.Value);
-                            else
-                                query.SetParameter(SqlUtil.ValueParameter2Name, null);
-
-                            if (query.SetString(SqlUtil.IdParameterName, item.Key)
-                                .SetParameter(SqlUtil.ValueParameterName, item.value)
-                                .ExecuteUpdate() == 0)
-                                session.Insert(new _AggregatedCounter
+                            session.UpsertEntity<_AggregatedCounter>(i => i.Key == item.Key && i.Value == item.value,
+                                n =>
                                 {
-                                    Key = item.Key,
-                                    Value = item.value,
-                                    ExpireAt = item.expireAt
-                                });
-                        }
+                                    n.ExpireAt = item.expireAt;
+                                    n.Value += item.value;
+                                }, n => { n.Key = item.Key; });
 
                         removedCount =
                             session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
@@ -73,8 +61,8 @@ namespace Hangfire.FluentNHibernateStorage
                         transaction.Commit();
                     }
                 });
-            Logger.InfoFormat("Done aggregating records in 'Counter' table.  Waiting {0}",
-                _storage.Options.CountersAggregateInterval);
+            Logger.DebugFormat("Done aggregating records in '{1}' table.  Waiting {0}",
+                _storage.Options.CountersAggregateInterval, _tableName);
 
             cancellationToken.WaitHandle.WaitOne(_storage.Options.CountersAggregateInterval);
         }

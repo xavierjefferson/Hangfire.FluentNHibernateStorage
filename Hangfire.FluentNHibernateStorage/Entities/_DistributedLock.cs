@@ -7,7 +7,7 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public _DistributedLock()
         {
             CreatedAt = DateTime.UtcNow;
-            ExpireAtAsLong = DateTime.Now.ToUnixDate();
+            ExpireAtAsLong = DateTime.UtcNow.ToEpochDate();
         }
 
         /// <summary>
@@ -15,6 +15,8 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         ///     doesn't have accuracy smaller than 1 second.
         /// </summary>
         public virtual long ExpireAtAsLong { get; set; }
+
+        //this column is just for debugging
 
         public virtual string Resource { get; set; }
         public virtual DateTime CreatedAt { get; set; }

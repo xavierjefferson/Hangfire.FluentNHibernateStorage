@@ -17,22 +17,23 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
             _storage = ConnectionUtils.GetStorage();
             _storage.Options.JobExpirationCheckInterval = TimeSpan.Zero;
             var cts = new CancellationTokenSource();
-            _context = new BackgroundProcessContext("dummy", _storage, new Dictionary<string, object>(), Guid.NewGuid(), cts.Token, cts.Token, cts.Token );
+            _context = new BackgroundProcessContext("dummy", _storage, new Dictionary<string, object>(), Guid.NewGuid(),
+                cts.Token, cts.Token, cts.Token);
         }
 
         private readonly BackgroundProcessContext _context;
         private readonly FluentNHibernateStorage.FluentNHibernateJobStorage _storage;
 
-        private static long CreateExpirationEntry(SessionWrapper session, DateTime? expireAt)
+        private static long CreateExpirationEntry(StatelessSessionWrapper session, DateTime? expireAt)
         {
             session.DeleteAll<_AggregatedCounter>();
             var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
             session.Insert(a);
-            session.Flush();
+
             return a.Id;
         }
 
-        private static bool IsEntryExpired(SessionWrapper session, long entryId)
+        private static bool IsEntryExpired(StatelessSessionWrapper session, long entryId)
         {
             var count = session.Query<_AggregatedCounter>().Count(i => i.Id == entryId);
 
@@ -54,7 +55,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(1));
@@ -72,7 +73,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_DoesNotRemoveEntries_WithNoExpirationTimeSet()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, null);
@@ -90,7 +91,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_AggregatedCounterTable()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 session.Insert(new _AggregatedCounter
@@ -99,7 +100,6 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
                     Value = 1,
                     ExpireAt = session.Storage.UtcNow.AddMonths(-1)
                 });
-                session.Flush();
 
                 var manager = CreateManager();
 
@@ -115,7 +115,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_HashTable()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 session.Insert(new _Hash
@@ -132,7 +132,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
                     Value = string.Empty,
                     ExpireAt = session.Storage.UtcNow.AddMonths(-1)
                 });
-                session.Flush();
+                //does nothing
                 var manager = CreateManager();
 
                 // Act
@@ -147,7 +147,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_JobTable()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 session.Insert(new _Job
@@ -157,7 +157,6 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
                     CreatedAt = session.Storage.UtcNow,
                     ExpireAt = session.Storage.UtcNow.AddMonths(-1)
                 });
-                session.Flush();
 
 
                 var manager = CreateManager();
@@ -174,11 +173,11 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_ListTable()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 session.Insert(new _List {Key = "key", ExpireAt = session.Storage.UtcNow.AddMonths(-1)});
-                session.Flush();
+
 
                 var manager = CreateManager();
 
@@ -194,7 +193,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_Processes_SetTable()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 session.Insert(new _Set
@@ -204,7 +203,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
                     Value = string.Empty,
                     ExpireAt = session.Storage.UtcNow.AddMonths(-1)
                 });
-                session.Flush();
+
 
                 var manager = CreateManager();
 
@@ -220,7 +219,7 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void Execute_RemovesOutdatedRecords()
         {
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 // Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(-1));

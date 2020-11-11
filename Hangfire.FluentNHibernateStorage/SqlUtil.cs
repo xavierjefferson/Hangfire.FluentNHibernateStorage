@@ -8,6 +8,7 @@ using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using NHibernate;
 using NHibernate.Exceptions;
+using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -17,43 +18,15 @@ namespace Hangfire.FluentNHibernateStorage
         public const string ValueParameter2Name = "newValue2";
         public const string IdParameterName = "entityId";
 
-        public const string UtcNowAsLongParameterName = "utcNowAsLong";
-        public const string CreatedAtParameterName = "createdAt";
-        public const string ResourceParameterName = "resource";
-        public const string ExpireAtAsLongParameterName = "expireAtAsLong";
-
         private const int DeleteBatchSize = 250;
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.GetLogger(typeof(SqlUtil));
 
-        private static readonly Dictionary<Type, string> DeleteByIdCommands = new Dictionary<Type, string>();
-
-        /// <summary>
-        ///     Prevent multiple threads from generating the same HQL statements.
-        /// </summary>
-        private static readonly object GenerateStatementMutex = new object();
-
-
-        /// <summary>
-        ///     HQL statement by which a Server entity will be deleted based on its id
-        /// </summary>
-        internal static readonly string DeleteServerByIdStatement =
-            string.Format("delete from {0} where {1}=:{2}", nameof(_Server).WrapObjectName(),
-                nameof(_Server.Id).WrapObjectName(),
-                IdParameterName);
 
         /// <summary>
         ///     HQL statement by which a Server entity will have its LastHeartBeat property updated
         /// </summary>
         internal static readonly string UpdateServerLastHeartbeatStatement =
             GetSingleFieldUpdateSql(nameof(_Server), nameof(_Server.LastHeartbeat), nameof(_Server.Id));
-
-        /// <summary>
-        ///     HQL statement by which a Server entity will be deleted based on its last heartbeart
-        /// </summary>
-        internal static readonly string DeleteServerByLastHeartbeatStatement = string.Format(
-            "delete from {0} where {1} < :{2}",
-            nameof(_Server).WrapObjectName(),
-            nameof(_Server.LastHeartbeat).WrapObjectName(), ValueParameterName);
 
 
         /// <summary>
@@ -68,12 +41,6 @@ namespace Hangfire.FluentNHibernateStorage
         internal static readonly string UpdateJobQueueFetchedAtStatement =
             GetSingleFieldUpdateSql(nameof(_JobQueue), nameof(_JobQueue.FetchedAt), nameof(_JobQueue.Id));
 
-        /// <summary>
-        ///     HQL statement by which to delete a JobQueue entity based on its id
-        /// </summary>
-        internal static readonly string DeleteJobQueueStatement = string.Format("delete from {0} where {1}=:{2}",
-            nameof(_JobQueue).WrapObjectName(),
-            nameof(_JobQueue.Id).WrapObjectName(), IdParameterName);
 
         /// <summary>
         ///     HQL statement by which to update an aggregated counter based upon its key
@@ -84,26 +51,6 @@ namespace Hangfire.FluentNHibernateStorage
             nameof(_AggregatedCounter.Key).WrapObjectName(),
             nameof(_AggregatedCounter.ExpireAt).WrapObjectName(), ValueParameterName, IdParameterName,
             ValueParameter2Name);
-
-        /// <summary>
-        ///     HQL statements by which to delete Hash, Set or List entities by key
-        /// </summary>
-        internal static readonly Dictionary<Type, string> DeleteByKeyStatementDictionary = new Dictionary<Type, string>
-        {
-            {typeof(_Set), GetDeleteByKeyStatement<_Set>()},
-            {typeof(_Hash), GetDeleteByKeyStatement<_Hash>()},
-            {typeof(_List), GetDeleteByKeyStatement<_List>()}
-        };
-
-        /// <summary>
-        ///     HQL statements by which to delete Set or List entities by key and value properties
-        /// </summary>
-        internal static readonly Dictionary<Type, string> DeleteByKeyAndValueStatementDictionary =
-            new Dictionary<Type, string>
-            {
-                {typeof(_Set), GetDeleteByKeyValueStatement<_Set>()},
-                {typeof(_List), GetDeleteByKeyValueStatement<_List>()}
-            };
 
 
         /// <summary>
@@ -117,12 +64,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {typeof(_List), GetSetExpireAtByKeyStatement<_List>()}
             };
 
-        /// <summary>
-        ///     HQL statement by which to delete a distributed lock entity
-        /// </summary>
-        internal static readonly string DeleteDistributedLockSql = string.Format("delete from {0} where {1}=:{2}",
-            nameof(_DistributedLock).WrapObjectName(),
-            nameof(_DistributedLock.Id).WrapObjectName(), IdParameterName);
+      
 
         internal static readonly string SetJobParameterStatement = string.Format(
             "update {0} set {1}=:value where {2}.{3}=:id and {4}=:name",
@@ -161,7 +103,7 @@ namespace Hangfire.FluentNHibernateStorage
         /// <param name="matchFunc">A function that returns a single instance of T</param>
         /// <param name="changeAction">A delegate that changes specified properties of instance of T </param>
         /// <param name="keysetAction">A delegate that sets the primary key properties of instance of T if we have to do an upsert</param>
-        public static void UpsertEntity<T>(this SessionWrapper session, Expression<Func<T, bool>> matchFunc,
+        public static void UpsertEntity<T>(this StatelessSessionWrapper session, Expression<Func<T, bool>> matchFunc,
             Action<T> changeAction,
             Action<T> keysetAction) where T : new()
         {
@@ -179,8 +121,10 @@ namespace Hangfire.FluentNHibernateStorage
                 session.Update(entity);
             }
 
-            session.Flush();
+
         }
+ 
+ 
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
@@ -191,58 +135,21 @@ namespace Hangfire.FluentNHibernateStorage
         /// <param name="session">Sessionwrapper instance to act upon</param>
         /// <param name="ids">Collection of ids to delete</param>
         /// <returns>the number of rows deleted</returns>
-        public static long DeleteByInt32Id<T>(this SessionWrapper session, ICollection<int> ids) where T : IInt32Id
+        public static long DeleteByInt32Id<T>(this StatelessSessionWrapper session, ICollection<int> ids) where T : IInt32Id
         {
             if (!ids.Any())
                 return 0;
 
-            string queryString;
-            lock (GenerateStatementMutex)
-            {
-                var typeName = typeof(T);
-                if (DeleteByIdCommands.ContainsKey(typeName))
-                {
-                    queryString = DeleteByIdCommands[typeName];
-                }
-                else
-                {
-                    queryString = string.Format("delete from {0} where {1} in (:{2})", typeName.Name.WrapObjectName(),
-                        nameof(IInt32Id.Id).WrapObjectName(), IdParameterName);
-                    DeleteByIdCommands[typeName] = queryString;
-                }
-            }
-
-
-            var query = session.CreateQuery(queryString);
             var count = 0;
             for (var i = 0; i < ids.Count; i += DeleteBatchSize)
             {
                 var batch = ids.Skip(i).Take(DeleteBatchSize).ToList();
-                count += query.SetParameterList(IdParameterName, batch).ExecuteUpdate();
+                count += session.Query<T>().Where(j => batch.Contains(j.Id)).Delete();
             }
 
             return count;
         }
-#if !DEBUG
-[System.Diagnostics.DebuggerHidden]
-#endif
-        /// <summary>
-        ///     Delete entities that implement iexpirablewithid and have expired based on server's system date
-        /// </summary>
-        /// <typeparam name="T">The type of entity</typeparam>
-        /// <param name="session">Sessionwrapper instance to act upon</param>
-        /// <param name="cutOffDate"></param>
-        /// <returns></returns>
-        internal static long DeleteExpirableWithId<T>(this SessionWrapper session, DateTime cutOffDate)
-            where T : IExpirableWithId
 
-        {
-            var ids = session.Query<T>()
-                .Where(i => i.ExpireAt < cutOffDate)
-                .Select(i => i.Id)
-                .ToList();
-            return session.DeleteByInt32Id<T>(ids);
-        }
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif
@@ -258,35 +165,8 @@ namespace Hangfire.FluentNHibernateStorage
                 nameof(IExpirableWithKey.Key).WrapObjectName(),
                 IdParameterName);
         }
-#if !DEBUG
-[System.Diagnostics.DebuggerHidden]
-#endif
-        /// <summary>
-        ///     Generate a HQL statement that deletes entities that implement IExpirableWithKey and match a given key
-        /// </summary>
-        /// <typeparam name="T">The type of entity</typeparam>
-        /// <returns>The HQL statement</returns>
-        private static string GetDeleteByKeyStatement<T>() where T : IExpirableWithKey
-        {
-            return string.Format("delete from {0} where {1}=:{2}", typeof(T).Name.WrapObjectName(),
-                nameof(IExpirableWithKey.Key).WrapObjectName(),
-                ValueParameterName);
-        }
-#if !DEBUG
-[System.Diagnostics.DebuggerHidden]
-#endif
-        /// <summary>
-        ///     Generate a HQL statement that deletes entities that implement IExpirableWithKey and match a given key and
-        ///     value
-        /// </summary>
-        /// <typeparam name="T">The type of entity</typeparam>
-        /// <returns>The HQL statement</returns>
-        private static string GetDeleteByKeyValueStatement<T>() where T : IKeyWithStringValue
-        {
-            return string.Format("delete from {0} where {1}=:{2} and {3}=:{4}", typeof(T).Name.WrapObjectName(),
-                nameof(IExpirableWithKey.Key).WrapObjectName(),
-                ValueParameterName, nameof(IKeyWithStringValue.Value).WrapObjectName(), ValueParameter2Name);
-        }
+ 
+ 
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]
 #endif

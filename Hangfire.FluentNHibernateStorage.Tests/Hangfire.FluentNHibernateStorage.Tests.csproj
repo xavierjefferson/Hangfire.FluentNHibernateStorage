@@ -145,13 +145,13 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj">
       <Project>{a133d2d4-003a-4f3c-a9c0-dad797172e0d}</Project>
       <Name>Hangfire.FluentNHibernateStorage</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

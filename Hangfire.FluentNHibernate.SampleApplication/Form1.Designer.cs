@@ -28,16 +28,19 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             this.label1 = new System.Windows.Forms.Label();
             this.ConnectionStringTextBox = new System.Windows.Forms.TextBox();
             this.StartButton = new System.Windows.Forms.Button();
             this.StopButton = new System.Windows.Forms.Button();
-            this.LoggerTextBox = new System.Windows.Forms.TextBox();
             this.DataProviderComboBox = new System.Windows.Forms.ComboBox();
             this.label2 = new System.Windows.Forms.Label();
             this.HQLButton = new System.Windows.Forms.Button();
             this.TableNamePrefixTextBox = new System.Windows.Forms.TextBox();
             this.label3 = new System.Windows.Forms.Label();
+            this.LoggerDataGridView = new System.Windows.Forms.DataGridView();
+            this.AutoScrollCheckBox = new System.Windows.Forms.CheckBox();
+            ((System.ComponentModel.ISupportInitialize)(this.LoggerDataGridView)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
@@ -77,18 +80,6 @@
             this.StopButton.Text = "Stop";
             this.StopButton.UseVisualStyleBackColor = true;
             this.StopButton.Click += new System.EventHandler(this.StopButton_Click);
-            // 
-            // LoggerTextBox
-            // 
-            this.LoggerTextBox.BackColor = System.Drawing.Color.Black;
-            this.LoggerTextBox.ForeColor = System.Drawing.Color.Lime;
-            this.LoggerTextBox.Location = new System.Drawing.Point(31, 195);
-            this.LoggerTextBox.Multiline = true;
-            this.LoggerTextBox.Name = "LoggerTextBox";
-            this.LoggerTextBox.ReadOnly = true;
-            this.LoggerTextBox.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.LoggerTextBox.Size = new System.Drawing.Size(677, 206);
-            this.LoggerTextBox.TabIndex = 5;
             // 
             // DataProviderComboBox
             // 
@@ -136,17 +127,43 @@
             this.label3.TabIndex = 9;
             this.label3.Text = "Table Name Prefix";
             // 
+            // LoggerDataGridView
+            // 
+            this.LoggerDataGridView.AllowUserToAddRows = false;
+            this.LoggerDataGridView.AllowUserToDeleteRows = false;
+            dataGridViewCellStyle2.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(224)))), ((int)(((byte)(224)))), ((int)(((byte)(224)))));
+            this.LoggerDataGridView.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle2;
+            this.LoggerDataGridView.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.LoggerDataGridView.Location = new System.Drawing.Point(31, 195);
+            this.LoggerDataGridView.Name = "LoggerDataGridView";
+            this.LoggerDataGridView.ReadOnly = true;
+            this.LoggerDataGridView.Size = new System.Drawing.Size(677, 206);
+            this.LoggerDataGridView.TabIndex = 5;
+            // 
+            // AutoScrollCheckBox
+            // 
+            this.AutoScrollCheckBox.AutoSize = true;
+            this.AutoScrollCheckBox.Checked = true;
+            this.AutoScrollCheckBox.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.AutoScrollCheckBox.Location = new System.Drawing.Point(631, 153);
+            this.AutoScrollCheckBox.Name = "AutoScrollCheckBox";
+            this.AutoScrollCheckBox.Size = new System.Drawing.Size(77, 17);
+            this.AutoScrollCheckBox.TabIndex = 11;
+            this.AutoScrollCheckBox.Text = "Auto Scroll";
+            this.AutoScrollCheckBox.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(749, 425);
+            this.Controls.Add(this.AutoScrollCheckBox);
             this.Controls.Add(this.TableNamePrefixTextBox);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.HQLButton);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.DataProviderComboBox);
-            this.Controls.Add(this.LoggerTextBox);
+            this.Controls.Add(this.LoggerDataGridView);
             this.Controls.Add(this.StopButton);
             this.Controls.Add(this.StartButton);
             this.Controls.Add(this.ConnectionStringTextBox);
@@ -154,6 +171,7 @@
             this.Name = "Form1";
             this.Text = "Hangfire Background Server";
             this.Load += new System.EventHandler(this.Form1_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.LoggerDataGridView)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -165,12 +183,13 @@
         private System.Windows.Forms.TextBox ConnectionStringTextBox;
         private System.Windows.Forms.Button StartButton;
         private System.Windows.Forms.Button StopButton;
-        private System.Windows.Forms.TextBox LoggerTextBox;
+        private System.Windows.Forms.DataGridView LoggerDataGridView;
         private System.Windows.Forms.ComboBox DataProviderComboBox;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button HQLButton;
         private System.Windows.Forms.TextBox TableNamePrefixTextBox;
         private System.Windows.Forms.Label label3;
+        private System.Windows.Forms.CheckBox AutoScrollCheckBox;
     }
 }
 

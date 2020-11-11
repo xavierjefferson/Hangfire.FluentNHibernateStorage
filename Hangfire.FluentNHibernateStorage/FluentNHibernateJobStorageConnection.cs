@@ -7,12 +7,13 @@ using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
+using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateJobStorageConnection : JobStorageConnection
     {
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobStorageConnection>();
 
         public FluentNHibernateJobStorageConnection(FluentNHibernateJobStorage storage)
         {
@@ -41,32 +42,27 @@ namespace Hangfire.FluentNHibernateStorage
 
             Logger.DebugFormat("CreateExpiredJob={0}", SerializationHelper.Serialize(invocationData));
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessTransaction(session =>
             {
-                using (var transaction = session.BeginTransaction())
+                var jobEntity = new _Job
                 {
-                    var jobEntity = new _Job
+                    InvocationData = SerializationHelper.Serialize(invocationData),
+                    Arguments = invocationData.Arguments,
+                    CreatedAt = createdAt,
+                    ExpireAt = createdAt.Add(expireIn)
+                };
+                session.Insert(jobEntity);
+                //does nothing
+                foreach (var keyValuePair in parameters)
+                    session.Insert(new _JobParameter
                     {
-                        InvocationData = SerializationHelper.Serialize(invocationData),
-                        Arguments = invocationData.Arguments,
-                        CreatedAt = createdAt,
-                        ExpireAt = createdAt.Add(expireIn)
-                    };
-                    session.Insert(jobEntity);
-                    session.Flush();
-                    foreach (var keyValuePair in parameters)
-                        session.Insert(new _JobParameter
-                        {
-                            Job = jobEntity,
-                            Name = keyValuePair.Key,
-                            Value = keyValuePair.Value
-                        });
+                        Job = jobEntity,
+                        Name = keyValuePair.Key,
+                        Value = keyValuePair.Value
+                    });
 
-                    session.Flush();
-
-                    transaction.Commit();
-                    return jobEntity.Id.ToString();
-                }
+                //does nothing
+                return jobEntity.Id.ToString();
             });
         }
 
@@ -95,14 +91,14 @@ namespace Hangfire.FluentNHibernateStorage
             var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid) return;
 
-            Storage.UseTransaction(session =>
+            Storage.UseStatelessTransaction(session =>
             {
-                var rowCount = session.CreateQuery(SqlUtil.SetJobParameterStatement)
-                    .SetParameter("value", value).SetParameter("id", converter.Value).SetParameter("name", name)
-                    .ExecuteUpdate();
-                if (rowCount == 0)
-                    session.Insert(
-                        new _JobParameter {Job = new _Job {Id = converter.Value}, Name = name, Value = value});
+                session.UpsertEntity<_JobParameter>(i => i.Name == name && i.Id == converter.Value,
+                    z => { z.Value = value; }, z =>
+                    {
+                        z.Id = converter.Value;
+                        z.Name = name;
+                    });
             });
         }
 
@@ -114,7 +110,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (!converter.Valid) return null;
 
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
                 session.Query<_JobParameter>()
                     .Where(i => i.Job.Id == converter.Value && i.Name == name)
                     .Select(i => i.Value)
@@ -129,9 +125,9 @@ namespace Hangfire.FluentNHibernateStorage
             if (!converter.Valid) return null;
 
 
-            Logger.InfoFormat("Get job data for job '{0}'", jobId);
+            Logger.DebugFormat("Get job data for job '{0}'", jobId);
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 var jobData =
                     session
@@ -140,7 +136,7 @@ namespace Hangfire.FluentNHibernateStorage
 
                 if (jobData == null) return null;
                 var invocationData = SerializationHelper.Deserialize<InvocationData>(jobData.InvocationData);
-              
+
                 invocationData.Arguments = jobData.Arguments;
 
                 Job job = null;
@@ -171,7 +167,7 @@ namespace Hangfire.FluentNHibernateStorage
             var converter = StringToInt32Converter.Convert(jobId);
             if (!converter.Valid) return null;
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 var job = session.Query<_Job>()
                     .Where(i => i.Id == converter.Value)
@@ -196,7 +192,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (serverId == null) throw new ArgumentNullException(nameof(serverId));
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            Storage.UseTransaction(session =>
+            Storage.UseStatelessTransaction(session =>
             {
                 var data = SerializationHelper.Serialize(new ServerData
                 {
@@ -205,13 +201,11 @@ namespace Hangfire.FluentNHibernateStorage
                     StartedAt = session.Storage.UtcNow
                 });
 
-                var rowCount = session.CreateQuery(SqlUtil.AnnounceServerStatement)
-                    .SetParameter("id", serverId).SetParameter("data", data)
-                    .SetParameter("lastheartbeat", session.Storage.UtcNow).ExecuteUpdate();
-
-                if (rowCount == 0)
-                    session.Insert(
-                        new _Server {Id = serverId, Data = data, LastHeartbeat = session.Storage.UtcNow});
+                session.UpsertEntity<_Server>(i => i.Id == serverId, server =>
+                {
+                    server.LastHeartbeat = session.Storage.UtcNow;
+                    server.Data = data;
+                }, server => { server.Id = serverId; });
             });
         }
 
@@ -219,20 +213,14 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (serverId == null) throw new ArgumentNullException(nameof(serverId));
 
-            Storage.UseSession(
-                session =>
-                {
-                    session.CreateQuery(SqlUtil.DeleteServerByIdStatement)
-                        .SetParameter(SqlUtil.IdParameterName, serverId)
-                        .ExecuteUpdate();
-                });
+            Storage.UseStatelessSession(session => session.Query<_Server>().Where(i => i.Id == serverId).Delete());
         }
 
         public override void Heartbeat(string serverId)
         {
             if (serverId == null) throw new ArgumentNullException(nameof(serverId));
 
-            Storage.UseSession(session =>
+            Storage.UseStatelessSession(session =>
             {
                 session.CreateQuery(SqlUtil.UpdateServerLastHeartbeatStatement)
                     .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow)
@@ -248,10 +236,8 @@ namespace Hangfire.FluentNHibernateStorage
                     nameof(timeOut));
 
             return
-                Storage.UseSession(session =>
-                    session.CreateQuery(SqlUtil.DeleteServerByLastHeartbeatStatement)
-                        .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow.Subtract(timeOut))
-                        .ExecuteUpdate());
+                Storage.UseStatelessSession(session =>
+                    session.Query<_Server>().Where(i => i.LastHeartbeat < Storage.UtcNow.Subtract(timeOut)).Delete());
         }
 
         public override long GetSetCount(string key)
@@ -259,14 +245,14 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                     session.Query<_Set>().Count(i => i.Key == key));
         }
 
         public override List<string> GetRangeFromSet(string key, int startingFrom, int endingAt)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 return session.Query<_Set>()
                     .OrderBy(i => i.Id)
@@ -283,7 +269,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                 {
                     var result = session.Query<_Set>()
                         .Where(i => i.Key == key)
@@ -302,7 +288,7 @@ namespace Hangfire.FluentNHibernateStorage
                     nameof(toScore), nameof(fromScore)));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                     session.Query<_Set>()
                         .OrderBy(i => i.Score)
                         .Where(i => i.Key == key && i.Score >= fromScore && i.Score <= toScore)
@@ -314,7 +300,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                 {
                     return session.Query<_Counter>().Where(i => i.Key == key).Sum(i => i.Value) +
                            session.Query<_AggregatedCounter>().Where(i => i.Key == key).Sum(i => i.Value);
@@ -326,7 +312,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                     session.Query<_Hash>().Count(i => i.Key == key));
         }
 
@@ -340,7 +326,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                     session.Query<_List>().Count(i => i.Key == key));
         }
 
@@ -355,7 +341,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (name == null) throw new ArgumentNullException(nameof(name));
 
             return
-                Storage.UseSession(session =>
+                Storage.UseStatelessSession(session =>
                     session.Query<_Hash>()
                         .Where(i => i.Key == key && i.Field == name)
                         .Select(i => i.Value)
@@ -365,7 +351,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override List<string> GetRangeFromList(string key, int startingFrom, int endingAt)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 return
                     session.Query<_List>()
@@ -382,7 +368,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 return
                     session.Query<_List>()
@@ -399,7 +385,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 var item = session.Query<T>().Where(i => i.Key == key).Min(i => i.ExpireAt);
                 if (item == null) return TimeSpan.FromSeconds(-1);
@@ -418,7 +404,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
 
-            Storage.UseTransaction(session =>
+            Storage.UseStatelessTransaction(session =>
             {
                 foreach (var keyValuePair in keyValuePairs)
                     session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
@@ -435,7 +421,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
 
-            return Storage.UseSession(session =>
+            return Storage.UseStatelessSession(session =>
             {
                 var result = session.Query<_Hash>()
                     .Where(i => i.Key == key)

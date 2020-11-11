@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Globalization;
+using System.Linq;
+using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
+using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage.JobQueue
 {
     public class FluentNHibernateFetchedJob : IFetchedJob
     {
-        private static readonly ILog Logger = LogProvider.GetCurrentClassLogger();
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateFetchedJob>();
 
         private readonly long _id;
         private readonly FluentNHibernateJobStorage _storage;
@@ -20,7 +23,6 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             FetchedJob fetchedJob)
         {
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
-
             _id = fetchedJob?.Id ?? throw new ArgumentNullException(nameof(fetchedJob));
             JobId = fetchedJob.JobId.ToString(CultureInfo.InvariantCulture);
             Queue = fetchedJob.Queue;
@@ -32,10 +34,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         {
             if (_disposed) return;
 
-            if (!_removedFromQueue && !_requeued)
-            {
-                Requeue();
-            }
+            if (!_removedFromQueue && !_requeued) Requeue();
 
             _disposed = true;
         }
@@ -43,11 +42,9 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public void RemoveFromQueue()
         {
             Logger.DebugFormat("RemoveFromQueue JobId={0}", JobId);
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
-                session.CreateQuery(SqlUtil.DeleteJobQueueStatement)
-                    .SetParameter(SqlUtil.IdParameterName, _id)
-                    .ExecuteUpdate();
+                session.Query<_JobQueue>().Where(i => i.Id == _id).Delete();
             }
 
             _removedFromQueue = true;
@@ -56,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public void Requeue()
         {
             Logger.DebugFormat("Requeue JobId={0}", JobId);
-            using (var session = _storage.GetSession())
+            using (var session = _storage.GetStatelessSession())
             {
                 session.CreateQuery(SqlUtil.UpdateJobQueueFetchedAtStatement)
                     .SetParameter(SqlUtil.ValueParameterName, null)

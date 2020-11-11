@@ -33,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             return new FluentNHibernateJobQueue(storage);
         }
 
-         [Fact]
+        [Fact]
         [CleanDatabase]
         public void Ctor_ThrowsAnException_WhenStorageIsNull()
         {
@@ -48,13 +48,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Dequeue_ShouldDeleteAJob()
         {
             // Arrange
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 session.DeleteAll<_JobQueue>();
                 session.DeleteAll<_Job>();
                 var newjob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newjob, Queue = "default"});
-                session.Flush();
+                //does nothing
                 var queue = CreateJobQueue(_storage);
 
                 // Act
@@ -77,13 +77,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Dequeue_ShouldFetchAJob_FromTheSpecifiedQueue()
         {
             // Arrange
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 var newJobQueue = new _JobQueue {Job = newJob, Queue = "default"};
                 session.Insert(newJobQueue);
-                session.Flush();
-                session.Clear();
+
 
                 var queue = CreateJobQueue(_storage);
 
@@ -103,7 +102,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         public void Dequeue_ShouldFetchATimedOutJobs_FromTheSpecifiedQueue()
         {
             // Arrange
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
                 session.Insert(new _JobQueue
@@ -112,7 +111,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     FetchedAt = _storage.UtcNow.AddDays(-1),
                     Queue = "default"
                 });
-                session.Flush();
+                //does nothing
                 var queue = CreateJobQueue(_storage);
 
                 // Act
@@ -129,7 +128,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldFetchJobs_FromMultipleQueues()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var queueNames = new[] {"critical", "default"};
                 foreach (var queueName in queueNames)
@@ -142,7 +141,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     });
                 }
 
-                session.Flush();
+                //does nothing
 
 
                 var queue = CreateJobQueue(_storage);
@@ -168,7 +167,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldFetchJobs_OnlyFromSpecifiedQueues()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 session.DeleteAll<_JobQueue>();
                 session.DeleteAll<_Job>();
@@ -178,7 +177,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     Job = newJob,
                     Queue = "critical"
                 });
-                session.Flush();
+                //does nothing
 
                 var queue = CreateJobQueue(_storage);
 
@@ -193,7 +192,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldSetFetchedAt_OnlyForTheFetchedJob()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 // Arrange
                 session.DeleteAll<_JobQueue>();
@@ -208,7 +207,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
                     });
                 }
 
-                session.Flush();
+                //does nothing
 
                 var queue = CreateJobQueue(_storage);
 
@@ -231,7 +230,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldThrowAnException_WhenQueuesCollectionIsEmpty()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var queue = CreateJobQueue(_storage);
 
@@ -246,7 +245,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldThrowAnException_WhenQueuesCollectionIsNull()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var queue = CreateJobQueue(_storage);
 
@@ -261,7 +260,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ShouldWaitIndefinitely_WhenThereAreNoJobs()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var cts = new CancellationTokenSource(200);
                 var queue = CreateJobQueue(_storage);
@@ -275,7 +274,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Dequeue_ThrowsOperationCanceled_WhenCancellationTokenIsSetAtTheBeginning()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 var cts = new CancellationTokenSource();
                 cts.Cancel();
@@ -290,11 +289,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         [CleanDatabase]
         public void Enqueue_AddsAJobToTheQueue()
         {
-            _storage.UseSession(session =>
+            _storage.UseStatelessSession(session =>
             {
                 session.DeleteAll<_JobQueue>();
-                session.Flush();
-                session.Clear();
+                //does nothing
+
                 var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
 
                 var queue = CreateJobQueue(_storage);

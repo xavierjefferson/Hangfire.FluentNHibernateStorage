@@ -15,6 +15,8 @@ using Hangfire.Server;
 using Hangfire.Storage;
 using Newtonsoft.Json;
 using NHibernate;
+using NHibernate.Metadata;
+using NHibernate.Persister.Entity;
 using Snork.FluentNHibernateTools;
 using IsolationLevel = System.Data.IsolationLevel;
 
@@ -22,19 +24,12 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateJobStorage : JobStorage, IDisposable
     {
-        private static readonly ILog Logger = LogProvider.GetLogger(typeof(FluentNHibernateJobStorage));
+        private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobStorage>();
 
         private readonly CountersAggregator _countersAggregator;
-        private readonly object _dateOffsetMutex = new object();
-
         private readonly ExpirationManager _expirationManager;
-
         private readonly ServerTimeSyncManager _serverTimeSyncManager;
-
         private readonly ISessionFactory _sessionFactory;
-
-
-        private TimeSpan _utcOffset = TimeSpan.Zero;
 
         public FluentNHibernateJobStorage(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null) : this(
@@ -52,6 +47,7 @@ namespace Hangfire.FluentNHibernateStorage
         public FluentNHibernateJobStorage(SessionFactoryInfo info)
         {
             SessionFactoryInfo = info;
+            ClassMetadataDictionary = info.SessionFactory.GetAllClassMetadata();
             ProviderType = info.ProviderType;
             _sessionFactory = info.SessionFactory;
 
@@ -68,14 +64,14 @@ namespace Hangfire.FluentNHibernateStorage
             try
             {
                 EnsureDualHasOneRow();
-                //try getting utc 
-                var test = UtcNow;
             }
             catch (FluentConfigurationException ex)
             {
                 throw ex.InnerException ?? ex;
             }
         }
+
+        internal IDictionary<string, IClassMetadata> ClassMetadataDictionary { get; }
 
         internal TimeSpan UtcOffset { get; set; }
         internal SessionFactoryInfo SessionFactoryInfo { get; }
@@ -93,11 +89,28 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
+        internal string GetTableName<T>() where T : class
+        {
+            string entityName;
+            var fullName = typeof(T).FullName;
+            if (ClassMetadataDictionary.ContainsKey(fullName))
+            {
+                var classMetadata = ClassMetadataDictionary[fullName] as SingleTableEntityPersister;
+                entityName = classMetadata == null ? typeof(T).Name : classMetadata.TableName;
+            }
+            else
+            {
+                entityName = typeof(T).Name;
+            }
+
+            return entityName;
+        }
+
         private void EnsureDualHasOneRow()
         {
             try
             {
-                using (var session = GetSession())
+                using (var session = GetStatelessSession())
                 {
                     using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                     {
@@ -108,7 +121,6 @@ namespace Hangfire.FluentNHibernateStorage
                                 return;
                             case 0:
                                 session.Insert(new _Dual {Id = 1});
-                                session.Flush();
                                 break;
                             default:
                                 session.DeleteByInt32Id<_Dual>(
@@ -153,7 +165,7 @@ namespace Hangfire.FluentNHibernateStorage
         public override void WriteOptionsToLog(ILog logger)
         {
             if (logger.IsInfoEnabled())
-                logger.InfoFormat("Using the following options for job storage: {0}",
+                logger.DebugFormat("Using the following options for job storage: {0}",
                     JsonConvert.SerializeObject(Options, Formatting.Indented));
         }
 
@@ -171,30 +183,31 @@ namespace Hangfire.FluentNHibernateStorage
 
         public IEnumerable ExecuteHqlQuery(string hql)
         {
-            using (var session = GetSession())
+            using (var session = GetStatelessSession())
             {
                 return session.CreateQuery(hql).List();
             }
         }
 
-        internal T UseTransaction<T>([InstantHandle] Func<SessionWrapper, T> func)
+        internal T UseStatelessTransaction<T>([InstantHandle] Func<StatelessSessionWrapper, T> func)
         {
             using (var transaction = CreateTransaction())
             {
-                var result = UseSession(func);
+                var result = UseStatelessSession(func);
                 transaction.Complete();
                 return result;
             }
         }
 
-        internal void UseTransaction([InstantHandle] Action<SessionWrapper> action)
+        internal void UseStatelessTransaction([InstantHandle] Action<StatelessSessionWrapper> action)
         {
-            UseTransaction(session =>
+            UseStatelessSession(statelessSession =>
             {
-                action(session);
+                action(statelessSession);
                 return true;
             });
         }
+
 
         private TransactionScope CreateTransaction()
         {
@@ -208,7 +221,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void ResetAll()
         {
-            using (var session = GetSession())
+            using (var session = GetStatelessSession())
             {
                 session.DeleteAll<_List>();
                 session.DeleteAll<_Hash>();
@@ -221,31 +234,30 @@ namespace Hangfire.FluentNHibernateStorage
                 session.DeleteAll<_Counter>();
                 session.DeleteAll<_AggregatedCounter>();
                 session.DeleteAll<_DistributedLock>();
-                session.Flush();
             }
         }
 
-        public void UseSession([InstantHandle] Action<SessionWrapper> action)
+
+        public void UseStatelessSession([InstantHandle] Action<StatelessSessionWrapper> action)
         {
-            using (var session = GetSession())
+            using (var session = GetStatelessSession())
             {
                 action(session);
             }
         }
-
-        public T UseSession<T>([InstantHandle] Func<SessionWrapper, T> func)
+        
+        public T UseStatelessSession<T>([InstantHandle] Func<StatelessSessionWrapper, T> func)
         {
-            using (var session = GetSession())
+            using (var session = GetStatelessSession())
             {
                 var result = func(session);
                 return result;
             }
         }
 
-
-        public SessionWrapper GetSession()
+        public StatelessSessionWrapper GetStatelessSession()
         {
-            return new SessionWrapper(_sessionFactory.OpenSession(), this);
+            return new StatelessSessionWrapper(_sessionFactory.OpenStatelessSession(), this);
         }
     }
 }

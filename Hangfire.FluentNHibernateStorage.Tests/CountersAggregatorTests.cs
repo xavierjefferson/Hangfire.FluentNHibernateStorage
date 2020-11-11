@@ -28,11 +28,11 @@ namespace Hangfire.FluentNHibernateJobStorage.Tests
         [CleanDatabase]
         public void CountersAggregatorExecutesProperly()
         {
-            _storage.UseSession(connection =>
+            _storage.UseStatelessSession(connection =>
             {
                 //Arrange
                 connection.Insert(new _Counter {Key = "key", Value = 1, ExpireAt = _storage.UtcNow.AddHours(1)});
-                connection.Flush();
+               
 
                 var cts = new CancellationTokenSource();
                 cts.Cancel();

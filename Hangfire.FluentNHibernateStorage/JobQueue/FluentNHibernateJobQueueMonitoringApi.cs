@@ -25,7 +25,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 if (_queuesCache.Count == 0 || _cacheUpdated.Add(QueuesCacheTimeout) < _storage.UtcNow)
                 {
-                    var result = _storage.UseSession(
+                    var result = _storage.UseStatelessSession(
                         session => { return session.Query<_JobQueue>().Select(i => i.Queue).Distinct().ToList(); });
 
                     _queuesCache = result;
@@ -38,7 +38,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public IEnumerable<long> GetEnqueuedJobIds(string queue, int from, int perPage)
         {
-            return _storage.UseSession(session =>
+            return _storage.UseStatelessSession(session =>
             {
                 return session.Query<_JobQueue>()
                     .OrderBy(i => i.Id)
@@ -54,7 +54,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public IEnumerable<long> GetFetchedJobIds(string queue, int from, int perPage)
         {
             //return Enumerable.Empty<long>();
-            return _storage.UseSession(session =>
+            return _storage.UseStatelessSession(session =>
             {
                 return session.Query<_JobQueue>()
                     .Where(i => (i.FetchedAt != null) & (i.Queue == queue))
@@ -68,7 +68,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
         public EnqueuedAndFetchedCountDto GetEnqueuedAndFetchedCount(string queue)
         {
-            return _storage.UseSession(session =>
+            return _storage.UseStatelessSession(session =>
             {
                 var result = session.Query<_JobQueue>().Where(i => i.Queue == queue).Select(i => i.FetchedAt).ToList();
 

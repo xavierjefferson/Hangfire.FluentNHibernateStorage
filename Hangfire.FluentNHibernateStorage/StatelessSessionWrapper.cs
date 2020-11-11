@@ -6,33 +6,33 @@ using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
 {
-    public class SessionWrapper : IDisposable
+    public class StatelessSessionWrapper : IDisposable
     {
-        private readonly ISession _session;
+        private readonly IStatelessSession _session;
 
-        public SessionWrapper(ISession session, FluentNHibernateJobStorage storage)
+        public StatelessSessionWrapper(IStatelessSession session, FluentNHibernateJobStorage storage)
         {
             _session = session;
             Storage = storage;
         }
 
-        public FluentNHibernateJobStorage Storage { get; protected set; }
+        public FluentNHibernateJobStorage Storage { get; }
 
-        public IDbConnection Connection => _session.Connection;
 
         public void Dispose()
         {
             _session?.Dispose();
         }
 
-        public void DeleteAll<T>()
+
+        protected void ReleaseUnmanagedResources()
         {
-            ExecuteQuery(string.Format("delete from {0}", typeof(T).Name));
+            _session?.Dispose();
         }
 
-        public int ExecuteQuery(string queryString)
+        public void DeleteAll<T>()
         {
-            return CreateQuery(queryString).ExecuteUpdate();
+            _session.Query<T>().Delete();
         }
 
 
@@ -41,10 +41,6 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.BeginTransaction();
         }
 
-        public void Clear()
-        {
-            _session.Clear();
-        }
 
         public ITransaction BeginTransaction(IsolationLevel level)
         {
@@ -61,29 +57,14 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.CreateQuery(queryString);
         }
 
-        public void Evict(object x)
-        {
-            _session.Evict(x);
-        }
-
-        public ISQLQuery CreateSqlQuery(string queryString)
-        {
-            return _session.CreateSQLQuery(queryString);
-        }
-
         public void Insert(object x)
         {
-            _session.Save(x);
+            _session.Insert(x);
         }
 
         public void Update(object x)
         {
             _session.Update(x);
-        }
-
-        public void Flush()
-        {
-            _session.Flush();
         }
     }
 }

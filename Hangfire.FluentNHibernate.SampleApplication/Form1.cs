@@ -127,7 +127,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 : ProviderTypeEnum.MsSql2012;
             TableNamePrefixTextBox.Text = Settings.Default.TableNamePrefix;
 
-            TextBoxAppender.ConfigureTextBoxAppender(LoggerTextBox);
+            DataGridViewAppender.ConfigureTextBoxAppender(LoggerDataGridView, AutoScrollCheckBox);
             State = StateEnum.Stopped;
         }
 
@@ -141,6 +141,18 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         {
             Console.WriteLine(c);
             Thread.Sleep(1000 * c);
+        }
+
+        public static void OneTo100()
+        {
+            string parent = null;
+            for (var i = 0; i < 100; i++)
+            {
+                var k = i;
+                parent = i == 0
+                    ? BackgroundJob.Enqueue(() => Show(k))
+                    : BackgroundJob.ContinueJobWith(parent, () => Show(k));
+            }
         }
 
         private void StartButton_Click(object sender, EventArgs e)
@@ -183,15 +195,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());
-                    string parent = null;
-                    for (var i = 0; i < 100; i++)
-                    {
-                        var k = i;
-                        parent = i == 0
-                            ? BackgroundJob.Enqueue(() => Show(k))
-                            : BackgroundJob.ContinueJobWith(parent, () => Show(k));
-                    }
 
+                    BackgroundJob.Enqueue(() => OneTo100());
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
                     RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
                     RecurringJob.AddOrUpdate("h5", () => HelloWorld(DateTime.Now, 5), "*/5 * * * *");
