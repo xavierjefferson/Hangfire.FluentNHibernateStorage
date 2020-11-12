@@ -41,6 +41,7 @@ namespace Hangfire.FluentNHibernateStorage
                 DeleteJobItems, DeleteListItems, DeleteAggregatedCounterItems, DeleteSetItems, DeleteHashItems,
                 DeleteDistributedLockItems
             };
+
             Parallel.ForEach(actions, action =>
             {
                 try
@@ -52,7 +53,6 @@ namespace Hangfire.FluentNHibernateStorage
                     Logger.ErrorException("Error while deleting expired items", ex);
                 }
             });
-
 
             cancellationToken.WaitHandle.WaitOne(Storage.Options.JobExpirationCheckInterval);
         }

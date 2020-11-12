@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
     public class DataGridViewAppender : IAppender
     {
         private readonly object _lockObj = new object();
-        private readonly BindingList<LoggingEvent> _loggingEvents = new BindingList<LoggingEvent>();
+        private readonly BindingList<LoggingEventWrapper> _loggingEvents = new BindingList<LoggingEventWrapper>();
         private CheckBox _autoScrollCheckBox;
         private DataGridView _dataGrid;
 
@@ -26,17 +26,19 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             dataGrid.AutoGenerateColumns = false;
             _dataGrid.DataSource = _loggingEvents;
 
-            AddColumn(nameof(LoggingEvent.TimeStamp), "Timestamp",
+            AddColumn(nameof(LoggingEventWrapper.TimeStamp), "Timestamp",
                 column => { column.DefaultCellStyle.Format = "yyyy-MM-dd hh:mm:ss"; });
-            AddColumn(nameof(LoggingEvent.ThreadName), null,
+            AddColumn(nameof(LoggingEventWrapper.ThreadName), null,
                 column => { });
-            AddColumn(nameof(LoggingEvent.Level), null,
+            AddColumn(nameof(LoggingEventWrapper.Level), null,
                 column => { });
-            AddColumn(nameof(LoggingEvent.RenderedMessage), "Message",
+            AddColumn(nameof(LoggingEventWrapper.Message), "Message",
                 column => { });
-            AddColumn(nameof(LoggingEvent.LoggerName), null,
+            AddColumn(nameof(LoggingEventWrapper.LoggerName), null,
                 column => { });
-
+            AddColumn(nameof(LoggingEventWrapper.Exception), null,
+                column => { });
+         
             Name = "DataGridViewAppender";
         }
 
@@ -74,7 +76,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
 
                 lock (_lockObj)
                 {
-                    _loggingEvents.Add(loggingEvent);
+                    _loggingEvents.Add(new LoggingEventWrapper(loggingEvent));
                     DoRefresh();
                 }
 
@@ -123,5 +125,28 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             hierarchy.Root.Level = Level.Debug;
             hierarchy.Configured = true;
         }
+
+        private class LoggingEventWrapper
+        {
+             readonly LoggingEvent _loggingEvent;
+
+            public LoggingEventWrapper(LoggingEvent loggingEvent)
+            {
+                _loggingEvent = loggingEvent;
+            }
+
+            public string Message => _loggingEvent.RenderedMessage;
+
+            public string LoggerName => _loggingEvent.LoggerName;
+
+            public string ThreadName => _loggingEvent.ThreadName;
+
+            public Level Level => _loggingEvent.Level;
+
+            public string TimeStamp => _loggingEvent.TimeStamp.ToString("yyyy-MM-dd hh:mm:ss");
+
+            public string Exception => _loggingEvent.ExceptionObject == null ? null : _loggingEvent.ExceptionObject.Message;
+        }
+ 
     }
 }

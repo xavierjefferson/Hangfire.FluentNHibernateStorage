@@ -128,6 +128,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             TableNamePrefixTextBox.Text = Settings.Default.TableNamePrefix;
 
             DataGridViewAppender.ConfigureTextBoxAppender(LoggerDataGridView, AutoScrollCheckBox);
+            loggerNew.Error("This is an intentional exception", new Exception("Intentional exception object"));
             State = StateEnum.Stopped;
         }
 
@@ -182,7 +183,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());
-
+      
 
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
                     RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
@@ -201,6 +202,11 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 storage?.Dispose();
                 storage = null;
             }
+        }
+
+        public static void ThrowException()
+        {
+            throw new Exception("Intentional exception");
         }
 
         private void SaveConnectionString(ProviderTypeEnum providerType, string connectionString)
