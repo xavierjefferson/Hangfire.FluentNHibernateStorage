@@ -72,27 +72,30 @@ namespace Hangfire.FluentNHibernateStorage
         {
             return SqlUtil.WrapForTransaction(() => SqlUtil.WrapForDeadlock(_cancellationToken, () =>
             {
-                using (var session = _storage.GetStatelessSession())
+                lock (Mutex)
                 {
-                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                    using (var session = _storage.GetStatelessSession())
                     {
-                        var count = session.Query<_DistributedLock>()
-                            .Count(i => i.Resource == _resource);
-                        if (count == 0)
+                        using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
                         {
-                            var distributedLock = new _DistributedLock
+                            var count = session.Query<_DistributedLock>()
+                                .Count(i => i.Resource == _resource);
+                            if (count == 0)
                             {
-                                CreatedAt = session.Storage.UtcNow, Resource = _resource,
-                                ExpireAtAsLong = session.Storage.UtcNow.Add(_timeout).ToEpochDate()
-                            };
-                            session.Insert(distributedLock);
-                          
-                            _lockId = distributedLock.Id;
-                            transaction.Commit();
-                            if (Logger.IsDebugEnabled())
-                                Logger.DebugFormat("Created distributed lock for {0}",
-                                    JsonConvert.SerializeObject(distributedLock));
-                            return true;
+                                var distributedLock = new _DistributedLock
+                                {
+                                    CreatedAt = session.Storage.UtcNow, Resource = _resource,
+                                    ExpireAtAsLong = session.Storage.UtcNow.Add(_timeout).ToEpochDate()
+                                };
+                                session.Insert(distributedLock);
+
+                                _lockId = distributedLock.Id;
+                                transaction.Commit();
+                                if (Logger.IsDebugEnabled())
+                                    Logger.DebugFormat("Created distributed lock for {0}",
+                                        JsonConvert.SerializeObject(distributedLock));
+                                return true;
+                            }
                         }
                     }
                 }
@@ -107,14 +110,17 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 SqlUtil.WrapForDeadlock(_cancellationToken, () =>
                 {
-                    if (_lockId.HasValue)
-                        using (var session = _storage.GetStatelessSession())
-                        {
-                            session.Query<_DistributedLock>().Where(i => i.Id == _lockId).Delete();
-                          
-                            Logger.DebugFormat("Released distributed lock for {0}", _resource);
-                            _lockId = null;
-                        }
+                    lock (Mutex)
+                    {
+                        if (_lockId.HasValue)
+                            using (var session = _storage.GetStatelessSession())
+                            {
+                                session.Query<_DistributedLock>().Where(i => i.Id == _lockId).Delete();
+
+                                Logger.DebugFormat("Released distributed lock for {0}", _resource);
+                                _lockId = null;
+                            }
+                    }
                 }, _options);
             });
         }

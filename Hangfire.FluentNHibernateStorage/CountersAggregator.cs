@@ -31,36 +31,49 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("Aggregating records in '{0}' table", _tableName);
 
             long removedCount = int.MaxValue;
-            while (removedCount >= NumberOfRecordsInSinglePass && !cancellationToken.IsCancellationRequested)
-                _storage.UseStatelessSession(session =>
-                {
-                    using (var transaction = session.BeginTransaction())
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var fluentNHibernateDistributedLock = new FluentNHibernateDistributedLock(_storage,
+                    nameof(CountersAggregator), new TimeSpan(0, 0, 5), cancellationToken).Acquire();
+                if (fluentNHibernateDistributedLock == null)
+                    cancellationToken.WaitHandle.WaitOne(new TimeSpan(0, 0, 5));
+                else
+                    using (fluentNHibernateDistributedLock)
                     {
-                        var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
-                        var countersByName = counters.GroupBy(counter => counter.Key)
-                            .Select(i =>
-                                new
-                                {
-                                    i.Key,
-                                    value = i.Sum(counter => counter.Value),
-                                    expireAt = i.Max(counter => counter.ExpireAt)
-                                })
-                            .ToList();
+                        _storage.UseStatelessSession(session =>
+                        {
+                            using (var transaction = session.BeginTransaction())
+                            {
+                                var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
+                                if (!counters.Any()) return;
+                                var countersByName = counters.GroupBy(counter => counter.Key)
+                                    .Select(i =>
+                                        new
+                                        {
+                                            i.Key,
+                                            value = i.Sum(counter => counter.Value),
+                                            expireAt = i.Max(counter => counter.ExpireAt)
+                                        })
+                                    .ToList();
 
-                        foreach (var item in countersByName)
-                            session.UpsertEntity<_AggregatedCounter>(i => i.Key == item.Key && i.Value == item.value,
-                                n =>
-                                {
-                                    n.ExpireAt = item.expireAt;
-                                    n.Value += item.value;
-                                }, n => { n.Key = item.Key; });
+                                foreach (var item in countersByName)
+                                    session.UpsertEntity<_AggregatedCounter>(i => i.Key == item.Key,
+                                        n =>
+                                        {
+                                            n.ExpireAt = item.expireAt;
+                                            n.Value += item.value;
+                                        }, n => { n.Key = item.Key; });
 
-                        removedCount =
-                            session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id).ToArray());
-
-                        transaction.Commit();
+                                removedCount =
+                                    session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id)
+                                        .ToArray());
+                                if (removedCount == 0) return;
+                                transaction.Commit();
+                            }
+                        });
                     }
-                });
+            }
+
             Logger.DebugFormat("Done aggregating records in '{1}' table.  Waiting {0}",
                 _storage.Options.CountersAggregateInterval, _tableName);
 

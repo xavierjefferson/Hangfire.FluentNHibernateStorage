@@ -201,18 +201,20 @@ namespace Hangfire.FluentNHibernateStorage
             FluentNHibernateStorageOptions options)
         {
             while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     return safeAction();
                 }
                 catch (Exception ex)
                 {
-                    Logger.WarnException("WrapForDeadlock", ex);
                     if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
                         throw;
 
                     cancellationToken.WaitHandle.WaitOne(options.DeadlockRetryInterval);
                 }
+            }
         }
 #if !DEBUG
 [System.Diagnostics.DebuggerHidden]

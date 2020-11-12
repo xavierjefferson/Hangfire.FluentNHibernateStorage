@@ -143,17 +143,6 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             Thread.Sleep(1000 * c);
         }
 
-        public static void OneTo100()
-        {
-            string parent = null;
-            for (var i = 0; i < 100; i++)
-            {
-                var k = i;
-                parent = i == 0
-                    ? BackgroundJob.Enqueue(() => Show(k))
-                    : BackgroundJob.ContinueJobWith(parent, () => Show(k));
-            }
-        }
 
         private void StartButton_Click(object sender, EventArgs e)
         {
@@ -189,14 +178,12 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                     GlobalConfiguration.Configuration.UseLog4NetLogProvider()
                         .UseStorage(storage);
 
-                    _timer = new Timer(60000);
-                    _timer.Elapsed += (a, b) => { BackgroundJob.Enqueue(() => Display(Guid.NewGuid().ToString())); };
-                    _timer.Start();
+
                     /*THIS LINE STARTS THE BACKGROUND SERVER*/
                     _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
                         storage.GetBackgroundProcesses());
 
-                    BackgroundJob.Enqueue(() => OneTo100());
+
                     /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
                     RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
                     RecurringJob.AddOrUpdate("h5", () => HelloWorld(DateTime.Now, 5), "*/5 * * * *");
