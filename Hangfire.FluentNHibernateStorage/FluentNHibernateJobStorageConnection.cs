@@ -96,8 +96,9 @@ namespace Hangfire.FluentNHibernateStorage
                 session.UpsertEntity<_JobParameter>(i => i.Name == name && i.Id == converter.Value,
                     z => { z.Value = value; }, z =>
                     {
-                        z.Id = converter.Value;
+                        
                         z.Name = name;
+                        z.Job = new _Job {Id = converter.Value};
                     });
             });
         }
