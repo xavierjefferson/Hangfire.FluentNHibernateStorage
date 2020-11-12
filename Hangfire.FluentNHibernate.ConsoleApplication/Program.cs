@@ -3,6 +3,7 @@ using System.Data.SQLite;
 using System.IO;
 using Hangfire.FluentNHibernateStorage;
 using Serilog;
+using Serilog.Events;
 using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernate.ConsoleApplication
@@ -19,7 +20,7 @@ namespace Hangfire.FluentNHibernate.ConsoleApplication
         private static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console()
+                .WriteTo.Console(restrictedToMinimumLevel:LogEventLevel.Debug)
                 .CreateLogger();
 
             var database = new FileInfo(Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".sqlite"));
