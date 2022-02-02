@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Server;
@@ -10,6 +11,8 @@ namespace Hangfire.FluentNHibernateStorage
 #pragma warning disable 618
     public class CountersAggregator : IBackgroundProcess, IServerComponent
     {
+        private static readonly TimeSpan DelayBetweenPasses = TimeSpan.FromMilliseconds(500);
+
         private const int NumberOfRecordsInSinglePass = 1000;
         private static readonly ILog Logger = LogProvider.For<CountersAggregator>();
         private readonly string _tableName;
@@ -26,58 +29,58 @@ namespace Hangfire.FluentNHibernateStorage
             Execute(context.StoppedToken);
         }
 
+        private DateTime? MaxOfDateTimes(DateTime? a, DateTime? b)
+        {
+            if (a == null) return b;
+            if (b == null) return a;
+            return a.Value > b.Value ? a.Value : b.Value;
+        }
+
         public void Execute(CancellationToken cancellationToken)
         {
             Logger.DebugFormat("Aggregating records in '{0}' table", _tableName);
 
-            long removedCount = int.MaxValue;
-            while (!cancellationToken.IsCancellationRequested)
+            long removedCount = 0;
+            do
             {
-                var fluentNHibernateDistributedLock = new FluentNHibernateDistributedLock(_storage,
-                    nameof(CountersAggregator), new TimeSpan(0, 0, 5), cancellationToken).Acquire();
-                if (fluentNHibernateDistributedLock == null)
-                    cancellationToken.WaitHandle.WaitOne(new TimeSpan(0, 0, 5));
-                else
-                    using (fluentNHibernateDistributedLock)
+                _storage.UseStatelessSessionInTransaction(session =>
+                {
+                    var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
+                    if (counters.Any())
                     {
-                        _storage.UseStatelessSession(session =>
-                        {
-                            using (var transaction = session.BeginTransaction())
-                            {
-                                var counters = session.Query<_Counter>().Take(NumberOfRecordsInSinglePass).ToList();
-                                if (!counters.Any()) return;
-                                var countersByName = counters.GroupBy(counter => counter.Key)
-                                    .Select(i =>
-                                        new
-                                        {
-                                            i.Key,
-                                            value = i.Sum(counter => counter.Value),
-                                            expireAt = i.Max(counter => counter.ExpireAt)
-                                        })
-                                    .ToList();
+                        var countersByName = counters.GroupBy(counter => counter.Key)
+                            .Select(i =>
+                                new
+                                {
+                                    i.Key,
+                                    value = i.Sum(counter => counter.Value),
+                                    expireAt = i.Max(counter => counter.ExpireAt)
+                                })
+                            .ToList();
 
-                                foreach (var item in countersByName)
-                                    session.UpsertEntity<_AggregatedCounter>(i => i.Key == item.Key,
-                                        n =>
-                                        {
-                                            n.ExpireAt = item.expireAt;
-                                            n.Value += item.value;
-                                        }, n => { n.Key = item.Key; });
+                        foreach (var item in countersByName)
+                            session.UpsertEntity<_AggregatedCounter>(i => i.Key == item.Key,
+                                n =>
+                                {
+                                    n.ExpireAt = MaxOfDateTimes(n.ExpireAt, item.expireAt);
+                                    n.Value += item.value;
+                                }, n => { n.Key = item.Key; });
 
-                                removedCount =
-                                    session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id)
-                                        .ToArray());
-                                if (removedCount == 0) return;
-                                transaction.Commit();
-                            }
-                        });
+                        removedCount =
+                            session.DeleteByInt32Id<_Counter>(counters.Select(counter => counter.Id)
+                                .ToArray());
                     }
-            }
+                });
+                if (removedCount >= NumberOfRecordsInSinglePass)
+                {
+                    cancellationToken.Wait(DelayBetweenPasses);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            } while (removedCount >= NumberOfRecordsInSinglePass);
 
-            Logger.DebugFormat("Done aggregating records in '{1}' table.  Waiting {0}",
-                _storage.Options.CountersAggregateInterval, _tableName);
+            Logger.TraceFormat($"Records from the '{_tableName}' aggregated.");
 
-            cancellationToken.WaitHandle.WaitOne(_storage.Options.CountersAggregateInterval);
+            cancellationToken.Wait(_storage.Options.CountersAggregateInterval);
         }
 
         public override string ToString()

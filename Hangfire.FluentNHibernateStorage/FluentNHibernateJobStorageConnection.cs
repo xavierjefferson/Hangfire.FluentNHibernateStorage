@@ -29,7 +29,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public override IDisposable AcquireDistributedLock(string resource, TimeSpan timeout)
         {
-            return new FluentNHibernateDistributedLock(Storage, resource, timeout).Acquire();
+            return FluentNHibernateDistributedLock.Acquire(Storage, resource, timeout);
         }
 
         public override string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt,
@@ -42,7 +42,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             Logger.DebugFormat("CreateExpiredJob={0}", SerializationHelper.Serialize(invocationData));
 
-            return Storage.UseStatelessTransaction(session =>
+            return Storage.UseStatelessSessionInTransaction(session =>
             {
                 var jobEntity = new _Job
                 {
@@ -91,7 +91,7 @@ namespace Hangfire.FluentNHibernateStorage
             var converter = StringToInt32Converter.Convert(id);
             if (!converter.Valid) return;
 
-            Storage.UseStatelessTransaction(session =>
+            Storage.UseStatelessSessionInTransaction(session =>
             {
                 session.UpsertEntity<_JobParameter>(i => i.Name == name && i.Id == converter.Value,
                     z => { z.Value = value; }, z =>
@@ -193,7 +193,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (serverId == null) throw new ArgumentNullException(nameof(serverId));
             if (context == null) throw new ArgumentNullException(nameof(context));
 
-            Storage.UseStatelessTransaction(session =>
+            Storage.UseStatelessSessionInTransaction(session =>
             {
                 var data = SerializationHelper.Serialize(new ServerData
                 {
@@ -405,7 +405,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
 
-            Storage.UseStatelessTransaction(session =>
+            Storage.UseStatelessSessionInTransaction(session =>
             {
                 foreach (var keyValuePair in keyValuePairs)
                     session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,

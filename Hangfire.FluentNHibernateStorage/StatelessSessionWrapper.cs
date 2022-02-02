@@ -24,27 +24,9 @@ namespace Hangfire.FluentNHibernateStorage
             _session?.Dispose();
         }
 
-
-        protected void ReleaseUnmanagedResources()
-        {
-            _session?.Dispose();
-        }
-
         public void DeleteAll<T>()
         {
             _session.Query<T>().Delete();
-        }
-
-
-        public ITransaction BeginTransaction()
-        {
-            return _session.BeginTransaction();
-        }
-
-
-        public ITransaction BeginTransaction(IsolationLevel level)
-        {
-            return _session.BeginTransaction(level);
         }
 
         public IQueryable<T> Query<T>()
@@ -57,14 +39,14 @@ namespace Hangfire.FluentNHibernateStorage
             return _session.CreateQuery(queryString);
         }
 
-        public void Insert(object x)
+        public void Insert(object entity)
         {
-            _session.Insert(x);
+            _session.Insert(entity);
         }
 
-        public void Update(object x)
+        public void Update(object entity)
         {
-            _session.Update(x);
+            _session.Update(entity);
         }
     }
 }

@@ -42,24 +42,24 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
         public void RemoveFromQueue()
         {
             Logger.DebugFormat("RemoveFromQueue JobId={0}", JobId);
-            using (var session = _storage.GetStatelessSession())
+            _storage.UseStatelessSession(session =>
             {
                 session.Query<_JobQueue>().Where(i => i.Id == _id).Delete();
-            }
-
+            });
+            
             _removedFromQueue = true;
         }
 
         public void Requeue()
         {
             Logger.DebugFormat("Requeue JobId={0}", JobId);
-            using (var session = _storage.GetStatelessSession())
+            _storage.UseStatelessSession(session =>
             {
                 session.CreateQuery(SqlUtil.UpdateJobQueueFetchedAtStatement)
                     .SetParameter(SqlUtil.ValueParameterName, null)
                     .SetParameter(SqlUtil.IdParameterName, _id)
                     .ExecuteUpdate();
-            }
+            });
 
             _requeued = true;
         }

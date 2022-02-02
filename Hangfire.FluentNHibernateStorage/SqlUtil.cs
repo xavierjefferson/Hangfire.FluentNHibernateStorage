@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
@@ -212,7 +213,7 @@ namespace Hangfire.FluentNHibernateStorage
                     if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
                         throw;
 
-                    cancellationToken.WaitHandle.WaitOne(options.DeadlockRetryInterval);
+                    cancellationToken.Wait(options.DeadlockRetryInterval);
                 }
             }
         }

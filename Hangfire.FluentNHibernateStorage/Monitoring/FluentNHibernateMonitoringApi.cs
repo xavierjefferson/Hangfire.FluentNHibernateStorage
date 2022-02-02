@@ -35,7 +35,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 var enqueuedJobIds = tuple.Monitoring.GetEnqueuedJobIds(tuple.Queue, 0, 5);
                 var counters = tuple.Monitoring.GetEnqueuedAndFetchedCount(tuple.Queue);
 
-                var firstJobs = _storage.UseStatelessTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
+                var firstJobs = _storage.UseStatelessSessionInTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
 
                 result.Add(new QueueWithTopEnqueuedJobsDto
                 {
@@ -70,7 +70,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                 return result;
             };
-            return _storage.UseStatelessTransaction(action);
+            return _storage.UseStatelessSessionInTransaction(action);
         }
 
         public JobDetailsDto JobDetails(string jobId)
@@ -81,7 +81,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 return null;
             }
 
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
             {
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job == null) return null;
@@ -114,7 +114,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         public StatisticsDto GetStatistics()
         {
             var statistics =
-                _storage.UseStatelessTransaction(session =>
+                _storage.UseStatelessSessionInTransaction(session =>
                 {
                     var statesDictionary = session.Query<_Job>()
                         .Where(i => i.StateName != null && i.StateName.Length > 0)
@@ -165,7 +165,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var queueApi = GetQueueApi(queue);
             var enqueuedJobIds = queueApi.GetEnqueuedJobIds(queue, from, perPage);
 
-            return _storage.UseStatelessTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
+            return _storage.UseStatelessSessionInTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
         }
 
         public JobList<FetchedJobDto> FetchedJobs(string queue, int from, int perPage)
@@ -173,12 +173,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             var queueApi = GetQueueApi(queue);
             var fetchedJobIds = queueApi.GetFetchedJobIds(queue, from, perPage);
 
-            return _storage.UseStatelessTransaction(session => FetchedJobs(session, fetchedJobIds));
+            return _storage.UseStatelessSessionInTransaction(session => FetchedJobs(session, fetchedJobIds));
         }
 
         public JobList<ProcessingJobDto> ProcessingJobs(int from, int count)
         {
-            return _storage.UseStatelessTransaction(session => GetJobs(
+            return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
                 @from, count,
                 ProcessingState.StateName,
@@ -192,7 +192,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<ScheduledJobDto> ScheduledJobs(int from, int count)
         {
-            return _storage.UseStatelessTransaction(session => GetJobs(
+            return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
                 @from, count,
                 ScheduledState.StateName,
@@ -206,7 +206,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<SucceededJobDto> SucceededJobs(int from, int count)
         {
-            return _storage.UseStatelessTransaction(session => GetJobs(
+            return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
                 @from,
                 count,
@@ -225,7 +225,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<FailedJobDto> FailedJobs(int from, int count)
         {
-            return _storage.UseStatelessTransaction(session => GetJobs(
+            return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
                 @from,
                 count,
@@ -243,7 +243,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public JobList<DeletedJobDto> DeletedJobs(int from, int count)
         {
-            return _storage.UseStatelessTransaction(session => GetJobs(
+            return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
                 @from,
                 count,
@@ -257,7 +257,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public long ScheduledCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetNumberOfJobsByStateName(session, ScheduledState.StateName));
         }
 
@@ -279,49 +279,49 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public long FailedCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetNumberOfJobsByStateName(session, FailedState.StateName));
         }
 
         public long ProcessingCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetNumberOfJobsByStateName(session, ProcessingState.StateName));
         }
 
         public long SucceededListCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetNumberOfJobsByStateName(session, SucceededState.StateName));
         }
 
         public long DeletedListCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetNumberOfJobsByStateName(session, DeletedState.StateName));
         }
 
         public IDictionary<DateTime, long> SucceededByDatesCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetTimelineStats(session, "succeeded"));
         }
 
         public IDictionary<DateTime, long> FailedByDatesCount()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetTimelineStats(session, "failed"));
         }
 
         public IDictionary<DateTime, long> HourlySucceededJobs()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetHourlyTimelineStats(session, "succeeded"));
         }
 
         public IDictionary<DateTime, long> HourlyFailedJobs()
         {
-            return _storage.UseStatelessTransaction(session =>
+            return _storage.UseStatelessSessionInTransaction(session =>
                 GetHourlyTimelineStats(session, "failed"));
         }
 

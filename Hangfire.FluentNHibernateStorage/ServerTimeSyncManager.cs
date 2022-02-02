@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
+using Hangfire.Common;
 using Hangfire.Server;
 using Snork.FluentNHibernateTools;
 
@@ -28,7 +29,7 @@ namespace Hangfire.FluentNHibernateStorage
                 _storage.UtcOffset = UtcDateHelper.GetUtcOffset(session, _storage.ProviderType);
             }
 
-            cancellationToken.WaitHandle.WaitOne(_storage.Options.DbmsTimeSyncInterval);
+            cancellationToken.Wait(_storage.Options.DbmsTimeSyncInterval);
         }
 #pragma warning restore 618
     }

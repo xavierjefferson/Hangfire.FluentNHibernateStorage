@@ -1,10 +1,11 @@
 using System;
-using System.Data;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
-using Newtonsoft.Json;
+using Hangfire.Storage;
 using NHibernate.Linq;
 
 namespace Hangfire.FluentNHibernateStorage
@@ -20,7 +21,7 @@ namespace Hangfire.FluentNHibernateStorage
         private readonly TimeSpan _timeout;
         private int? _lockId;
 
-        public FluentNHibernateDistributedLock(FluentNHibernateJobStorage storage, string resource, TimeSpan timeout,
+        private FluentNHibernateDistributedLock(FluentNHibernateJobStorage storage, string resource, TimeSpan timeout,
             CancellationToken? cancellationToken = null)
         {
             Logger.DebugFormat("{2} resource={0}, timeout={1}", resource, timeout, GetType().Name);
@@ -50,6 +51,15 @@ namespace Hangfire.FluentNHibernateStorage
                 Release();
         }
 
+        public static FluentNHibernateDistributedLock Acquire(FluentNHibernateJobStorage storage, string resource,
+            TimeSpan timeout,
+            CancellationToken? cancellationToken = null)
+        {
+            var tmp = new FluentNHibernateDistributedLock(storage, resource, timeout, cancellationToken);
+            tmp.Initialize();
+            return tmp;
+        }
+
         private T TryLock<T>(Func<T> funcTaken, Func<T> notTaken)
         {
             var timeout = _options.QueuePollInterval;
@@ -70,56 +80,69 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal FluentNHibernateDistributedLock Acquire()
+        internal void Initialize()
         {
-            var finish = DateTime.UtcNow.Add(_timeout);
+            var started = Stopwatch.StartNew();
 
-            while (!_cancellationToken.IsCancellationRequested && finish > DateTime.UtcNow)
+            do
             {
                 if (SqlUtil.WrapForTransaction(() => SqlUtil.WrapForDeadlock(_cancellationToken, () =>
                 {
-                    _cancellationToken.WaitHandle.WaitOne(new TimeSpan(0, 0, 1));
-
                     var done = TryLock(() =>
                     {
-                        using (var session = _storage.GetStatelessSession())
+                        var result = false;
+                        _storage.UseStatelessSessionInTransaction(session =>
                         {
-                            using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                            var distributedLock = session.Query<_DistributedLock>()
+                                .FirstOrDefault(i => i.Resource == _resource);
+
+                            var utcNow = session.Storage.UtcNow;
+                            var expireAtAsLong = utcNow.Add(_timeout).ToEpochDate();
+                            if (distributedLock == null)
                             {
-                                var count = session.Query<_DistributedLock>()
-                                    .Count(i => i.Resource == _resource);
-                                if (count == 0)
+                                distributedLock = new _DistributedLock
                                 {
-                                    var distributedLock = new _DistributedLock
-                                    {
-                                        CreatedAt = session.Storage.UtcNow, Resource = _resource,
-                                        ExpireAtAsLong = session.Storage.UtcNow.Add(_timeout).ToEpochDate()
-                                    };
-                                    session.Insert(distributedLock);
+                                    CreatedAt = utcNow,
+                                    Resource = _resource,
+                                    ExpireAtAsLong = expireAtAsLong
+                                };
+                                session.Insert(distributedLock);
 
-                                    _lockId = distributedLock.Id;
-                                    transaction.Commit();
-                                    if (Logger.IsDebugEnabled())
-                                        Logger.DebugFormat("Created distributed lock for {0}",
-                                            JsonConvert.SerializeObject(distributedLock));
-                                    return true;
-                                }
+                                _lockId = distributedLock.Id;
+                                result = true;
+                                if (Logger.IsDebugEnabled())
+                                    Logger.Debug($"Inserted row for distributed lock '{_resource}'");
                             }
-
-                            return false;
-                        }
+                            else if (distributedLock.ExpireAtAsLong < utcNow.ToEpochDate())
+                            {
+                                distributedLock.CreatedAt = utcNow;
+                                distributedLock.ExpireAtAsLong = expireAtAsLong;
+                                session.Update(distributedLock);
+                                if (Logger.IsDebugEnabled())
+                                    Logger.Debug($"Re-used row for distributed lock '{_resource}'");
+                                _lockId = distributedLock.Id;
+                                result = true;
+                            }
+                        });
+                        return result;
                     }, () => false);
                     return done;
                 }, _options)))
                 {
-                    Logger.DebugFormat("Granted distributed lock for {0}", _resource);
-                    return this;
+                    if (Logger.IsDebugEnabled())
+                        Logger.DebugFormat("Granted distributed lock '{0}'", _resource);
+                    return;
                 }
 
-                _cancellationToken.WaitHandle.WaitOne(_options.DistributedLockPollInterval);
-            }
+                if (started.Elapsed > _timeout) break;
+                if (Logger.IsDebugEnabled())
+                    Logger.Debug(
+                        $"Will poll for distributed lock '{_resource}' in {_options.DistributedLockPollInterval}.");
+                _cancellationToken.Wait(_options.DistributedLockPollInterval);
+            } while (true);
 
-            return null;
+            //dont change this.  Hangfire looks for resource name in exception properties
+            throw new DistributedLockTimeoutException(_resource);
         }
 
 
@@ -132,13 +155,13 @@ namespace Hangfire.FluentNHibernateStorage
                     lock (Mutex)
                     {
                         if (_lockId.HasValue)
-                            using (var session = _storage.GetStatelessSession())
+                            _storage.UseStatelessSession(session =>
                             {
                                 session.Query<_DistributedLock>().Where(i => i.Id == _lockId).Delete();
 
                                 Logger.DebugFormat("Released distributed lock for {0}", _resource);
                                 _lockId = null;
-                            }
+                            });
                     }
                 }, _options);
             });

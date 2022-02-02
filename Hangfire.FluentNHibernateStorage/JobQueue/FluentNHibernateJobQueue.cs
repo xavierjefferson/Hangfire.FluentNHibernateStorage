@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Data;
 using System.Linq;
 using System.Threading;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.Logging;
 using Hangfire.Storage;
@@ -30,68 +30,61 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                var fluentNHibernateDistributedLock = new FluentNHibernateDistributedLock(_storage, "JobQueue",
-                        _storage.Options.JobQueueDistributedLockTimeout)
-                    .Acquire();
-                if (fluentNHibernateDistributedLock == null)
+                try
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return null;
-                    }
-                    cancellationToken.WaitHandle.WaitOne(_storage.Options.QueuePollInterval);
-                }
-                else
+                    var fluentNHibernateDistributedLock = FluentNHibernateDistributedLock.Acquire(_storage, "JobQueue",
+                        _storage.Options.JobQueueDistributedLockTimeout);
                     using (fluentNHibernateDistributedLock)
                     {
                         var fluentNHibernateFetchedJob = SqlUtil.WrapForTransaction(() =>
                         {
-                            var token = Guid.NewGuid().ToString();
-
-
-                            using (var session = _storage.GetStatelessSession())
+                            return _storage.UseStatelessSessionInTransaction(session =>
                             {
-                                using (var transaction =
-                                    session.BeginTransaction(IsolationLevel.Serializable))
+                                var jobQueueFetchedAt = _storage.UtcNow;
+
+                                var cutoff = jobQueueFetchedAt.AddSeconds(timeoutSeconds);
+                                if (Logger.IsDebugEnabled())
+                                    Logger.Debug(string.Format("Getting jobs where {0}=null or {0}<{1}",
+                                        nameof(_JobQueue.FetchedAt), cutoff));
+
+                                var jobQueue = session.Query<_JobQueue>()
+                                    .FirstOrDefault(i =>
+                                        (i.FetchedAt == null
+                                         || i.FetchedAt < cutoff) && queues.Contains(i.Queue));
+                                if (jobQueue != null)
                                 {
-                                    var jobQueueFetchedAt = _storage.UtcNow;
+                                    jobQueue.FetchToken = Guid.NewGuid().ToString();
+                                    jobQueue.FetchedAt = jobQueueFetchedAt;
+                                    session.Update(jobQueue);
 
-                                    var cutoff = jobQueueFetchedAt.AddSeconds(timeoutSeconds);
-                                    if (Logger.IsDebugEnabled())
-                                        Logger.Debug(string.Format("Getting jobs where {0}=null or {0}<{1}",
-                                            nameof(_JobQueue.FetchedAt), cutoff));
 
-                                    var jobQueue = session.Query<_JobQueue>()
-                                        .FirstOrDefault(i =>
-                                            (i.FetchedAt == null
-                                             || i.FetchedAt < cutoff) && queues.Contains(i.Queue));
-                                    if (jobQueue != null)
+                                    Logger.DebugFormat("Dequeued job id {0} from queue {1}",
+                                        jobQueue.Job.Id,
+                                        jobQueue.Queue);
+                                    var fetchedJob = new FetchedJob
                                     {
-                                        jobQueue.FetchToken = token;
-                                        jobQueue.FetchedAt = jobQueueFetchedAt;
-                                        session.Update(jobQueue);
-                                        transaction.Commit();
-
-
-                                        Logger.DebugFormat("Dequeued job id {0} from queue {1}",
-                                            jobQueue.Job.Id,
-                                            jobQueue.Queue);
-                                        var fetchedJob = new FetchedJob
-                                        {
-                                            Id = jobQueue.Id,
-                                            JobId = jobQueue.Job.Id,
-                                            Queue = jobQueue.Queue
-                                        };
-                                        return new FluentNHibernateFetchedJob(_storage, fetchedJob);
-                                    }
+                                        Id = jobQueue.Id,
+                                        JobId = jobQueue.Job.Id,
+                                        Queue = jobQueue.Queue
+                                    };
+                                    return new FluentNHibernateFetchedJob(_storage, fetchedJob);
                                 }
-                            }
 
-                            return null;
+
+                                return null;
+                            });
                         });
                         if (fluentNHibernateFetchedJob != null)
                             return fluentNHibernateFetchedJob;
                     }
+                }
+                catch (DistributedLockTimeoutException)
+                {
+                    Logger.Debug("Distributed lock timeout was exceeded");
+                }
+
+
+                cancellationToken.Wait(_storage.Options.QueuePollInterval);
             }
 
             return null;
@@ -108,7 +101,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 Job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value),
                 Queue = queue
             });
-            
+
             Logger.DebugFormat("Enqueued JobId={0} Queue={1}", jobId, queue);
         }
     }

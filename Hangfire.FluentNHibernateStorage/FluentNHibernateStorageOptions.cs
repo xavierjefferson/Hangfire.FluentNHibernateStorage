@@ -21,7 +21,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private IObjectRenamer _objectRenamer;
         private TimeSpan _transactionTimeout;
-
+        public int DeleteExpiredBatchSize { get; set; } = 1000;
         public FluentNHibernateStorageOptions()
         {
             TransactionIsolationLevel = IsolationLevel.Serializable;
@@ -33,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage
             TransactionTimeout = TimeSpan.FromMinutes(1);
             InvisibilityTimeout = TimeSpan.FromMinutes(15);
             JobQueueDistributedLockTimeout = TimeSpan.FromMinutes(1);
-            DistributedLockPollInterval = TimeSpan.FromMilliseconds(100);
+            DistributedLockPollInterval = TimeSpan.FromSeconds(15);
             DeadlockRetryInterval = TimeSpan.FromSeconds(1);
 #pragma warning disable 618
             DbmsTimeSyncInterval = TimeSpan.FromMinutes(5);

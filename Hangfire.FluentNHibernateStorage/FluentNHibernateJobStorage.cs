@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Transactions;
@@ -18,7 +17,6 @@ using NHibernate;
 using NHibernate.Metadata;
 using NHibernate.Persister.Entity;
 using Snork.FluentNHibernateTools;
-using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Hangfire.FluentNHibernateStorage
 {
@@ -110,27 +108,22 @@ namespace Hangfire.FluentNHibernateStorage
         {
             try
             {
-                using (var session = GetStatelessSession())
+                UseStatelessSessionInTransaction(session =>
                 {
-                    using (var transaction = session.BeginTransaction(IsolationLevel.Serializable))
+                    var count = session.Query<_Dual>().Count();
+                    switch (count)
                     {
-                        var count = session.Query<_Dual>().Count();
-                        switch (count)
-                        {
-                            case 1:
-                                return;
-                            case 0:
-                                session.Insert(new _Dual {Id = 1});
-                                break;
-                            default:
-                                session.DeleteByInt32Id<_Dual>(
-                                    session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
-                                break;
-                        }
-
-                        transaction.Commit();
+                        case 1:
+                            return;
+                        case 0:
+                            session.Insert(new _Dual {Id = 1});
+                            break;
+                        default:
+                            session.DeleteByInt32Id<_Dual>(
+                                session.Query<_Dual>().Skip(1).Select(i => i.Id).ToList());
+                            break;
                     }
-                }
+                });
             }
             catch (Exception ex)
             {
@@ -156,11 +149,6 @@ namespace Hangfire.FluentNHibernateStorage
 
 #pragma warning restore 618
 
-        public List<IBackgroundProcess> GetBackgroundProcesses()
-        {
-            return new List<IBackgroundProcess> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
-        }
-
 
         public override void WriteOptionsToLog(ILog logger)
         {
@@ -181,15 +169,7 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 
-        public IEnumerable ExecuteHqlQuery(string hql)
-        {
-            using (var session = GetStatelessSession())
-            {
-                return session.CreateQuery(hql).List();
-            }
-        }
-
-        internal T UseStatelessTransaction<T>([InstantHandle] Func<StatelessSessionWrapper, T> func)
+        internal T UseStatelessSessionInTransaction<T>([InstantHandle] Func<StatelessSessionWrapper, T> func)
         {
             using (var transaction = CreateTransaction())
             {
@@ -199,12 +179,12 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        internal void UseStatelessTransaction([InstantHandle] Action<StatelessSessionWrapper> action)
+        internal void UseStatelessSessionInTransaction([InstantHandle] Action<StatelessSessionWrapper> action)
         {
-            UseStatelessSession(statelessSession =>
+            UseStatelessSessionInTransaction(statelessSessionWrapper =>
             {
-                action(statelessSession);
-                return true;
+                action(statelessSessionWrapper);
+                return false;
             });
         }
 
@@ -219,24 +199,6 @@ namespace Hangfire.FluentNHibernateStorage
                 });
         }
 
-        public void ResetAll()
-        {
-            using (var session = GetStatelessSession())
-            {
-                session.DeleteAll<_List>();
-                session.DeleteAll<_Hash>();
-                session.DeleteAll<_Set>();
-                session.DeleteAll<_Server>();
-                session.DeleteAll<_JobQueue>();
-                session.DeleteAll<_JobParameter>();
-                session.DeleteAll<_JobState>();
-                session.DeleteAll<_Job>();
-                session.DeleteAll<_Counter>();
-                session.DeleteAll<_AggregatedCounter>();
-                session.DeleteAll<_DistributedLock>();
-            }
-        }
-
 
         public void UseStatelessSession([InstantHandle] Action<StatelessSessionWrapper> action)
         {
@@ -245,17 +207,16 @@ namespace Hangfire.FluentNHibernateStorage
                 action(session);
             }
         }
-        
+
         public T UseStatelessSession<T>([InstantHandle] Func<StatelessSessionWrapper, T> func)
         {
             using (var session = GetStatelessSession())
             {
-                var result = func(session);
-                return result;
+                return func(session);
             }
         }
 
-        public StatelessSessionWrapper GetStatelessSession()
+        private StatelessSessionWrapper GetStatelessSession()
         {
             return new StatelessSessionWrapper(_sessionFactory.OpenStatelessSession(), this);
         }

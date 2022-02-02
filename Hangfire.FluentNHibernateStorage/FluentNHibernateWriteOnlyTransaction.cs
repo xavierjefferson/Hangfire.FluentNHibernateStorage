@@ -56,7 +56,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             AcquireJobLock();
 
-            QueueCommand(session =>
+            AddCommand(session =>
                 session.CreateQuery(SqlUtil.UpdateJobExpireAtStatement)
                     .SetParameter(SqlUtil.IdParameterName, converter.Value)
                     .SetParameter(SqlUtil.ValueParameterName, session.Storage.UtcNow.Add(expireIn))
@@ -71,7 +71,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             AcquireJobLock();
 
-            QueueCommand(session =>
+            AddCommand(session =>
                 session.CreateQuery(SqlUtil.UpdateJobExpireAtStatement)
                     .SetParameter(SqlUtil.ValueParameterName, null)
                     .SetParameter(SqlUtil.IdParameterName, converter.Value)
@@ -86,7 +86,7 @@ namespace Hangfire.FluentNHibernateStorage
 
             AcquireStateLock();
             AcquireJobLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job != null)
@@ -120,7 +120,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (!converter.Valid) return;
 
             AcquireStateLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 session.Insert(new _JobState
                 {
@@ -140,7 +140,7 @@ namespace Hangfire.FluentNHibernateStorage
             var provider = _storage.QueueProviders.GetProvider(queue);
             var persistentQueue = provider.GetJobQueue();
 
-            QueueCommand(session => persistentQueue.Enqueue(session, queue, jobId));
+            AddCommand(session => persistentQueue.Enqueue(session, queue, jobId));
         }
 
         public override void IncrementCounter(string key)
@@ -159,7 +159,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("InsertCounter key={0}, expireIn={1}", key, expireIn);
 
             AcquireCounterLock();
-            QueueCommand(session =>
+            AddCommand(session =>
                 session.Insert(new _Counter
                 {
                     Key = key,
@@ -188,7 +188,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("AddToSet key={0} value={1}", key, value);
 
             AcquireSetLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 session.UpsertEntity<_Set>(i => i.Key == key && i.Value == value, i => i.Score = score, i =>
                 {
@@ -206,7 +206,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (items == null) throw new ArgumentNullException(nameof(items));
 
             AcquireSetLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 foreach (var i in items) session.Insert(new _Set {Key = key, Value = i, Score = 0});
             });
@@ -218,7 +218,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("RemoveFromSet key={0} value={1}", key, value);
 
             AcquireSetLock();
-            QueueCommand(session => { DeleteByKeyValue<_Set>(key, value, session); });
+            AddCommand(session => { DeleteByKeyValue<_Set>(key, value, session); });
         }
 
         public override void ExpireSet(string key, TimeSpan expireIn)
@@ -228,7 +228,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
-            QueueCommand(session => { SetExpireAt<_Set>(key, session.Storage.UtcNow.Add(expireIn), session); });
+            AddCommand(session => { SetExpireAt<_Set>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void InsertToList(string key, string value)
@@ -236,7 +236,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("InsertToList key={0} value={1}", key, value);
 
             AcquireListLock();
-            QueueCommand(session => session.Insert(new _List {Key = key, Value = value}));
+            AddCommand(session => session.Insert(new _List {Key = key, Value = value}));
         }
 
 
@@ -247,7 +247,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("ExpireList key={0} expirein={1}", key, expireIn);
 
             AcquireListLock();
-            QueueCommand(session => { SetExpireAt<_List>(key, session.Storage.UtcNow.Add(expireIn), session); });
+            AddCommand(session => { SetExpireAt<_List>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveFromList(string key, string value)
@@ -255,7 +255,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("RemoveFromList key={0} value={1}", key, value);
 
             AcquireListLock();
-            QueueCommand(session => { DeleteByKeyValue<_List>(key, value, session); });
+            AddCommand(session => { DeleteByKeyValue<_List>(key, value, session); });
         }
 
         public override void TrimList(string key, int keepStartingFrom, int keepEndingAt)
@@ -263,7 +263,7 @@ namespace Hangfire.FluentNHibernateStorage
             Logger.DebugFormat("TrimList key={0} from={1} to={2}", key, keepStartingFrom, keepEndingAt);
 
             AcquireListLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 var idList = session.Query<_List>()
                     .OrderBy(i => i.Id)
@@ -283,7 +283,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
-            QueueCommand(session => { SetExpireAt<_Hash>(key, null, session); });
+            AddCommand(session => { SetExpireAt<_Hash>(key, null, session); });
         }
 
         public override void PersistSet(string key)
@@ -293,7 +293,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
-            QueueCommand(session => { SetExpireAt<_Set>(key, null, session); });
+            AddCommand(session => { SetExpireAt<_Set>(key, null, session); });
         }
 
         public override void RemoveSet(string key)
@@ -303,7 +303,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireSetLock();
-            QueueCommand(session => { DeleteByKey<_Set>(key, session); });
+            AddCommand(session => { DeleteByKey<_Set>(key, session); });
         }
 
         public override void PersistList(string key)
@@ -313,7 +313,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireListLock();
-            QueueCommand(session => { SetExpireAt<_List>(key, null, session); });
+            AddCommand(session => { SetExpireAt<_List>(key, null, session); });
         }
 
         public override void SetRangeInHash(string key, IEnumerable<KeyValuePair<string, string>> keyValuePairs)
@@ -324,7 +324,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
 
             AcquireHashLock();
-            QueueCommand(session =>
+            AddCommand(session =>
             {
                 foreach (var keyValuePair in keyValuePairs)
                     session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
@@ -345,7 +345,7 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
-            QueueCommand(session => { SetExpireAt<_Hash>(key, session.Storage.UtcNow.Add(expireIn), session); });
+            AddCommand(session => { SetExpireAt<_Hash>(key, session.Storage.UtcNow.Add(expireIn), session); });
         }
 
         public override void RemoveHash(string key)
@@ -355,12 +355,12 @@ namespace Hangfire.FluentNHibernateStorage
             if (key == null) throw new ArgumentNullException(nameof(key));
 
             AcquireHashLock();
-            QueueCommand(session => { DeleteByKey<_Hash>(key, session); });
+            AddCommand(session => { DeleteByKey<_Hash>(key, session); });
         }
 
         public override void Commit()
         {
-            _storage.UseStatelessTransaction( session =>
+            _storage.UseStatelessSessionInTransaction( session =>
             {
                 foreach (var command in _commandQueue)
                 {
@@ -370,7 +370,7 @@ namespace Hangfire.FluentNHibernateStorage
             });
         }
 
-        internal void QueueCommand(Action<StatelessSessionWrapper> action)
+        internal void AddCommand(Action<StatelessSessionWrapper> action)
         {
             _commandQueue.Enqueue(action);
         }
