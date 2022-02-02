@@ -3,7 +3,7 @@
 <package>
   <metadata>
     <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.2.1020</version>
+    <version>1.2.1040</version>
     <authors>Xavier Jefferson</authors>
     <owners>XavierJefferson</owners>
     <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
@@ -12,28 +12,28 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
     <releaseNotes>
-       Optimizations
+       Repairs to distributed lock functionality
     </releaseNotes>
     <copyright>Copyright © 2017-2020 Xavier Jefferson</copyright>
     <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
     <dependencies>
       <group targetFramework=".NETFramework4.6.1">
         <dependency id="FluentNHibernate" version="3.0.1" />
-        <dependency id="Hangfire.Core" version="1.7.17" />
+        <dependency id="Hangfire.Core" version="1.7.28" />
 
         <dependency id="Newtonsoft.Json" version="11.0.1" />
         <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
       </group>
       <group targetFramework=".NETCoreApp2.0">
         <dependency id="FluentNHibernate" version="3.0.1" />
-        <dependency id="Hangfire.Core" version="1.7.17" />
+        <dependency id="Hangfire.Core" version="1.7.28" />
 
         <dependency id="Newtonsoft.Json" version="11.0.1" />
         <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
       </group>
       <group targetFramework=".NETStandard2.0">
         <dependency id="FluentNHibernate" version="3.0.1" />
-        <dependency id="Hangfire.Core" version="1.7.17" />
+        <dependency id="Hangfire.Core" version="1.7.28" />
 
         <dependency id="Newtonsoft.Json" version="11.0.1" />
         <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
