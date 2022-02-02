@@ -18,7 +18,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         public override void Before(MethodInfo methodUnderTest)
         {
-            ConnectionUtils.GetStorage().ResetAll();
+            new FluentNHibernateJobStorageTestWrapper(ConnectionUtils.GetStorage()).TruncateAllHangfireTables();
+            
         }
 
         public override void After(MethodInfo methodUnderTest)

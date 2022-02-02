@@ -168,20 +168,18 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 try
                 {
-                    var fluentNHibernateDistributedLock = FluentNHibernateDistributedLock.Acquire(Storage,
+                    using (FluentNHibernateDistributedLock.Acquire(Storage,
                         string.Format("{0}:{1}", DistributedLockKey, subKey),
                         DefaultLockTimeout,
-                        args.CancellationToken);
-                    if (fluentNHibernateDistributedLock != null)
-                        using (fluentNHibernateDistributedLock)
-                        {
-                            var removedCount = func();
-                            if (removedCount < args.NumberOfRecordsInSinglePass) break;
-                        }
+                        args.CancellationToken))
+                    {
+                        var removedCount = func();
+                        if (removedCount < args.NumberOfRecordsInSinglePass) break;
+                    }
                 }
                 catch (DistributedLockTimeoutException)
                 {
-                    Logger.Debug("Distributed lock acquire timeout was exceeded");
+                    Logger.Debug("Distributed lock acquisition timeout was exceeded");
                 }
 
                 args.CancellationToken.Wait(DelayBetweenPasses);

@@ -80,7 +80,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                 }
                 catch (DistributedLockTimeoutException)
                 {
-                    Logger.Debug("Distributed lock timeout was exceeded");
+                    Logger.Debug("Distributed lock acquisition timeout was exceeded");
                 }
 
 

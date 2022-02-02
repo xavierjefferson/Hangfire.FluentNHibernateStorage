@@ -37,8 +37,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
         private static void DropDatabase()
         {
-            var fluentNHibernateJobStorage = ConnectionUtils.GetStorage();
-            fluentNHibernateJobStorage.ResetAll();
+            new FluentNHibernateJobStorageTestWrapper(ConnectionUtils.GetStorage()).TruncateAllHangfireTables();
         }
     }
 }

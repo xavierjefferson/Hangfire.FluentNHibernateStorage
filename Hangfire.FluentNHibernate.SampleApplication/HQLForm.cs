@@ -26,7 +26,7 @@ namespace Hangfire.FluentNHibernate.SampleApplication
                 try
                 {
                     QueryResponseTextBox.Text =
-                        JsonConvert.SerializeObject(Storage.ExecuteHqlQuery(HQLQueryTextBox.Text));
+                        JsonConvert.SerializeObject(new FluentNHibernateJobStorageTestWrapper(Storage).ExecuteHqlQuery(HQLQueryTextBox.Text));
                 }
                 catch (Exception ex)
                 {

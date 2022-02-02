@@ -87,6 +87,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
+
         internal string GetTableName<T>() where T : class
         {
             string entityName;
@@ -138,16 +139,6 @@ namespace Hangfire.FluentNHibernateStorage
                 new PersistentJobQueueProviderCollection(
                     new FluentNHibernateJobQueueProvider(this));
         }
-
-#pragma warning disable 618
-
-        public override IEnumerable<IServerComponent> GetComponents()
-
-        {
-            return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
-        }
-
-#pragma warning restore 618
 
 
         public override void WriteOptionsToLog(ILog logger)
@@ -216,9 +207,23 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        private StatelessSessionWrapper GetStatelessSession()
+        public StatelessSessionWrapper GetStatelessSession()
         {
             return new StatelessSessionWrapper(_sessionFactory.OpenStatelessSession(), this);
         }
+
+#pragma warning disable 618
+        public List<IBackgroundProcess> GetBackgroundProcesses()
+        {
+            return new List<IBackgroundProcess> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
+        }
+
+        public override IEnumerable<IServerComponent> GetComponents()
+
+        {
+            return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
+        }
+
+#pragma warning restore 618
     }
 }
