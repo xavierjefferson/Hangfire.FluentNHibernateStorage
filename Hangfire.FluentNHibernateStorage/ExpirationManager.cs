@@ -168,10 +168,10 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 try
                 {
-                    var fluentNHibernateDistributedLock =   FluentNHibernateDistributedLock.Acquire(Storage,
+                    var fluentNHibernateDistributedLock = FluentNHibernateDistributedLock.Acquire(Storage,
                         string.Format("{0}:{1}", DistributedLockKey, subKey),
                         DefaultLockTimeout,
-                        args.CancellationToken).Initialize();
+                        args.CancellationToken);
                     if (fluentNHibernateDistributedLock != null)
                         using (fluentNHibernateDistributedLock)
                         {
@@ -183,6 +183,7 @@ namespace Hangfire.FluentNHibernateStorage
                 {
                     Logger.Debug("Distributed lock acquire timeout was exceeded");
                 }
+
                 args.CancellationToken.Wait(DelayBetweenPasses);
             }
         }
