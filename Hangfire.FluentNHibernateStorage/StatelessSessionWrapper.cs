@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data;
 using System.Linq;
 using NHibernate;
 using NHibernate.Linq;
@@ -9,6 +8,7 @@ namespace Hangfire.FluentNHibernateStorage
     public class StatelessSessionWrapper : IDisposable
     {
         private readonly IStatelessSession _session;
+        private bool _flushed;
 
         public StatelessSessionWrapper(IStatelessSession session, FluentNHibernateJobStorage storage)
         {
@@ -18,10 +18,18 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateJobStorage Storage { get; }
 
-
         public void Dispose()
         {
-            _session?.Dispose();
+            if (_session != null)
+            {
+                if (!_flushed)
+                {
+                    _session.GetSessionImplementation().Flush();
+                    _flushed = true;
+                }
+
+                _session.Dispose();
+            }
         }
 
         public void DeleteAll<T>()
