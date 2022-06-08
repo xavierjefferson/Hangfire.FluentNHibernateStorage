@@ -257,7 +257,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
                 Assert.Equal("my-key", record.Key);
                 Assert.Equal(-1, record.Value);
-                Assert.Equal(null, record.ExpireAt);
+                Assert.Null(record.ExpireAt);
             });
         }
 
@@ -437,7 +437,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 //Assert
                 Assert.Equal("my-key", record.Key);
                 Assert.Equal(1, record.Value);
-                Assert.Equal(null, record.ExpireAt);
+                Assert.Null(record.ExpireAt);
             });
         }
 

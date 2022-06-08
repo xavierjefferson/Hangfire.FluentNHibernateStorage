@@ -152,7 +152,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 var sqlJob = session.Query<_Job>().Single();
                 Assert.Equal(jobId, sqlJob.Id.ToString());
                 Assert.Equal(createdAt, sqlJob.CreatedAt);
-                Assert.Equal(null, sqlJob.StateName);
+                Assert.Null(sqlJob.StateName);
 
                 var invocationData = SerializationHelper.Deserialize<InvocationData>(sqlJob.InvocationData);
                 invocationData.Arguments = sqlJob.Arguments;
@@ -373,7 +373,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 var result = jobStorage.GetAllItemsFromSet("some-set");
 
                 Assert.NotNull(result);
-                Assert.Equal(0, result.Count);
+                Assert.Empty(result);
             });
         }
 
@@ -1227,7 +1227,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
                 var parameter = session.Query<_JobParameter>().Single(i => i.Job == newJob && i.Name == "Name");
 
-                Assert.Equal(null, parameter.Value);
+                Assert.Null(parameter.Value);
             });
         }
 

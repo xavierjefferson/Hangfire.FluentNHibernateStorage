@@ -69,7 +69,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 
             var result = collection.ToArray();
 
-            Assert.Equal(1, result.Length);
+            Assert.Single(result);
             Assert.Same(_defaultProvider.Object, result[0]);
         }
 
