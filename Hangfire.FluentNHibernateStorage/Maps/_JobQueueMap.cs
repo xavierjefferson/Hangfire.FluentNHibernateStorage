@@ -9,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Table("JobQueue");
 
             References(i => i.Job).Cascade.Delete().Column(Constants.ColumnNames.JobId.WrapObjectName());
-            Map(i => i.FetchedAt).Column("FetchedAt".WrapObjectName()).Nullable();
+            this.Map(i => ((IFetchedAtNullable) i).FetchedAt).Column("FetchedAt".WrapObjectName()).Nullable().CustomType<ForcedUtcDateTimeType>();
             Map(i => i.Queue).Column("Queue".WrapObjectName()).Length(50).Not.Nullable();
             Map(i => i.FetchToken).Column("FetchToken".WrapObjectName()).Length(36).Nullable();
         }

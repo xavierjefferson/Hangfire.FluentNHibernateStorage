@@ -2,7 +2,7 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _JobStateMap : Int32IdMapBase<_JobState>
+    internal class _JobStateMap : Int32IdMapBase<_JobState> 
     {
         public _JobStateMap()
         {
@@ -11,8 +11,10 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             Map(i => i.Reason).Column("Reason".WrapObjectName()).Length(Constants.StateReasonLength).Nullable();
             Map(i => i.Data).Column(Constants.ColumnNames.Data.WrapObjectName()).Length(Constants.StateDataLength)
                 .Nullable();
-            Map(i => i.CreatedAt).Column(Constants.ColumnNames.CreatedAt.WrapObjectName()).Not.Nullable();
+            this.MapCreatedAt();
             References(i => i.Job).Column(Constants.ColumnNames.JobId.WrapObjectName()).Not.Nullable().Cascade.Delete();
         }
     }
+
+   
 }

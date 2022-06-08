@@ -4,10 +4,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
 {
     internal class _ListMap : KeyValueTypeMapBase<_List, string>
     {
-        public _ListMap()
-        {
-            Table("List");
-        }
+      
 
         public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Nonunique;
 

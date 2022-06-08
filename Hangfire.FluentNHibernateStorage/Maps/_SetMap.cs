@@ -10,12 +10,12 @@ namespace Hangfire.FluentNHibernateStorage.Maps
         }
 
         protected override string KeyColumnIndexName => "IX_Set_Key_Value";
-        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
+        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Nonunique;
         protected override string TableName => "Set";
 
         protected override bool ValueNullable => false;
 
-        protected override bool ValueInKey => true;
+     
 
         protected override int? ValueLength => 255;
     }

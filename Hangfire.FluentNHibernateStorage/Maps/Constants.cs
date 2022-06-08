@@ -2,7 +2,8 @@
 {
     internal class Constants
     {
-        public const int VarcharMaxLength = 4001;
+        //exceeding 4000 will break sqlce
+        public const int VarcharMaxLength = 4000;
 
         public const int StateReasonLength = 100;
         public const int StateDataLength = VarcharMaxLength;

@@ -1,8 +1,9 @@
 using System;
+using Hangfire.FluentNHibernateStorage.Maps;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _DistributedLock : Int32IdBase
+    public class _DistributedLock : Int32IdBase, ICreatedAt
     {
         public _DistributedLock()
         {

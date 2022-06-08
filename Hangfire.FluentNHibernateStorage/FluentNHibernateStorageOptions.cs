@@ -147,7 +147,8 @@ namespace Hangfire.FluentNHibernateStorage
             get => _jobExpirationCheckInterval;
             set
             {
-                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(JobExpirationCheckInterval));
+                if (value.Ticks < 0)
+                    throw new ArgumentException($"{nameof(JobExpirationCheckInterval)} should not be negative");
                 _jobExpirationCheckInterval = value;
             }
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using NHibernate;
 using NHibernate.Linq;
@@ -32,9 +33,9 @@ namespace Hangfire.FluentNHibernateStorage
             }
         }
 
-        public void DeleteAll<T>()
+        public int DeleteAll<T>()
         {
-            _session.Query<T>().Delete();
+            return _session.Query<T>().Delete();
         }
 
         public IQueryable<T> Query<T>()
@@ -45,6 +46,11 @@ namespace Hangfire.FluentNHibernateStorage
         public IQuery CreateQuery(string queryString)
         {
             return _session.CreateQuery(queryString);
+        }
+
+        public void Insert<T>(IEnumerable<T> entities) where T : class
+        {
+            foreach (var item in entities) _session.Insert(item);
         }
 
         public void Insert(object entity)

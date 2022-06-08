@@ -1,4 +1,5 @@
 using Hangfire.FluentNHibernateStorage.Entities;
+using NHibernate.Type;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
@@ -18,8 +19,8 @@ namespace Hangfire.FluentNHibernateStorage.Maps
                 .Column("Arguments".WrapObjectName())
                 .Length(Constants.VarcharMaxLength)
                 .Not.Nullable();
-            Map(i => i.CreatedAt).Column(Constants.ColumnNames.CreatedAt.WrapObjectName()).Not.Nullable();
-            Map(i => i.ExpireAt).Column("ExpireAt".WrapObjectName()).Nullable();
+            this.MapCreatedAt();
+            this.MapExpireAt();
             var jobId = Constants.ColumnNames.JobId.WrapObjectName();
             HasMany(i => i.Parameters).KeyColumn(jobId).Cascade.All();
             HasMany(i => i.History).KeyColumn(jobId).Cascade.All();

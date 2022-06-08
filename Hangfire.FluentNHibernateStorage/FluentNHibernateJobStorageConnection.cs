@@ -303,8 +303,19 @@ namespace Hangfire.FluentNHibernateStorage
             return
                 Storage.UseStatelessSession(session =>
                 {
-                    return session.Query<_Counter>().Where(i => i.Key == key).Sum(i => i.Value) +
-                           session.Query<_AggregatedCounter>().Where(i => i.Key == key).Sum(i => i.Value);
+                    //have to compensate for NH processing of sums when there are no matching results.
+                    var counterSum = 0;
+                    if (session.Query<_Counter>().Any(i => i.Key == key))
+                    {
+                        counterSum = session.Query<_Counter>().Where(i => i.Key == key).Sum(i => i.Value);
+                    }
+                    var aggregatedCounterSum = 0;
+                    if (session.Query<_AggregatedCounter>().Any(i => i.Key == key))
+                    {
+                        aggregatedCounterSum = session.Query<_AggregatedCounter>().Where(i => i.Key == key).Sum(i => i.Value);
+                    }
+
+                    return counterSum + aggregatedCounterSum;
                 });
         }
 

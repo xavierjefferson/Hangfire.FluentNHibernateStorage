@@ -24,10 +24,11 @@ namespace Hangfire.FluentNHibernateStorage
     {
         private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobStorage>();
 
-        private readonly CountersAggregator _countersAggregator;
-        private readonly ExpirationManager _expirationManager;
-        private readonly ServerTimeSyncManager _serverTimeSyncManager;
-        private readonly ISessionFactory _sessionFactory;
+        private CountersAggregator _countersAggregator;
+        private ExpirationManager _expirationManager;
+        private ServerTimeSyncManager _serverTimeSyncManager;
+        private ISessionFactory _sessionFactory;
+        private bool _disposedValue;
 
         public FluentNHibernateJobStorage(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null) : this(
@@ -36,15 +37,46 @@ namespace Hangfire.FluentNHibernateStorage
         {
         }
 
+
         public FluentNHibernateJobStorage(IPersistenceConfigurer persistenceConfigurer,
-            FluentNHibernateStorageOptions options = null) : this(SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(
-            persistenceConfigurer, options))
+            FluentNHibernateStorageOptions options = null)
         {
+            if (persistenceConfigurer == null) throw new ArgumentNullException(nameof(persistenceConfigurer));
+            Initialize(SessionFactoryBuilder.GetFromAssemblyOf<_CounterMap>(
+                persistenceConfigurer, options));
         }
 
         public FluentNHibernateJobStorage(SessionFactoryInfo info)
         {
-            SessionFactoryInfo = info;
+            Initialize(info);
+        }
+
+        public void RefreshUtcOFfset()
+        {
+            using (var session = this.SessionFactoryInfo.SessionFactory.OpenSession())
+            {
+                this.UtcOffset = DateTime.UtcNow.Subtract(session.GetUtcNow(this.ProviderType));
+            }
+        }
+
+        internal IDictionary<string, IClassMetadata> ClassMetadataDictionary { get; set; }
+
+        internal TimeSpan UtcOffset { get; set; }
+        internal SessionFactoryInfo SessionFactoryInfo { get; set; }
+
+        public FluentNHibernateStorageOptions Options { get; set; }
+
+
+        public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
+
+        public ProviderTypeEnum ProviderType { get; set; } = ProviderTypeEnum.None;
+
+        public DateTime UtcNow => DateTime.UtcNow.Add(UtcOffset);
+
+
+        private void Initialize(SessionFactoryInfo info)
+        {
+            SessionFactoryInfo = info ?? throw new ArgumentNullException(nameof(info));
             ClassMetadataDictionary = info.SessionFactory.GetAllClassMetadata();
             ProviderType = info.ProviderType;
             _sessionFactory = info.SessionFactory;
@@ -67,24 +99,8 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 throw ex.InnerException ?? ex;
             }
-        }
 
-        internal IDictionary<string, IClassMetadata> ClassMetadataDictionary { get; }
-
-        internal TimeSpan UtcOffset { get; set; }
-        internal SessionFactoryInfo SessionFactoryInfo { get; }
-
-        public FluentNHibernateStorageOptions Options { get; }
-
-
-        public virtual PersistentJobQueueProviderCollection QueueProviders { get; private set; }
-
-        public ProviderTypeEnum ProviderType { get; } = ProviderTypeEnum.None;
-
-        public DateTime UtcNow => DateTime.UtcNow.Add(UtcOffset);
-
-        public void Dispose()
-        {
+            RefreshUtcOFfset();
         }
 
 
@@ -117,7 +133,7 @@ namespace Hangfire.FluentNHibernateStorage
                         case 1:
                             return;
                         case 0:
-                            session.Insert(new _Dual {Id = 1});
+                            session.Insert(new _Dual { Id = 1 });
                             break;
                         default:
                             session.DeleteByInt32Id<_Dual>(
@@ -180,7 +196,7 @@ namespace Hangfire.FluentNHibernateStorage
         }
 
 
-        private TransactionScope CreateTransaction()
+        public TransactionScope CreateTransaction()
         {
             return new TransactionScope(TransactionScopeOption.Required,
                 new TransactionOptions
@@ -209,19 +225,62 @@ namespace Hangfire.FluentNHibernateStorage
 
         public StatelessSessionWrapper GetStatelessSession()
         {
-            return new StatelessSessionWrapper(_sessionFactory.OpenStatelessSession(), this);
+            var statelessSession = _sessionFactory.OpenStatelessSession();
+            return new StatelessSessionWrapper(statelessSession, this);
         }
 
 #pragma warning disable 618
         public List<IBackgroundProcess> GetBackgroundProcesses()
         {
-            return new List<IBackgroundProcess> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
+            return new List<IBackgroundProcess> { _expirationManager, _countersAggregator, _serverTimeSyncManager };
         }
 
         public override IEnumerable<IServerComponent> GetComponents()
 
         {
-            return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
+            return new List<IServerComponent> { _expirationManager, _countersAggregator, _serverTimeSyncManager };
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                    if (_sessionFactory != null)
+                    {
+                        try
+                        {
+                            if (!_sessionFactory.IsClosed)
+                                _sessionFactory.Close();
+                        }
+                        catch
+                        {
+                            // ignored
+                        }
+
+                        _sessionFactory.Dispose();
+                        _sessionFactory = null;
+                    }
+                // TODO: dispose managed state (managed objects)
+
+                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+                // TODO: set large fields to null
+                _disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        // ~FluentNHibernateJobStorage()
+        // {
+        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        //     Dispose(disposing: false);
+        // }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
 #pragma warning restore 618

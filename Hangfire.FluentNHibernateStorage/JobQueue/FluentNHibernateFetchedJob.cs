@@ -46,7 +46,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
             {
                 session.Query<_JobQueue>().Where(i => i.Id == _id).Delete();
             });
-            
+
             _removedFromQueue = true;
         }
 

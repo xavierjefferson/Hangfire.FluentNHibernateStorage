@@ -139,6 +139,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Logger.Debug(
                         $"Will poll for distributed lock '{_resource}' in {_options.DistributedLockPollInterval}.");
                 _cancellationToken.Wait(_options.DistributedLockPollInterval);
+                _cancellationToken.ThrowIfCancellationRequested();
             } while (true);
 
             //dont change this.  Hangfire looks for resource name in exception properties

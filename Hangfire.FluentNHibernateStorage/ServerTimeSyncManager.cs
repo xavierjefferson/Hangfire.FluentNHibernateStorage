@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.Server;
@@ -24,10 +23,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         public void Execute(CancellationToken cancellationToken)
         {
-            using (var session = _storage.SessionFactoryInfo.SessionFactory.OpenSession())
-            {
-                _storage.UtcOffset = UtcDateHelper.GetUtcOffset(session, _storage.ProviderType);
-            }
+            _storage.RefreshUtcOFfset();
 
             cancellationToken.Wait(_storage.Options.DbmsTimeSyncInterval);
         }

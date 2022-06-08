@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         protected KeyValueTypeMapBase()
         {
-            Table(TableName);
+            Table(TableName.WrapObjectName());
             LazyLoad();
 
             var keyPropertyPart = Map(i => i.Key).Column("Key".WrapObjectName()).Not.Nullable();
@@ -26,31 +26,21 @@ namespace Hangfire.FluentNHibernateStorage.Maps
             }
 
             var valuePropertyPart = Map(i => i.Value).Column("Value".WrapObjectName());
-            if (ValueInKey)
-            {
-                valuePropertyPart.UniqueKey(KeyColumnIndexName);
-            }
+          
 
             if (ValueNullable)
-            {
                 valuePropertyPart.Nullable();
-            }
             else
-            {
                 valuePropertyPart.Not.Nullable();
-            }
 
-            if (ValueLength.HasValue)
-            {
-                valuePropertyPart.Length(ValueLength.Value);
-            }
+            if (ValueLength.HasValue) valuePropertyPart.Length(ValueLength.Value);
 
-            Map(i => i.ExpireAt).Column("ExpireAt".WrapObjectName()).Nullable();
+            this.MapExpireAt();
         }
 
         public abstract IndexTypeEnum KeyColumnIndexType { get; }
 
-        protected virtual bool ValueInKey => false;
+       
 
         protected abstract string KeyColumnIndexName { get; }
         protected abstract string TableName { get; }

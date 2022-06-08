@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Transactions;
 using Hangfire.Annotations;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -35,7 +37,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 var enqueuedJobIds = tuple.Monitoring.GetEnqueuedJobIds(tuple.Queue, 0, 5);
                 var counters = tuple.Monitoring.GetEnqueuedAndFetchedCount(tuple.Queue);
 
-                var firstJobs = _storage.UseStatelessSessionInTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
+                var firstJobs =
+                    _storage.UseStatelessSessionInTransaction(session => EnqueuedJobs(session, enqueuedJobIds));
 
                 result.Add(new QueueWithTopEnqueuedJobsDto
                 {
@@ -76,12 +79,13 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         public JobDetailsDto JobDetails(string jobId)
         {
             var converter = StringToInt32Converter.Convert(jobId);
-            if (!converter.Valid)
-            {
-                return null;
-            }
+            if (!converter.Valid) return null;
 
-            return _storage.UseStatelessSessionInTransaction(session =>
+            //wrap in transaction so we only read serialized data
+            using ( _storage.CreateTransaction())
+
+            //this will not use a stateless session because it has to use the references between job and parameters.
+            using (var session = _storage.SessionFactoryInfo.SessionFactory.OpenSession())
             {
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
                 if (job == null) return null;
@@ -108,11 +112,12 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                     History = history,
                     Properties = parameters
                 };
-            });
+            }
         }
 
         public StatisticsDto GetStatistics()
         {
+
             var statistics =
                 _storage.UseStatelessSessionInTransaction(session =>
                 {
@@ -124,10 +129,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
                     int GetJobStatusCount(string key)
                     {
-                        if (statesDictionary.ContainsKey(key))
-                        {
-                            return statesDictionary[key];
-                        }
+                        if (statesDictionary.ContainsKey(key)) return statesDictionary[key];
 
                         return 0;
                     }
@@ -329,10 +331,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             var count = session.Query<_Job>().Count(i => i.StateName == stateName);
             var jobListLimit = _storage.Options.DashboardJobListLimit;
-            if (jobListLimit.HasValue)
-            {
-                return Math.Min(count, jobListLimit.Value);
-            }
+            if (jobListLimit.HasValue) return Math.Min(count, jobListLimit.Value);
 
             return count;
         }
@@ -425,9 +424,8 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 .ToDictionary(x => x.Key, x => x.Value);
 
             foreach (var key in keyMaps.Keys)
-            {
-                if (!valuesMap.ContainsKey(key)) valuesMap.Add(key, 0);
-            }
+                if (!valuesMap.ContainsKey(key))
+                    valuesMap.Add(key, 0);
 
             var result = new Dictionary<DateTime, long>();
             for (var i = 0; i < keyMaps.Count; i++)
@@ -473,7 +471,6 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 var result = new List<KeyValuePair<string, FetchedJobDto>>();
 
                 foreach (var job in session.Query<_Job>().Where(i => list.Contains(i.Id)))
-                {
                     result.Add(new KeyValuePair<string, FetchedJobDto>(
                         job.Id.ToString(),
                         new FetchedJobDto
@@ -481,7 +478,6 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                             Job = DeserializeJob(job.InvocationData, job.Arguments),
                             State = job.StateName
                         }));
-                }
 
                 return new JobList<FetchedJobDto>(result);
             }

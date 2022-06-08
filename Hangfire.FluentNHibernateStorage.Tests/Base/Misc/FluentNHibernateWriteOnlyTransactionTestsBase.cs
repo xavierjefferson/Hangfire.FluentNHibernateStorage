@@ -3,15 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.States;
 using Moq;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public class FluentNHibernateWriteOnlyTransactionTests : IClassFixture<TestDatabaseFixture>
+    public abstract class FluentNHibernateWriteOnlyTransactionTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
     {
-        public FluentNHibernateWriteOnlyTransactionTests()
+        protected FluentNHibernateWriteOnlyTransactionTestsBase()
         {
             var defaultProvider = new Mock<IPersistentJobQueueProvider>();
             defaultProvider.Setup(x => x.GetJobQueue())
@@ -35,46 +36,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
             for (var i = 0; i < 2; i++)
             {
-                var newJob = InsertNewJob(session, action);
+                var newJob = JobInsertionHelper.InsertNewJob(session, action);
 
                 if (i == 0)
-                {
                     insertTwoJobsResult.JobId1 = newJob.Id.ToString();
-                }
                 else
-                {
                     insertTwoJobsResult.JobId2 = newJob.Id.ToString();
-                }
             }
 
             return insertTwoJobsResult;
         }
 
-        public static _Job InsertNewJob(StatelessSessionWrapper session, Action<_Job> action = null)
-        {
-            var newJob = new _Job
-            {
-                InvocationData = string.Empty,
-                Arguments = string.Empty,
-                CreatedAt = session.Storage.UtcNow
-            };
-            action?.Invoke(newJob);
-            session.Insert(newJob);
-         
-            return newJob;
-        }
-
         private static _Job GetTestJob(StatelessSessionWrapper connection, string jobId)
         {
             return connection.Query<_Job>().Single(i => i.Id == long.Parse(jobId));
-        }
-
-        private static void UseSession(Action<StatelessSessionWrapper> action)
-        {
-            using (var storage = ConnectionUtils.GetStorage())
-            {
-                action(storage.GetStatelessSession());
-            }
         }
 
         private void Commit(
@@ -89,7 +64,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddJobState_JustAddsANewRecordInATable()
         {
             UseSession(session =>
@@ -97,7 +71,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 //  using (var tx = new TransactionScope())
                 //{
                 //Arrange
-                var newJob = InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
 
 
                 var jobId = newJob.Id;
@@ -126,7 +100,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddRangeToSet_AddsAllItems_ToAGivenSet()
         {
             UseSession(session =>
@@ -141,7 +114,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddRangeToSet_ThrowsAnException_WhenItemsValueIsNull()
         {
             UseSession(session =>
@@ -154,7 +126,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddRangeToSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -167,7 +138,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToQueue_CallsEnqueue_OnTargetPersistentQueue()
         {
             var correctJobQueue = new Mock<IPersistentJobQueue>();
@@ -179,15 +149,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
             UseSession(session =>
             {
-                var job = InsertNewJob(session);
+                var job = JobInsertionHelper.InsertNewJob(session);
                 Commit(session, x => x.AddToQueue("default", job.Id.ToString()));
-                
-                correctJobQueue.Verify(x => x.Enqueue(It.IsNotNull<StatelessSessionWrapper>(), "default", job.Id.ToString()));
-            });
+
+                correctJobQueue.Verify(x =>
+                    x.Enqueue(It.IsNotNull<StatelessSessionWrapper>(), "default", job.Id.ToString()));
+            }, storage => { storage.QueueProviders.Add(correctProvider.Object, new[] {"default"}); });
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToSet_AddsARecord_IfThereIsNo_SuchKeyAndValue()
         {
             UseSession(session =>
@@ -203,7 +173,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToSet_AddsARecord_WhenKeyIsExists_ButValuesAreDifferent()
         {
             UseSession(session =>
@@ -221,7 +190,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToSet_DoesNotAddARecord_WhenBothKeyAndValueAreExist()
         {
             UseSession(session =>
@@ -238,7 +206,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToSet_WithScore_AddsARecordWithScore_WhenBothKeyAndValueAreNotExist()
         {
             UseSession(session =>
@@ -254,7 +221,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AddToSet_WithScore_UpdatesAScore_WhenBothKeyAndValueAreExist()
         {
             UseSession(session =>
@@ -281,7 +247,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void DecrementCounter_AddsRecordToCounterTable_WithNegativeValue()
         {
             UseSession(session =>
@@ -297,7 +262,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void DecrementCounter_WithExistingKey_AddsAnotherRecord()
         {
             UseSession(session =>
@@ -316,7 +280,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void DecrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
         {
             UseSession(session =>
@@ -337,7 +300,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireHash_SetsExpirationTimeOnAHash_WithGivenKey()
         {
             UseSession(session =>
@@ -351,7 +313,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Commit(session, x => x.ExpireHash("hash-1", TimeSpan.FromMinutes(60)));
 
                 // Assert
-                
+
                 var records = session.Query<_Hash>()
                     .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.True(session.Storage.UtcNow.AddMinutes(59) < records["hash-1"]);
@@ -361,7 +323,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -374,7 +335,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireJob_SetsJobExpirationData()
         {
             UseSession(session =>
@@ -382,21 +342,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 // Arrange
                 var insertTwoResult = InsertTwoJobs(session);
 
-                Commit(session, x => x.ExpireJob(insertTwoResult.JobId1.ToString(), TimeSpan.FromDays(1)));
+                Commit(session, x => x.ExpireJob(insertTwoResult.JobId1, TimeSpan.FromDays(1)));
                 //Act
-                
-                var job = GetTestJob(session, insertTwoResult.JobId1.ToString());
+
+                var job = GetTestJob(session, insertTwoResult.JobId1);
                 //Assert
                 Assert.True(session.Storage.UtcNow.AddMinutes(-1) < job.ExpireAt &&
                             job.ExpireAt <= session.Storage.UtcNow.AddDays(1));
 
-                var anotherJob = GetTestJob(session, insertTwoResult.JobId2.ToString());
+                var anotherJob = GetTestJob(session, insertTwoResult.JobId2);
                 Assert.Null(anotherJob.ExpireAt);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireList_SetsExpirationTime_OnAList_WithGivenKey()
         {
             UseSession(session =>
@@ -410,7 +369,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Commit(session, x => x.ExpireList("list-1", TimeSpan.FromMinutes(60)));
 
                 // Assert
-                
+
                 var records = session.Query<_List>()
                     .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.True(session.Storage.UtcNow.AddMinutes(59) < records["list-1"]);
@@ -420,7 +379,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireList_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -433,7 +391,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireSet_SetsExpirationTime_OnASet_WithGivenKey()
         {
             UseSession(session =>
@@ -447,7 +404,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Commit(session, x => x.ExpireSet("set-1", TimeSpan.FromMinutes(60)));
 
                 // Assert
-                
+
                 var records = session.Query<_Set>()
                     .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.True(session.Storage.UtcNow.AddMinutes(59) < records["set-1"]);
@@ -457,7 +414,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void ExpireSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -470,7 +426,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void IncrementCounter_AddsRecordToCounterTable_WithPositiveValue()
         {
             UseSession(session =>
@@ -487,7 +442,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void IncrementCounter_WithExistingKey_AddsAnotherRecord()
         {
             UseSession(session =>
@@ -507,7 +461,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void IncrementCounter_WithExpiry_AddsARecord_WithExpirationTimeSet()
         {
             UseSession(session =>
@@ -529,7 +482,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void InsertToList_AddsAnotherRecord_WhenBothKeyAndValueAreExist()
         {
             UseSession(session =>
@@ -548,7 +500,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void InsertToList_AddsARecord_WithGivenValues()
         {
             UseSession(session =>
@@ -565,7 +516,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistHash_ClearsExpirationTime_OnAGivenHash()
         {
             UseSession(session =>
@@ -580,7 +530,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Commit(session, x => x.PersistHash("hash-1"));
 
                 // Assert
-                
+
                 var records = session.Query<_Hash>()
                     .ToDictionary(x => x.Key, x => x.ExpireAt);
                 Assert.Null(records["hash-1"]);
@@ -589,7 +539,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -603,7 +552,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistJob_ClearsTheJobExpirationData()
         {
             UseSession(session =>
@@ -612,21 +560,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var insertTwoResult = InsertTwoJobs(session,
                     item => { item.ExpireAt = item.CreatedAt = session.Storage.UtcNow; });
 
-                Commit(session, x => x.PersistJob(insertTwoResult.JobId1.ToString()));
+                Commit(session, x => x.PersistJob(insertTwoResult.JobId1));
 
                 //Act
-                
-                var job = GetTestJob(session, insertTwoResult.JobId1.ToString());
+
+                var job = GetTestJob(session, insertTwoResult.JobId1);
                 //Assert
                 Assert.Null(job.ExpireAt);
 
-                var anotherJob = GetTestJob(session, insertTwoResult.JobId2.ToString());
+                var anotherJob = GetTestJob(session, insertTwoResult.JobId2);
                 Assert.NotNull(anotherJob.ExpireAt);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistList_ClearsExpirationTime_OnAGivenHash()
         {
             UseSession(session =>
@@ -637,7 +584,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 //does nothing
                 // Act
                 Commit(session, x => x.PersistList("list-1"));
-                
+
                 // Assert
 
                 var records = session.Query<_List>()
@@ -648,7 +595,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistList_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -662,7 +608,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistSet_ClearsExpirationTime_OnAGivenHash()
         {
             UseSession(session =>
@@ -673,7 +618,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
                 // Act
                 Commit(session, x => x.PersistSet("set-1"));
-                
+
                 // Assert
                 var records = session.Query<_Set>()
                     .ToDictionary(x => x.Key, x => x.ExpireAt);
@@ -683,7 +628,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void PersistSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -697,7 +641,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromList_DoesNotRemoveRecords_WithSameKey_ButDifferentValue()
         {
             UseSession(session =>
@@ -710,7 +653,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
 
                 //Act
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(1, recordCount);
@@ -718,7 +661,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromList_DoesNotRemoveRecords_WithSameValue_ButDifferentKey()
         {
             UseSession(session =>
@@ -730,7 +672,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.RemoveFromList("different-key", "my-value");
                 });
                 //Act
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(1, recordCount);
@@ -738,7 +680,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromList_RemovesAllRecords_WithGivenKeyAndValue()
         {
             UseSession(session =>
@@ -751,7 +692,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.RemoveFromList("my-key", "my-value");
                 });
                 //Act
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(0, recordCount);
@@ -759,7 +700,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromSet_DoesNotRemoveRecord_WithSameKey_AndDifferentValue()
         {
             UseSession(session =>
@@ -771,7 +711,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.RemoveFromSet("my-key", "different-value");
                 });
                 //Act
-                
+
                 var recordCount = session.Query<_Set>().Count();
                 //Assert
                 Assert.Equal(1, recordCount);
@@ -779,7 +719,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromSet_DoesNotRemoveRecord_WithSameValue_AndDifferentKey()
         {
             UseSession(session =>
@@ -791,7 +730,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.RemoveFromSet("different-key", "my-value");
                 });
                 //Act
-                
+
                 var recordCount = session.Query<_Set>().Count();
                 //Assert
                 Assert.Equal(1, recordCount);
@@ -799,7 +738,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveFromSet_RemovesARecord_WithGivenKeyAndValue()
         {
             UseSession(session =>
@@ -811,7 +749,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.RemoveFromSet("my-key", "my-value");
                 });
                 //Act
-                
+
                 var recordCount = session.Query<_Set>().Count();
                 //Assert
                 Assert.Equal(0, recordCount);
@@ -819,7 +757,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveHash_RemovesAllHashRecords()
         {
             UseSession(session =>
@@ -833,7 +770,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
                 // Act
                 Commit(session, x => x.RemoveHash("some-hash"));
-                
+
                 // Assert
                 var count = session.Query<_Hash>().Count();
                 Assert.Equal(0, count);
@@ -841,7 +778,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -853,7 +789,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveSet_RemovesASet_WithAGivenKey()
         {
             UseSession(session =>
@@ -865,7 +800,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
                 Commit(session, x => x.RemoveSet("set-1"));
                 // Act
-                
+
                 var record = session.Query<_Set>().Single();
                 //Assert
                 Assert.Equal("set-2", record.Key);
@@ -873,7 +808,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -886,7 +820,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetJobState_AppendsAStateAndSetItToTheJob()
         {
             UseSession(session =>
@@ -895,17 +828,19 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var insertTwoResult = InsertTwoJobs(session);
 
                 var state = new Mock<IState>();
-                state.Setup(x => x.Name).Returns("State");
-                state.Setup(x => x.Reason).Returns("Reason");
+                const string expected = "State";
+                state.Setup(x => x.Name).Returns(expected);
+                const string reason = "Reason";
+                state.Setup(x => x.Reason).Returns(reason);
                 state.Setup(x => x.SerializeData())
                     .Returns(new Dictionary<string, string> {{"Name", "Value"}});
 
                 Commit(session, x => x.SetJobState(insertTwoResult.JobId1, state.Object));
                 // Act
-                
+
                 var job = GetTestJob(session, insertTwoResult.JobId1);
                 //Assert
-                Assert.Equal("State", job.StateName);
+                Assert.Equal(expected, job.StateName);
 
 
                 var anotherJob = GetTestJob(session, insertTwoResult.JobId2);
@@ -914,15 +849,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
                 var jobState = session.Query<_JobState>().Single();
                 Assert.Equal(insertTwoResult.JobId1, jobState.Job.Id.ToString());
-                Assert.Equal("State", jobState.Name);
-                Assert.Equal("Reason", jobState.Reason);
+                Assert.Equal(expected, jobState.Name);
+                Assert.Equal(reason, jobState.Reason);
                 Assert.NotNull(jobState.CreatedAt);
                 Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_MergesAllRecords()
         {
             UseSession(session =>
@@ -934,7 +868,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     {"Key2", "Value2"}
                 }));
                 // Act
-                
+
                 //Assert
                 var result = session.Query<_Hash>()
                     .Where(i => i.Key == "some-hash")
@@ -946,7 +880,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseSession(session =>
@@ -960,7 +893,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyValuePairsArgumentIsNull()
         {
             UseSession(session =>
@@ -973,7 +905,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void TrimList_RemovesAllRecords_IfStartFromGreaterThanEndingAt()
         {
             UseSession(session =>
@@ -985,7 +916,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.TrimList("my-key", 1, 0);
                 });
                 // Act
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(0, recordCount);
@@ -993,7 +924,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void TrimList_RemovesAllRecords_WhenStartingFromValue_GreaterThanMaxElementIndex()
         {
             UseSession(session =>
@@ -1005,7 +935,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     x.TrimList("my-key", 1, 100);
                 });
                 // Act
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(0, recordCount);
@@ -1013,7 +943,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void TrimList_RemovesRecords_OnlyOfAGivenKey()
         {
             UseSession(session =>
@@ -1027,7 +956,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 // Act
 
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(1, recordCount);
@@ -1035,7 +964,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void TrimList_RemovesRecordsToEnd_IfKeepAndingAt_GreaterThanMaxElementIndex()
         {
             UseSession(session =>
@@ -1051,7 +979,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 // Act
 
-                
+
                 var recordCount = session.Query<_List>().Count();
                 //Assert
                 Assert.Equal(2, recordCount);
@@ -1059,7 +987,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void TrimList_TrimsAList_ToASpecifiedRange()
         {
             UseSession(session =>
@@ -1076,7 +1003,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 // Act
 
-                
+
                 var records = session.Query<_List>().ToArray();
                 //Assert
                 Assert.Equal(2, records.Length);

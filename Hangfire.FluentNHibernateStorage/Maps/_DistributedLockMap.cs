@@ -1,4 +1,5 @@
 using Hangfire.FluentNHibernateStorage.Entities;
+using NHibernate.Type;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
@@ -8,7 +9,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
         {
             Table("DistributedLock");
             Map(i => i.Resource).Column("Resource".WrapObjectName()).Length(100).Not.Nullable().Unique();
-            Map(i => i.CreatedAt).Column(Constants.ColumnNames.CreatedAt.WrapObjectName()).Not.Nullable();
+            this.MapCreatedAt();
             Map(i => i.ExpireAtAsLong).Column("`ExpireAtAsLong`").Not.Nullable();
         }
     }

@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="fluentnhibernate" Version="3.0.1" />
     <PackageReference Include="hangfire.core" Version="1.7.17" />
     <PackageReference Include="serilog" Version="2.10.0" />
     <PackageReference Include="serilog.sinks.console" Version="3.1.1" />

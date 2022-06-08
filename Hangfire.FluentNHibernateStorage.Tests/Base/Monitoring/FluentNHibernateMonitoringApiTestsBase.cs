@@ -1,20 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Transactions;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.FluentNHibernateStorage.Monitoring;
+using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.Storage.Monitoring;
 using Moq;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
+namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
 {
-    public class FluentNHibernateMonitoringApiTests : IClassFixture<TestDatabaseFixture>, IDisposable
+    public abstract class FluentNHibernateMonitoringApiTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
     {
-        public FluentNHibernateMonitoringApiTests()
+        protected FluentNHibernateMonitoringApiTestsBase()
         {
-            var persistenceConfigurer = ConnectionUtils.GetPersistenceConfigurer();
+            var persistenceConfigurer = GetPersistenceConfigurer();
 
 
             var persistentJobQueueMonitoringApiMock = new Mock<IPersistentJobQueueMonitoringApi>();
@@ -24,7 +24,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                 .Returns(persistentJobQueueMonitoringApiMock.Object);
 
-            var storageMock = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
+            var storageMock = CreateMock(persistenceConfigurer);
             storageMock
                 .Setup(m => m.QueueProviders)
                 .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
@@ -33,11 +33,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             _sut = new FluentNHibernateMonitoringApi(_storage);
             _createdAt = _storage.UtcNow;
             _expireAt = _storage.UtcNow.AddMinutes(1);
-        }
-
-        public void Dispose()
-        {
-            _storage.Dispose();
         }
 
         private readonly string _arguments = "[\"test\"]";
@@ -55,7 +50,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         private readonly FluentNHibernateMonitoringApi _sut;
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnDeletedCount()
         {
             const int expectedStatsDeletedCount = 7;
@@ -74,7 +68,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnEnqueuedCount()
         {
             const int expectedEnqueuedCount = 1;
@@ -89,6 +82,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                     StateName = "Enqueued",
                     CreatedAt = connection.Storage.UtcNow
                 });
+
                 result = _sut.GetStatistics();
             });
 
@@ -96,7 +90,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnFailedCount()
         {
             const int expectedFailedCount = 2;
@@ -122,7 +115,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnProcessingCount()
         {
             const int expectedProcessingCount = 1;
@@ -146,18 +138,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnQueuesCount()
         {
             const int expectedQueuesCount = 1;
-
+            var _sut = new FluentNHibernateMonitoringApi(_storage);
             var result = _sut.GetStatistics();
 
             Assert.Equal(expectedQueuesCount, result.Queues);
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnRecurringCount()
         {
             const int expectedRecurringCount = 1;
@@ -166,6 +156,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
             _storage.UseStatelessSession(connection =>
             {
                 connection.Insert(new _Set {Key = "recurring-jobs", Value = "test", Score = 0});
+
                 result = _sut.GetStatistics();
             });
 
@@ -173,7 +164,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnScheduledCount()
         {
             const int expectedScheduledCount = 3;
@@ -199,7 +189,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnServersCount()
         {
             const int expectedServersCount = 2;
@@ -210,6 +199,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 for (var i = 1; i < 3; i++) connection.Insert(new _Server {Id = i.ToString(), Data = i.ToString()});
 
                 //does nothing
+
                 result = _sut.GetStatistics();
             });
 
@@ -217,7 +207,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetStatistics_ShouldReturnSucceededCount()
         {
             const int expectedStatsSucceededCount = 11;
@@ -228,6 +217,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 connection.Insert(new _Counter {Key = "stats:succeeded", Value = 1});
                 connection.Insert(new _AggregatedCounter {Key = "stats:succeeded", Value = 10});
                 //does nothing
+
                 result = _sut.GetStatistics();
             });
 
@@ -235,7 +225,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnCreatedAtAndExpireAt()
         {
             JobDetailsDto result = null;
@@ -256,14 +245,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
                 result = _sut.JobDetails(jobId.ToString());
             });
 
-            Assert.Equal(_createdAt.ToString("yyyy-MM-dd hh:mm:ss"),
-                result.CreatedAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
-            Assert.Equal(_expireAt.ToString("yyyy-MM-dd hh:mm:ss"),
-                result.ExpireAt.Value.ToString("yyyy-MM-dd hh:mm:ss"));
+            Assert.True(_createdAt.Subtract(result.CreatedAt.Value.ToUniversalTime()).TotalMinutes < 1);
+            Assert.True(_expireAt.Subtract(result.ExpireAt.Value.ToUniversalTime()).TotalMinutes < 1);
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnHistory()
         {
             const string jobStateName = "Scheduled";
@@ -299,7 +285,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnJob()
         {
             JobDetailsDto result = null;
@@ -325,7 +310,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Monitoring
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void JobDetails_ShouldReturnProperties()
         {
             var properties = new Dictionary<string, string>

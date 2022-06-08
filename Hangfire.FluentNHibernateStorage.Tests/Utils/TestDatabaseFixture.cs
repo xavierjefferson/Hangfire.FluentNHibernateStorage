@@ -1,43 +1,59 @@
 ﻿using System;
-using System.Data.SqlClient;
 using System.Threading;
+using Hangfire.FluentNHibernateStorage.Tests.Providers;
 
 namespace Hangfire.FluentNHibernateStorage.Tests
 {
-    public class TestDatabaseFixture : IDisposable
+    public class SqlCeDatabaseFixture : TestDatabaseFixture
+    {
+        private SqlCeProvider ss = new SqlCeProvider();
+        public override void CreateDatabase()
+        {
+            ss.CreateDatabase();
+
+        }
+
+        public override void DestroyDatabase()
+        {
+
+            ss.DestroyDatabase();
+        }
+    }
+
+    public class SqliteDatabaseFixture : TestDatabaseFixture
+    {
+        private SqliteProvider ss = new SqliteProvider();
+        public override void CreateDatabase()
+        {
+            ss.CreateDatabase();
+             
+        }
+
+        public override void DestroyDatabase()
+        {
+          
+            ss.DestroyDatabase();
+        }
+    }
+    public abstract class TestDatabaseFixture : IDisposable
     {
         private static readonly object GlobalLock = new object();
+
+        public abstract void CreateDatabase();
+        public abstract void DestroyDatabase();
 
         public TestDatabaseFixture()
         {
             Monitor.Enter(GlobalLock);
-            CreateAndInitializeDatabase();
+            CreateDatabase();
         }
 
         public void Dispose()
         {
-            DropDatabase();
             Monitor.Exit(GlobalLock);
+            DestroyDatabase();
         }
 
-        private static void CreateAndInitializeDatabase()
-        {
-            using (var connection = new SqlConnection(ConnectionUtils.GetMasterConnectionString()))
-            {
-                connection.Open();
-                using (var sc = new SqlCommand(
-                    string.Format(
-                        "if not EXISTS (SELECT name FROM sys.databases WHERE name = '{0}') Create Database [{0}]",
-                        ConnectionUtils.GetDatabaseName()), connection))
-                {
-                    sc.ExecuteNonQuery();
-                }
-            }
-        }
 
-        private static void DropDatabase()
-        {
-            new FluentNHibernateJobStorageTestWrapper(ConnectionUtils.GetStorage()).TruncateAllHangfireTables();
-        }
     }
 }

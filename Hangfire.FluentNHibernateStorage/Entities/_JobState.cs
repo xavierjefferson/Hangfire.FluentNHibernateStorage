@@ -1,8 +1,9 @@
 ﻿using System;
+using Hangfire.FluentNHibernateStorage.Maps;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _JobState : Int32IdBase, IJobChild
+    public class _JobState : Int32IdBase, IJobChild, ICreatedAt
     {
         public virtual string Name { get; set; }
         public virtual string Reason { get; set; }

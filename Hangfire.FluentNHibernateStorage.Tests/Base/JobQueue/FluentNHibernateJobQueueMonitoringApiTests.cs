@@ -1,24 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Transactions;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
+namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 {
-    public class FluentNHibernateJobQueueMonitoringApiTests : IClassFixture<TestDatabaseFixture>, IDisposable
+    public abstract class FluentNHibernateJobQueueMonitoringApiTests<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture, IDisposable
+  
     {
-        public FluentNHibernateJobQueueMonitoringApiTests()
+        protected FluentNHibernateJobQueueMonitoringApiTests()
         {
-            _storage = ConnectionUtils.GetStorage();
+            _storage = GetStorage();
             _sut = new FluentNHibernateJobQueueMonitoringApi(_storage);
-        }
-
-        public void Dispose()
-        {
-            _storage.Dispose();
         }
 
         private readonly string _queue = "default";
@@ -26,16 +22,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         private readonly FluentNHibernateJobQueueMonitoringApi _sut;
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedAndFetchedCount_ReturnsEqueuedCount_WhenExists()
         {
             EnqueuedAndFetchedCountDto result = null;
 
             _storage.UseStatelessSession(session =>
             {
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
-               
+
                 result = _sut.GetEnqueuedAndFetchedCount(_queue);
 
                 session.DeleteAll<_JobQueue>();
@@ -45,7 +40,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
         }
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedJobIds_ReturnsCorrectResult()
         {
             long[] result = null;
@@ -54,7 +48,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
             {
                 for (var i = 1; i <= 10; i++)
                 {
-                    var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                    var newJob = JobInsertionHelper.InsertNewJob(session);
                     jobs.Add(newJob);
                     session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }
@@ -72,7 +66,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.JobQueue
 
 
         [Fact]
-        [CleanDatabase(IsolationLevel.ReadUncommitted)]
         public void GetEnqueuedJobIds_ReturnsEmptyCollection_IfQueueIsEmpty()
         {
             var result = _sut.GetEnqueuedJobIds(_queue, 5, 15);

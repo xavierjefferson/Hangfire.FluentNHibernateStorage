@@ -42,7 +42,6 @@ namespace Hangfire.FluentNHibernateStorage
         internal static readonly string UpdateJobQueueFetchedAtStatement =
             GetSingleFieldUpdateSql(nameof(_JobQueue), nameof(_JobQueue.FetchedAt), nameof(_JobQueue.Id));
 
-
         /// <summary>
         ///     HQL statement by which to update an aggregated counter based upon its key
         /// </summary>
@@ -64,8 +63,6 @@ namespace Hangfire.FluentNHibernateStorage
                 {typeof(_Hash), GetSetExpireAtByKeyStatement<_Hash>()},
                 {typeof(_List), GetSetExpireAtByKeyStatement<_List>()}
             };
-
-      
 
         internal static readonly string SetJobParameterStatement = string.Format(
             "update {0} set {1}=:value where {2}.{3}=:id and {4}=:name",

@@ -5,16 +5,17 @@ using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.Server;
 using Hangfire.Storage;
 using Moq;
 using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public class FluentNHibernateStorageConnectionTests : IClassFixture<TestDatabaseFixture>
+    public abstract class FluentNHibernateStorageConnectionTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
     {
-        public FluentNHibernateStorageConnectionTests()
+        public FluentNHibernateStorageConnectionTestsBase()
         {
             _queue = new Mock<IPersistentJobQueue>();
 
@@ -31,14 +32,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         private void UseJobStorageConnectionWithSession(
             Action<StatelessSessionWrapper, FluentNHibernateJobStorageConnection> action)
         {
-            UseJobStorageConnection(jobsto =>
-            {
-                jobsto.Storage.UseStatelessSession((s) => action(s, jobsto));
-                using (var session = jobsto.Storage.GetStatelessSession())
-                {
-                    action(session, jobsto);
-                }
-            });
+            UseJobStorageConnection(jobsto => { jobsto.Storage.UseStatelessSession(s => action(s, jobsto)); });
         }
 
         private void UseJobStorageConnection(Action<FluentNHibernateJobStorageConnection> action)
@@ -51,10 +45,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             }
         }
 
+      
         private Mock<FluentNHibernateJobStorage> GetMockStorage()
         {
-            var persistenceConfigurer = ConnectionUtils.GetPersistenceConfigurer();
-            var storage = new Mock<FluentNHibernateJobStorage>(persistenceConfigurer);
+            var persistenceConfigurer = GetPersistenceConfigurer();
+            var storage = CreateMock(persistenceConfigurer);
             storage.Setup(x => x.QueueProviders).Returns(_providers);
             return storage;
         }
@@ -64,7 +59,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AcquireLock_ReturnsNonNullInstance()
         {
             UseJobStorageConnection(jobStorage =>
@@ -75,7 +69,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AnnounceServer_CreatesOrUpdatesARecord()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -87,7 +80,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     WorkerCount = 4
                 };
                 jobStorage.AnnounceServer("server", context1);
-               
+
                 var server = session.Query<_Server>().Single();
                 Assert.Equal("server", server.Id);
                 Assert.NotNull(server.Data);
@@ -102,7 +95,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     WorkerCount = 1000
                 };
                 jobStorage.AnnounceServer("server", context2);
-               
+
                 var sameServer = session.Query<_Server>().Single();
                 Assert.Equal("server", sameServer.Id);
                 Assert.NotNull(sameServer.Data);
@@ -112,7 +105,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AnnounceServer_ThrowsAnException_WhenContextIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -125,7 +117,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void AnnounceServer_ThrowsAnException_WhenServerIdIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -138,21 +129,26 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void CreateExpiredJob_CreatesAJobInTheStorage_AndSetsItsParameters()
         {
+            const string expectedString = "Hello";
+            const string key1 = "Key1";
+            const string key2 = "Key2";
+            const string expectedValue1 = "Value1";
+            const string expectedValue2 = "Value2";
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var createdAt = new DateTime(2012, 12, 12);
+                var createdAt = new DateTime(2012, 12, 12).ToUniversalTime();
+                var dictionary = new Dictionary<string, string> {{key1, expectedValue1}, {key2, expectedValue2}};
                 var jobId = jobStorage.CreateExpiredJob(
-                    Job.FromExpression(() => SampleMethod("Hello")),
-                    new Dictionary<string, string> {{"Key1", "Value1"}, {"Key2", "Value2"}},
+                    Job.FromExpression(() => SampleMethod(expectedString)),
+                    dictionary,
                     createdAt,
                     TimeSpan.FromDays(1));
 
                 Assert.NotNull(jobId);
                 Assert.NotEmpty(jobId);
-               
+
                 var sqlJob = session.Query<_Job>().Single();
                 Assert.Equal(jobId, sqlJob.Id.ToString());
                 Assert.Equal(createdAt, sqlJob.CreatedAt);
@@ -162,9 +158,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 invocationData.Arguments = sqlJob.Arguments;
 
                 var job = invocationData.DeserializeJob();
-                Assert.Equal(typeof(FluentNHibernateStorageConnectionTests), job.Type);
-                Assert.Equal("SampleMethod", job.Method.Name);
-                Assert.Equal("\"Hello\"", job.Args[0]);
+                Assert.Equal(typeof(FluentNHibernateStorageConnectionTestsBase<T,U>), job.Type);
+                Assert.Equal(nameof(SampleMethod), job.Method.Name);
+                Assert.Equal(expectedString, job.Args[0]);
 
                 Assert.True(createdAt.AddDays(1).AddMinutes(-1) < sqlJob.ExpireAt);
                 Assert.True(sqlJob.ExpireAt < createdAt.AddDays(1).AddMinutes(1));
@@ -173,13 +169,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                     .Where(i => i.Job.Id == long.Parse(jobId))
                     .ToDictionary(x => x.Name, x => x.Value);
 
-                Assert.Equal("Value1", parameters["Key1"]);
-                Assert.Equal("Value2", parameters["Key2"]);
+                Assert.Equal(expectedValue1, parameters[key1]);
+                Assert.Equal(expectedValue2, parameters[key2]);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void CreateExpiredJob_ThrowsAnException_WhenJobIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -196,7 +191,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void CreateExpiredJob_ThrowsAnException_WhenParametersCollectionIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -213,7 +207,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void CreateWriteTransaction_ReturnsNonNullInstance()
         {
             UseJobStorageConnection(jobStorage =>
@@ -233,7 +226,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void FetchNextJob_DelegatesItsExecution_ToTheQueue()
         {
             UseJobStorageConnection(jobStorage =>
@@ -248,7 +240,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void FetchNextJob_Throws_IfMultipleProvidersResolved()
         {
             UseJobStorageConnection(jobStorage =>
@@ -263,21 +254,22 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllEntriesFromHash_ReturnsAllKeysAndTheirValues()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                session.Insert(new[]
+                var hashes = new[]
                 {
                     new _Hash {Key = "some-hash", Field = "Key1", Value = "Value1"},
                     new _Hash {Key = "some-hash", Field = "Key2", Value = "Value2"},
                     new _Hash {Key = "another-hash", Field = "Key3", Value = "Value3"}
-                });
+                };
+                foreach (var hash in hashes) session.Insert(hash);
+
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetAllEntriesFromHash("some-hash");
 
                 // Assert
@@ -289,7 +281,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllEntriesFromHash_ReturnsNull_IfHashDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -300,7 +291,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllEntriesFromHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -308,7 +298,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromList_ReturnsAllItems_FromAGivenList()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -322,16 +311,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetAllItemsFromList("list-1");
 
                 // Assert
-                Assert.Equal(new[] {"3", "1"}, result);
+                Assert.Equal(new[] {"3", "1"}, result.ToArray());
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromList_ReturnsAnEmptyList_WhenListDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -342,7 +330,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromList_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -353,22 +340,22 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromSet_ReturnsAllItems()
         {
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                session.Insert(new[]
+                var sets = new[]
                 {
                     new _Set {Key = "some-set", Value = "1"},
                     new _Set {Key = "some-set", Value = "2"},
                     new _Set {Key = "another-set", Value = "3"}
-                });
+                };
+                foreach (var set in sets)
+                    session.Insert(set);
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetAllItemsFromSet("some-set");
 
                 // Assert
@@ -379,7 +366,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromSet_ReturnsEmptyCollection_WhenKeyDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -392,7 +378,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetAllItemsFromSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -400,21 +385,22 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetCounter_IncludesValues_FromCounterAggregateTable()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
-                session.Insert(new[]
+                var aggregatedCounters = new[]
                 {
                     new _AggregatedCounter {Key = "counter-1", Value = 12},
                     new _AggregatedCounter {Key = "counter-2", Value = 15}
-                });
+                };
+                foreach (var aggregatedCounter in aggregatedCounters)
+                    session.Insert(aggregatedCounter);
                 ;
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetCounter("counter-1");
 
                 Assert.Equal(12, result);
@@ -422,7 +408,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetCounter_ReturnsSumOfValues_InCounterTable()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -436,7 +421,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetCounter("counter-1");
 
                 // Assert
@@ -445,7 +430,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetCounter_ReturnsZero_WhenKeyDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -457,7 +441,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
 
 
         [Fact]
-        [CleanDatabase]
         public void GetCounter_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -468,7 +451,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ReturnsNull_WhenTheKeyDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -481,7 +463,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ReturnsTheValueWithTheLowestScore()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -499,7 +480,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ThrowsAnException_ToScoreIsLowerThanFromScore()
         {
             UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentException>(
@@ -507,7 +487,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetFirstByLowestScoreFromSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -515,15 +494,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var exception = Assert.Throws<ArgumentNullException>(
                     () => jobStorage.GetFirstByLowestScoreFromSet(null, 0, 1));
 
-                Assert.Equal("Key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName, StringComparer.InvariantCultureIgnoreCase);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashCount_ReturnsNumber_OfHashFields()
         {
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
@@ -535,7 +512,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetHashCount("hash-1");
 
                 // Assert
@@ -544,7 +521,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashCount_ReturnsZero_WhenKeyDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -555,7 +531,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashCount_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -565,7 +540,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashTtl_ReturnsExpirationTimeForHash()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -578,7 +552,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetHashTtl("hash-1");
 
                 // Assert
@@ -588,7 +562,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashTtl_ReturnsNegativeValue_WhenHashDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -599,7 +572,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetHashTtl_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -610,7 +582,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetJobData_ReturnsJobLoadException_IfThereWasADeserializationException()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -619,7 +590,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 {
                     InvocationData = SerializationHelper.Serialize(new InvocationData(null, null, null, null)),
                     StateName = "Succeeded",
-                    Arguments = "['Arguments']"
+                    Arguments = "['Arguments']",
+                    CreatedAt = session.Storage.UtcNow
                 };
                 session.Insert(newJob);
                 //does nothing
@@ -631,7 +603,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetJobData_ReturnsNull_WhenThereIsNoSuchJob()
         {
             UseJobStorageConnection(jobStorage =>
@@ -642,7 +613,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetJobData_ReturnsResult_WhenJobExists()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -652,12 +622,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 {
                     InvocationData = SerializationHelper.Serialize(InvocationData.SerializeJob(job)),
                     StateName = "Succeeded",
-                    Arguments = "['Arguments']"
+                    Arguments = "['Arguments']", CreatedAt = session.Storage.UtcNow
                 };
                 session.Insert(newJob);
                 //does nothing
                 var jobId = newJob.Id;
-               
+
 
                 var result = jobStorage.GetJobData(jobId.ToString());
 
@@ -666,13 +636,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 Assert.Equal("Succeeded", result.State);
                 Assert.Equal("Arguments", result.Job.Args[0]);
                 Assert.Null(result.LoadException);
-                Assert.True(session.Storage.UtcNow.AddMinutes(-1) < result.CreatedAt);
-                Assert.True(result.CreatedAt < session.Storage.UtcNow.AddMinutes(1));
+                Assert.True(session.Storage.UtcNow.AddMinutes(-1) < result.CreatedAt.ToUniversalTime());
+                Assert.True(result.CreatedAt.ToUniversalTime() < session.Storage.UtcNow.AddMinutes(1));
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetJobData_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
@@ -680,7 +649,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListCount_ReturnsTheNumberOfListElements()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -694,7 +662,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetListCount("list-1");
 
                 // Assert
@@ -703,7 +671,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListCount_ReturnsZero_WhenListDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -714,7 +681,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListCount_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -725,7 +691,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListTtl_ReturnsExpirationTimeForList()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -738,7 +703,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetListTtl("list-1");
 
                 // Assert
@@ -748,7 +713,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListTtl_ReturnsNegativeValue_WhenListDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -759,7 +723,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetListTtl_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -770,7 +733,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetParameter_ReturnsNull_WhenParameterDoesNotExists()
         {
             UseJobStorageConnection(jobStorage =>
@@ -781,12 +743,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetParameter_ReturnsParameterValue_WhenJobExists()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
                 session.Insert(new _JobParameter {Job = newJob, Name = "name", Value = "Value"});
                 //does nothing
 
@@ -798,7 +759,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetParameter_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -811,7 +771,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetParameter_ThrowsAnException_WhenNameIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -824,7 +783,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromList_ReturnsAllEntries_WithinGivenBounds()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -840,7 +798,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 });
                 //does nothing
                 // Act
-               
+
                 var result = jobStorage.GetRangeFromList("list-1", 1, 2);
 
                 // Assert
@@ -849,7 +807,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromList_ReturnsAnEmptyList_WhenListDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -860,7 +817,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromList_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -868,12 +824,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var exception = Assert.Throws<ArgumentNullException>(
                     () => jobStorage.GetRangeFromList(null, 0, 1));
 
-                Assert.Equal("Key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName, StringComparer.InvariantCultureIgnoreCase);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromSet_ReturnsPagedElements()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -896,22 +851,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromSet_ReturnsPagedElements2()
         {
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                session.Insert(new List<dynamic>
+                session.Insert(new List<_Set>
                 {
-                    new {Key = "set-1", Value = "1"},
-                    new {Key = "set-1", Value = "2"},
-                    new {Key = "set-0", Value = "3"},
-                    new {Key = "set-1", Value = "4"},
-                    new {Key = "set-2", Value = "1"},
-                    new {Key = "set-1", Value = "5"},
-                    new {Key = "set-2", Value = "2"},
-                    new {Key = "set-1", Value = "3"}
+                    new _Set {Key = "set-1", Value = "1"},
+                    new _Set {Key = "set-1", Value = "2"},
+                    new _Set {Key = "set-0", Value = "3"},
+                    new _Set {Key = "set-1", Value = "4"},
+                    new _Set {Key = "set-2", Value = "1"},
+                    new _Set {Key = "set-1", Value = "5"},
+                    new _Set {Key = "set-2", Value = "2"},
+                    new _Set {Key = "set-1", Value = "3"}
                 });
                 //does nothing
 
@@ -922,7 +875,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetRangeFromSet_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -932,17 +884,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetCount_ReturnsNumberOfElements_InASet()
         {
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                session.Insert(new List<dynamic>
+                session.Insert(new List<_Set>
                 {
-                    new {Key = "set-1", Value = "Value-1"},
-                    new {Key = "set-2", Value = "Value-1"},
-                    new {Key = "set-1", Value = "Value-2"}
+                    new _Set {Key = "set-1", Value = "Value-1"},
+                    new _Set {Key = "set-2", Value = "Value-1"},
+                    new _Set {Key = "set-1", Value = "Value-2"}
                 });
                 //does nothing
 
@@ -953,7 +903,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetCount_ReturnsZero_WhenSetDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -964,7 +913,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetCount_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -975,17 +923,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetTtl_ReturnsExpirationTime_OfAGivenSet()
         {
-
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
                 // Arrange
                 session.Insert(new[]
                 {
-                    new {Key = "set-1", Value = "1", ExpireAt = (DateTime?) session.Storage.UtcNow.AddMinutes(60)},
-                    new {Key = "set-2", Value = "2", ExpireAt = (DateTime?) null}
+                    new _Set {Key = "set-1", Value = "1", ExpireAt = session.Storage.UtcNow.AddMinutes(60)},
+                    new _Set {Key = "set-2", Value = "2", ExpireAt = null}
                 });
                 //does nothing
 
@@ -999,7 +945,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetTtl_ReturnsNegativeValue_WhenSetDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1010,7 +955,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetSetTtl_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1020,7 +964,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetStateData_ReturnsCorrectData()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1068,7 +1011,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetStateData_ReturnsCorrectData_WhenPropertiesAreCamelcased()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1077,7 +1019,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 {
                     {"Key", "Value"}
                 };
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
                 session.Insert(new _JobState {Job = newJob, Name = "old-state", CreatedAt = session.Storage.UtcNow});
                 var jobState = new _JobState
                 {
@@ -1106,7 +1048,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetStateData_ReturnsNull_IfThereIsNoSuchState()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1117,7 +1058,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetStateData_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(
@@ -1126,7 +1066,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetValueFromHash_ReturnsNull_WhenHashDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1137,7 +1076,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetValueFromHash_ReturnsValue_OfAGivenField()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1160,7 +1098,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetValueFromHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1168,12 +1105,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var exception = Assert.Throws<ArgumentNullException>(
                     () => jobStorage.GetValueFromHash(null, "name"));
 
-                Assert.Equal("Key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName, StringComparer.InvariantCultureIgnoreCase);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void GetValueFromHash_ThrowsAnException_WhenNameIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1186,7 +1122,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void Heartbeat_ThrowsAnException_WhenServerIdIsNull()
         {
             UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
@@ -1194,7 +1129,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void Heartbeat_UpdatesLastHeartbeat_OfTheServerWithGivenId()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1214,7 +1148,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 //does nothing
 
                 jobStorage.Heartbeat("server1");
-               
+
                 var servers = session.Query<_Server>()
                     .ToDictionary(x => x.Id, x => x.LastHeartbeat.Value);
 
@@ -1224,7 +1158,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveServer_RemovesAServerRecord()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1236,14 +1169,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 //does nothing
 
                 jobStorage.RemoveServer("Server1");
-               
+
                 var server = session.Query<_Server>().Single();
                 Assert.NotEqual("Server1", server.Id, StringComparer.OrdinalIgnoreCase);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveServer_ThrowsAnException_WhenServerIdIsNull()
         {
             UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentNullException>(
@@ -1251,7 +1183,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveTimedOutServers_DoItsWorkPerfectly()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1259,19 +1190,24 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 session.Insert(
                     new[]
                     {
-                        new _Server {Id = "server1", LastHeartbeat = session.Storage.UtcNow.AddDays(-1)},
-                        new _Server {Id = "server2", LastHeartbeat = session.Storage.UtcNow.AddHours(-12)}
+                        new _Server
+                        {
+                            Id = "server1", LastHeartbeat = session.Storage.UtcNow.AddDays(-1), Data = string.Empty
+                        },
+                        new _Server
+                        {
+                            Id = "server2", LastHeartbeat = session.Storage.UtcNow.AddHours(-12), Data = string.Empty
+                        }
                     });
                 //does nothing
                 jobStorage.RemoveTimedOutServers(TimeSpan.FromHours(15));
-               
+
                 var liveServer = session.Query<_Server>().Single();
                 Assert.Equal("server2", liveServer.Id);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void RemoveTimedOutServers_ThrowsAnException_WhenTimeOutIsNegative()
         {
             UseJobStorageConnection(jobStorage => Assert.Throws<ArgumentException>(
@@ -1279,12 +1215,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetParameter_CanAcceptNulls_AsValues()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
                 //does nothing
 
@@ -1297,7 +1232,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetParameter_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1310,7 +1244,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetParameter_ThrowsAnException_WhenNameIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1323,12 +1256,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetParameter_UpdatesValue_WhenParameterWithTheGivenName_AlreadyExists()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
 
                 jobStorage.SetJobParameter(jobId, "Name", "Value");
@@ -1342,12 +1274,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetParameters_CreatesNewParameter_WhenParameterWithTheGivenNameDoesNotExists()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = FluentNHibernateWriteOnlyTransactionTests.InsertNewJob(session);
+                var newJob = JobInsertionHelper.InsertNewJob(session);
 
                 var jobId = newJob.Id.ToString();
 
@@ -1361,7 +1292,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_MergesAllRecords()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1382,7 +1312,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyIsNull()
         {
             UseJobStorageConnection(jobStorage =>
@@ -1390,12 +1319,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 var exception = Assert.Throws<ArgumentNullException>(
                     () => jobStorage.SetRangeInHash(null, new Dictionary<string, string>()));
 
-                Assert.Equal("Key", exception.ParamName);
+                Assert.Equal("Key", exception.ParamName, StringComparer.InvariantCultureIgnoreCase);
             });
         }
 
         [Fact]
-        [CleanDatabase]
         public void SetRangeInHash_ThrowsAnException_WhenKeyValuePairsArgumentIsNull()
         {
             UseJobStorageConnection(jobStorage =>

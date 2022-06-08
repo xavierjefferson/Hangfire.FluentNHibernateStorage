@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using Hangfire.FluentNHibernateStorage.Maps;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _Job : IExpirableWithId
+    public class _Job : IExpirableWithId, ICreatedAt, IExpireAtNullable
     {
         public _Job()
         {
@@ -15,9 +16,6 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public virtual string InvocationData { get; set; }
 
         public virtual string Arguments { get; set; }
-        public virtual DateTime CreatedAt { get; set; }
-
-        public virtual DateTime? FetchedAt { get; set; }
 
         public virtual IList<_JobParameter> Parameters { get; set; }
         public virtual IList<_JobState> History { get; set; }
@@ -25,6 +23,8 @@ namespace Hangfire.FluentNHibernateStorage.Entities
         public virtual string StateReason { get; set; }
         public virtual DateTime? LastStateChangedAt { get; set; }
         public virtual string StateData { get; set; }
+        public virtual DateTime CreatedAt { get; set; }
+
 
         public virtual int Id { get; set; }
         public virtual DateTime? ExpireAt { get; set; }
