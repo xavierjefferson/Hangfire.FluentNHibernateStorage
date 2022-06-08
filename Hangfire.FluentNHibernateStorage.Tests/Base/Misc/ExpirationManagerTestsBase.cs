@@ -3,15 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.Server;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public abstract class ExpirationManagerTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class ExpirationManagerTestsBase : TestBase
     {
-        protected ExpirationManagerTestsBase()
+        protected ExpirationManagerTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
             _storage = GetStorage();
 
@@ -27,7 +26,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         private static long CreateExpirationEntry(StatelessSessionWrapper session, DateTime? expireAt)
         {
             session.DeleteAll<_AggregatedCounter>();
-            var a = new _AggregatedCounter { Key = "key", Value = 1, ExpireAt = expireAt };
+            var a = new _AggregatedCounter {Key = "key", Value = 1, ExpireAt = expireAt};
             session.Insert(a);
 
             return a.Id;
@@ -54,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_DoesNotRemoveEntries_WithFreshExpirationTime()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(1));
@@ -71,7 +70,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_DoesNotRemoveEntries_WithNoExpirationTimeSet()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 //Arrange
                 var entryId = CreateExpirationEntry(session, null);
@@ -88,7 +87,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_Processes_AggregatedCounterTable()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
                 session.Insert(new _AggregatedCounter
@@ -111,7 +110,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_Processes_HashTable()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
                 session.Insert(new _Hash
@@ -142,7 +141,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_Processes_JobTable()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
                 session.Insert(new _Job
@@ -167,10 +166,10 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_Processes_ListTable()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
-                session.Insert(new _List { Key = "key", ExpireAt = session.Storage.UtcNow.AddMonths(-1) });
+                session.Insert(new _List {Key = "key", ExpireAt = session.Storage.UtcNow.AddMonths(-1)});
 
 
                 var manager = CreateManager();
@@ -186,7 +185,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_Processes_SetTable()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
                 session.Insert(new _Set
@@ -211,7 +210,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void Execute_RemovesOutdatedRecords()
         {
-            WithCleanTables(_storage, session =>
+            UseSession(_storage, session =>
             {
                 // Arrange
                 var entryId = CreateExpirationEntry(session, session.Storage.UtcNow.AddMonths(-1));

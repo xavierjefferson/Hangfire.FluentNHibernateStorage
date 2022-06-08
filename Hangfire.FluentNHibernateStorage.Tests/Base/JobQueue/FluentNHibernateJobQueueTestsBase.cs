@@ -3,19 +3,19 @@ using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 {
-    public abstract class FluentNHibernateJobQueueTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class FluentNHibernateJobQueueTestsBase : TestBase
     {
-        public FluentNHibernateJobQueueTestsBase()
+        public FluentNHibernateJobQueueTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
+
             _storage = GetStorage();
         }
 
-        private static readonly string[] DefaultQueues = { "default" };
+        private static readonly string[] DefaultQueues = {"default"};
         private readonly FluentNHibernateJobStorage _storage;
 
         private static CancellationToken CreateTimingOutCancellationToken()
@@ -53,7 +53,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
                 session.DeleteAll<_JobQueue>();
                 session.DeleteAll<_Job>();
                 var newjob = JobInsertionHelper.InsertNewJob(session);
-                session.Insert(new _JobQueue { Job = newjob, Queue = "default" });
+                session.Insert(new _JobQueue {Job = newjob, Queue = "default"});
                 //does nothing
                 var queue = CreateJobQueue(_storage);
 
@@ -79,14 +79,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             _storage.UseStatelessSession(session =>
             {
                 var newJob = JobInsertionHelper.InsertNewJob(session);
-                var newJobQueue = new _JobQueue { Job = newJob, Queue = "default" };
+                var newJobQueue = new _JobQueue {Job = newJob, Queue = "default"};
                 session.Insert(newJobQueue);
 
 
                 var queue = CreateJobQueue(_storage);
 
                 // Act
-                var payload = (FluentNHibernateFetchedJob)queue.Dequeue(
+                var payload = (FluentNHibernateFetchedJob) queue.Dequeue(
                     DefaultQueues,
                     CreateTimingOutCancellationToken());
 
@@ -127,7 +127,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
         {
             _storage.UseStatelessSession(session =>
             {
-                var queueNames = new[] { "critical", "default" };
+                var queueNames = new[] {"critical", "default"};
                 foreach (var queueName in queueNames)
                 {
                     var newJob = JobInsertionHelper.InsertNewJob(session);
@@ -144,14 +144,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
                 var queue = CreateJobQueue(_storage);
 
 
-                var critical = (FluentNHibernateFetchedJob)queue.Dequeue(
+                var critical = (FluentNHibernateFetchedJob) queue.Dequeue(
                     queueNames,
                     CreateLongTimingOutCancellationToken());
 
                 Assert.NotNull(critical.JobId);
                 Assert.Equal("critical", critical.Queue);
 
-                var @default = (FluentNHibernateFetchedJob)queue.Dequeue(
+                var @default = (FluentNHibernateFetchedJob) queue.Dequeue(
                     queueNames,
                     CreateLongTimingOutCancellationToken());
 
@@ -164,24 +164,24 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
         public void Dequeue_ShouldFetchJobs_OnlyFromSpecifiedQueues()
         {
             _storage.UseStatelessSession(session =>
-            {
-                session.DeleteAll<_JobQueue>();
-                session.DeleteAll<_Job>();
-                var newJob = JobInsertionHelper.InsertNewJob(session);
-                session.Insert(new _JobQueue
                 {
-                    Job = newJob,
-                    Queue = "critical"
+                    session.DeleteAll<_JobQueue>();
+                    session.DeleteAll<_Job>();
+                    var newJob = JobInsertionHelper.InsertNewJob(session);
+                    session.Insert(new _JobQueue
+                    {
+                        Job = newJob,
+                        Queue = "critical"
+                    });
+                    //does nothing
+
+                    var queue = CreateJobQueue(_storage);
+
+                    Assert.Throws<OperationCanceledException>(
+                        () => queue.Dequeue(
+                            DefaultQueues,
+                            CreateTimingOutCancellationToken()));
                 });
-                //does nothing
-
-                var queue = CreateJobQueue(_storage);
-
-                Assert.Throws<OperationCanceledException>(
-                    () => queue.Dequeue(
-                        DefaultQueues,
-                        CreateTimingOutCancellationToken()));
-            });
         }
 
         [Fact]

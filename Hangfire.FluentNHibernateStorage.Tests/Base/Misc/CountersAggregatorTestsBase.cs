@@ -1,14 +1,13 @@
 ﻿using System.Linq;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public abstract class CountersAggregatorTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class CountersAggregatorTestsBase : TestBase
     {
-        protected CountersAggregatorTestsBase()
+        protected CountersAggregatorTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
             _storage = GetStorage();
             _countersAggregator = new CountersAggregator(_storage);
@@ -21,7 +20,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void CountersAggregatorExecutesProperly()
         {
-            WithCleanTables(_storage, sessionWrapper =>
+            UseSession(_storage, sessionWrapper =>
             {
                 //Arrange
                 sessionWrapper.Insert(new _Counter {Key = "key", Value = 1, ExpireAt = _storage.UtcNow.AddHours(1)});

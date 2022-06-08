@@ -1,13 +1,14 @@
 using System;
 using System.Linq;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public abstract class FluentNHibernateStorageTests<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class FluentNHibernateStorageTests : TestBase
     {
-      
+        public FluentNHibernateStorageTests(TestDatabaseFixture fixture) : base(fixture)
+        {
+        }
 
         [Fact]
         public void Ctor_ThrowsAnException_WhenInfoIsNull()
@@ -31,11 +32,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         public void GetComponents_ReturnsAllNeededComponents()
         {
             var storage = GetStorage();
-            WithCleanTables(storage, s =>
-            {
-                var components = s.GetBackgroundProcesses();
-                Assert.True(components.OfType<ExpirationManager>().Any());
-            });
+
+            var components = storage.GetBackgroundProcesses();
+            Assert.True(components.OfType<ExpirationManager>().Any());
         }
 
 
@@ -43,24 +42,20 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         public void GetConnection_ReturnsNonNullInstance()
         {
             var storage = GetStorage();
-            WithCleanTables(storage, s =>
+
+            using (var connection = storage.GetConnection())
             {
-                using (var connection = s.GetConnection())
-                {
-                    Assert.NotNull(connection);
-                }
-            });
+                Assert.NotNull(connection);
+            }
         }
 
         [Fact]
         public void GetMonitoringApi_ReturnsNonNullInstance()
         {
             var storage = GetStorage();
-            WithCleanTables(storage, s =>
-            {
-                var api = s.GetMonitoringApi();
-                Assert.NotNull(api);
-            });
+
+            var api = storage.GetMonitoringApi();
+            Assert.NotNull(api);
         }
     }
 }

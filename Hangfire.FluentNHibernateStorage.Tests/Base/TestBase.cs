@@ -1,25 +1,24 @@
 ﻿using System;
 using FluentNHibernate.Cfg.Db;
-using Hangfire.FluentNHibernateStorage.Entities;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Moq;
-using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base
 {
-    public class TestBase<T, U> : IClassFixture<U>, IDisposable where T : IDbProvider, new() where U: TestDatabaseFixture
+    public abstract class TestBase : IDisposable
     {
-        private readonly IDbProvider _provider;
+        private readonly IDatabaseFixture _provider;
 
 
         private bool _disposedValue;
         private FluentNHibernateJobStorage _storage;
 
-
-        public TestBase()
+        protected TestBase(TestDatabaseFixture fixture)
         {
-            _provider = new T();
+            Fixture = fixture;
+            _provider = fixture.GetProvider();
         }
+
+        protected TestDatabaseFixture Fixture { get; }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
         // ~TestBase()
@@ -43,7 +42,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
 
         public FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
-            return _storage ?? (_storage = _provider.GetStorage(options));
+            if (_storage == null)
+            {
+                _storage = _provider.GetStorage(options);
+
+                return _storage;
+            }
+
+            return _storage;
         }
 
         public IPersistenceConfigurer GetPersistenceConfigurer()
@@ -55,7 +61,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
         {
             if (!_disposedValue)
             {
-                if (disposing) _provider.Cleanup();
+                if (disposing)
+                    CleanTables(GetStorage());
                 // TODO: dispose managed state (managed objects)
 
 
@@ -65,43 +72,34 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             }
         }
 
-        public void WithCleanTables(FluentNHibernateJobStorage storage, Action<FluentNHibernateJobStorage> action)
+        private void CleanTables(FluentNHibernateJobStorage storage)
         {
-            action(storage);
             using (var session = storage.GetStatelessSession())
             {
-                session.DeleteAll<_JobState>();
-                session.DeleteAll<_JobParameter>();
-                session.DeleteAll<_JobQueue>();
-                session.DeleteAll<_Job>();
-                session.DeleteAll<_Hash>();
-                session.DeleteAll<_Set>();
-                session.DeleteAll<_List>();
-                session.DeleteAll<_DistributedLock>();
-                session.DeleteAll<_AggregatedCounter>();
-                session.DeleteAll<_Counter>();
-                session.DeleteAll<_Server>();
+                CleanTables(session);
             }
         }
 
+        private void CleanTables(StatelessSessionWrapper session)
+        {
+            Fixture.CleanTables(session);
+        }
 
-        public void WithCleanTables(FluentNHibernateJobStorage storage,
+
+        public void UseSession(FluentNHibernateJobStorage storage,
             Action<StatelessSessionWrapper> action)
         {
-            WithCleanTables(storage, s => { action(s.GetStatelessSession()); });
+            action(storage.GetStatelessSession());
         }
 
-        public void UseSession(Action<StatelessSessionWrapper> action,
+        public void UseNewSession(Action<StatelessSessionWrapper> action,
             Action<FluentNHibernateJobStorage> beforeAction = null)
         {
-            using (var storage = GetStorage())
-            {
-                WithCleanTables(storage, s =>
-                {
-                    beforeAction?.Invoke(s);
-                    action(s.GetStatelessSession());
-                });
-            }
+            //don't wrap in 'using' because we don't want to dispose yet
+            var storage = GetStorage();
+
+            beforeAction?.Invoke(storage);
+            action(storage.GetStatelessSession());
         }
     }
 }

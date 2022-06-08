@@ -1,9 +1,13 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.JobQueue
 {
-    public class SqliteFluentNHibernateJobQueueTests : FluentNHibernateJobQueueTestsBase<SqliteProvider, SqliteDatabaseFixture>
+    [Xunit.Collection(Constants.SqliteFixtureCollectionName)]
+    public class SqliteFluentNHibernateJobQueueTests : FluentNHibernateJobQueueTestsBase
     {
+        public SqliteFluentNHibernateJobQueueTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        {
+        }
     }
 }

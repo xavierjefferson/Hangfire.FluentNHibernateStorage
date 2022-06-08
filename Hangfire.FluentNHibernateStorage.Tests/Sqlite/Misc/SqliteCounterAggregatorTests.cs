@@ -1,9 +1,13 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Misc
 {
-    public class SqliteCounterAggregatorTests : CountersAggregatorTestsBase<SqliteProvider, SqliteDatabaseFixture>
+    [Collection(Constants.SqliteFixtureCollectionName)]
+    public class SqliteCounterAggregatorTests : CountersAggregatorTestsBase
     {
+        public SqliteCounterAggregatorTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        {
+        }
     }
 }

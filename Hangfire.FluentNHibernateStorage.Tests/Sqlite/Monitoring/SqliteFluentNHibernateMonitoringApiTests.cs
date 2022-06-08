@@ -1,9 +1,14 @@
-﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
+﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Monitoring
 {
-    public class SqliteFluentNHibernateMonitoringApiTests : FluentNHibernateMonitoringApiTestsBase<SqliteProvider, SqliteDatabaseFixture>
+    [Xunit.Collection(Constants.SqliteFixtureCollectionName)]
+    public class SqliteFluentNHibernateMonitoringApiTests : FluentNHibernateMonitoringApiTestsBase
     {
+        public SqliteFluentNHibernateMonitoringApiTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        {
+        }
     }
 }

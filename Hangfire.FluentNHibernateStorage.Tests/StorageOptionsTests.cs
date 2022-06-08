@@ -11,7 +11,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             var options = new FluentNHibernateStorageOptions();
 
             Assert.True(options.QueuePollInterval > TimeSpan.Zero);
-            
+
             Assert.True(options.JobExpirationCheckInterval > TimeSpan.Zero);
             Assert.True(options.UpdateSchema);
         }

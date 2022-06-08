@@ -47,18 +47,18 @@
     <Compile Include="Base\JobQueue\FluentNHibernateJobQueueMonitoringApiTests.cs" />
     <Compile Include="Base\JobQueue\FluentNHibernateJobQueueTestsBase.cs" />
     <Compile Include="Base\JobQueue\PersistentJobQueueProviderCollectionTests.cs" />
+    <Compile Include="Base\Misc\Constants.cs" />
     <Compile Include="Base\Misc\CountersAggregatorTestsBase.cs" />
     <Compile Include="Base\Misc\ExpirationManagerTestsBase.cs" />
     <Compile Include="Base\Misc\FluentNHibernateStorageConnectionTestsBase.cs" />
     <Compile Include="Base\Misc\FluentNHibernateStorageTests.cs" />
     <Compile Include="Base\Misc\FluentNHibernateWriteOnlyTransactionTestsBase.cs" />
+    <Compile Include="Utils\IDatabaseFixture.cs" />
+    <Compile Include="Utils\SqlCeCollectionFixture.cs" />
+    <Compile Include="Utils\SqliteCollectionFixture.cs" />
     <Compile Include="Base\Misc\StorageOptionsTests.cs" />
     <Compile Include="Base\Monitoring\FluentNHibernateMonitoringApiTestsBase.cs" />
     <Compile Include="Base\TestBase.cs" />
-    <Compile Include="Providers\IDbProvider.cs" />
-    <Compile Include="Providers\ProviderBase.cs" />
-    <Compile Include="Providers\SqlCeProvider.cs" />
-    <Compile Include="Providers\SqliteProvider.cs" />
     <Compile Include="SqlCe\JobQueue\SqlCeFluentNHibernateFetchedJobTests.cs" />
     <Compile Include="SqlCe\JobQueue\SqlCeFluentNHibernateJobQueueMonitoringApiTests.cs" />
     <Compile Include="SqlCe\JobQueue\SqlCeFluentNHibernateJobQueueTests.cs" />
@@ -79,6 +79,8 @@
     <Compile Include="Sqlite\Monitoring\SqliteFluentNHibernateMonitoringApiTests.cs" />
     <Compile Include="StorageOptionsTests.cs" />
     <Compile Include="Utils\JobInsertionHelper.cs" />
+    <Compile Include="Utils\SqlCeTestDatabaseFixture.cs" />
+    <Compile Include="Utils\SqliteTestDatabaseFixture.cs" />
     <Compile Include="Utils\TestDatabaseFixture.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -135,9 +137,6 @@
     <Reference Include="Remotion.Linq.EagerFetching, Version=2.2.0.0, Culture=neutral, PublicKeyToken=fee00910d6e5f53b, processorArchitecture=MSIL">
       <HintPath>..\packages\Remotion.Linq.EagerFetching.2.2.0\lib\net45\Remotion.Linq.EagerFetching.dll</HintPath>
     </Reference>
-    <Reference Include="Snork.FluentNHibernateTools, Version=1.2.1016.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Snork.FluentNHibernateTools.1.2.1016\lib\netstandard2.0\Snork.FluentNHibernateTools.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Configuration" />
@@ -160,8 +159,9 @@
     </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net" />
-    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=4.0.4.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.4.5.3\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Runtime.CompilerServices.Unsafe, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\System.Runtime.CompilerServices.Unsafe.6.0.0\lib\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
     <Reference Include="System.Security" />
     <Reference Include="System.Security.AccessControl, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -197,8 +197,13 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />
+    <Folder Include="Providers\" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Snork.FluentNHibernateTools\src\Snork.FluentNHibernateTools\Snork.FluentNHibernateTools.csproj">
+      <Project>{c3a3c91f-71ae-4a9f-88bf-7662b2c60f95}</Project>
+      <Name>Snork.FluentNHibernateTools</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj">
       <Project>{a133d2d4-003a-4f3c-a9c0-dad797172e0d}</Project>
       <Name>Hangfire.FluentNHibernateStorage</Name>

@@ -5,7 +5,6 @@ using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.Server;
 using Hangfire.Storage;
 using Moq;
@@ -13,9 +12,10 @@ using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public abstract class FluentNHibernateStorageConnectionTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class FluentNHibernateStorageConnectionTestsBase : TestBase
+
     {
-        public FluentNHibernateStorageConnectionTestsBase()
+        public FluentNHibernateStorageConnectionTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
             _queue = new Mock<IPersistentJobQueue>();
 
@@ -37,23 +37,28 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
         private void UseJobStorageConnection(Action<FluentNHibernateJobStorageConnection> action)
         {
-            var storage = GetMockStorage();
-
-            using (var jobStorage = new FluentNHibernateJobStorageConnection(storage.Object))
+            var storage = ConfigureStorageMock();
+            var fluentNHibernateJobStorage = storage.Object;
+            Fixture.CleanTables(fluentNHibernateJobStorage.GetStatelessSession());
+            using (var jobStorage = new FluentNHibernateJobStorageConnection(fluentNHibernateJobStorage))
             {
                 action(jobStorage);
             }
         }
 
-      
-        private Mock<FluentNHibernateJobStorage> GetMockStorage()
+
+        private Mock<FluentNHibernateJobStorage> ConfigureStorageMock()
         {
             var persistenceConfigurer = GetPersistenceConfigurer();
-            var storage = CreateMock(persistenceConfigurer);
-            storage.Setup(x => x.QueueProviders).Returns(_providers);
-            return storage;
+            var storageMock = CreateMock(persistenceConfigurer);
+            storageMock.Setup(x => x.QueueProviders).Returns(_providers);
+            return storageMock;
         }
 
+        /// <summary>
+        ///     don't delete this method.  It's needed as a sample method for scheduling
+        /// </summary>
+        /// <param name="arg"></param>
         public static void SampleMethod(string arg)
         {
         }
@@ -158,7 +163,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 invocationData.Arguments = sqlJob.Arguments;
 
                 var job = invocationData.DeserializeJob();
-                Assert.Equal(typeof(FluentNHibernateStorageConnectionTestsBase<T,U>), job.Type);
+                Assert.Equal(typeof(FluentNHibernateStorageConnectionTestsBase), job.Type);
                 Assert.Equal(nameof(SampleMethod), job.Method.Name);
                 Assert.Equal(expectedString, job.Args[0]);
 

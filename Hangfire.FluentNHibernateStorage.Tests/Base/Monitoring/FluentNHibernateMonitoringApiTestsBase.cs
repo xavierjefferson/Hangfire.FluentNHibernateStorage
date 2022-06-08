@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.FluentNHibernateStorage.Monitoring;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Hangfire.Storage.Monitoring;
 using Moq;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
 {
-    public abstract class FluentNHibernateMonitoringApiTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U : TestDatabaseFixture
+    public abstract class FluentNHibernateMonitoringApiTestsBase : TestBase
     {
-        protected FluentNHibernateMonitoringApiTestsBase()
+        protected FluentNHibernateMonitoringApiTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
             var persistenceConfigurer = GetPersistenceConfigurer();
 

@@ -1,19 +1,18 @@
 ﻿using System;
 using Hangfire.FluentNHibernateStorage.JobQueue;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
 using Moq;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 {
-    public abstract class FluentNHibernateFetchedJobTestsBase<T, U> : TestBase<T, U> where T : IDbProvider, new() where U:TestDatabaseFixture
+    public abstract class FluentNHibernateFetchedJobTestsBase : TestBase
     {
-        protected FluentNHibernateFetchedJobTestsBase()
+        protected FluentNHibernateFetchedJobTestsBase(TestDatabaseFixture fixture) : base(fixture)
         {
             _fetchedJob = new FetchedJob {Id = _id, JobId = JobId, Queue = Queue};
 
-           
-            _storage = CreateMock(GetPersistenceConfigurer() );
+
+            _storageMock = CreateMock(GetPersistenceConfigurer());
         }
 
         private const int JobId = 1;
@@ -22,12 +21,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 
         private readonly FetchedJob _fetchedJob;
         private readonly int _id = 0;
-        private readonly Mock<FluentNHibernateJobStorage> _storage;
+        private readonly Mock<FluentNHibernateJobStorage> _storageMock;
 
         [Fact]
         public void Ctor_CorrectlySets_AllInstanceProperties()
         {
-            var fetchedJob = new FluentNHibernateFetchedJob(_storage.Object, _fetchedJob);
+            var fetchedJob = new FluentNHibernateFetchedJob(_storageMock.Object, _fetchedJob);
 
             Assert.Equal(JobId.ToString(), fetchedJob.JobId);
             Assert.Equal(Queue, fetchedJob.Queue);

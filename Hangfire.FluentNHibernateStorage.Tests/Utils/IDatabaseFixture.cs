@@ -1,16 +1,12 @@
 ﻿using FluentNHibernate.Cfg.Db;
 
-namespace Hangfire.FluentNHibernateStorage.Tests.Providers
+namespace Hangfire.FluentNHibernateStorage.Tests
 {
-    public interface IDbProvider1
-    {
-        void EnsurePersistenceConfigurer();
-    }
-
-    public interface IDbProvider : IDbProvider1
+    public interface IDatabaseFixture 
     {
         IPersistenceConfigurer GetPersistenceConfigurer();
         void Cleanup();
         FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null);
+        void EnsurePersistenceConfigurer();
     }
 }

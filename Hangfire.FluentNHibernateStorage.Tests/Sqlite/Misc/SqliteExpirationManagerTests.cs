@@ -1,9 +1,13 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
-using Hangfire.FluentNHibernateStorage.Tests.Providers;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Misc
 {
-    public class SqliteExpirationManagerTests : ExpirationManagerTestsBase<SqliteProvider, SqliteDatabaseFixture>
+    [Collection(Constants.SqliteFixtureCollectionName)]
+    public class SqliteExpirationManagerTests : ExpirationManagerTestsBase
     {
+        public SqliteExpirationManagerTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        {
+        }
     }
 }
