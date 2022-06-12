@@ -13,6 +13,7 @@ namespace Hangfire.FluentNHibernateStorage
 {
     public class FluentNHibernateJobStorageConnection : JobStorageConnection
     {
+        public const string HashDistributedLockName = "hash";
         private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobStorageConnection>();
 
         public FluentNHibernateJobStorageConnection(FluentNHibernateJobStorage storage)
@@ -30,6 +31,23 @@ namespace Hangfire.FluentNHibernateStorage
         public override IDisposable AcquireDistributedLock(string resource, TimeSpan timeout)
         {
             return FluentNHibernateDistributedLock.Acquire(Storage, resource, timeout);
+        }
+
+        public override List<string> GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore,
+            int count)
+        {
+            if (key == null)
+                throw new ArgumentNullException(nameof(key));
+            if (count <= 0)
+                throw new ArgumentException("The value must be a positive number", nameof(count));
+            if (toScore < fromScore)
+                throw new ArgumentException("The `toScore` value must be higher or equal to the `fromScore` value.",
+                    nameof(toScore));
+            return Storage.UseStatelessSessionInTransaction(session =>
+            {
+                return session.Query<_Set>().Where(i => i.Key == key && i.Score > fromScore && i.Score <= toScore)
+                    .OrderBy(i => i.Score).Select(i => i.Value).Take(count).ToList();
+            });
         }
 
         public override string CreateExpiredJob(Job job, IDictionary<string, string> parameters, DateTime createdAt,
@@ -96,7 +114,6 @@ namespace Hangfire.FluentNHibernateStorage
                 session.UpsertEntity<_JobParameter>(i => i.Name == name && i.Job.Id == converter.Value,
                     z => { z.Value = value; }, z =>
                     {
-                        
                         z.Name = name;
                         z.Job = new _Job {Id = converter.Value};
                     });
@@ -306,14 +323,11 @@ namespace Hangfire.FluentNHibernateStorage
                     //have to compensate for NH processing of sums when there are no matching results.
                     var counterSum = 0;
                     if (session.Query<_Counter>().Any(i => i.Key == key))
-                    {
                         counterSum = session.Query<_Counter>().Where(i => i.Key == key).Sum(i => i.Value);
-                    }
                     var aggregatedCounterSum = 0;
                     if (session.Query<_AggregatedCounter>().Any(i => i.Key == key))
-                    {
-                        aggregatedCounterSum = session.Query<_AggregatedCounter>().Where(i => i.Key == key).Sum(i => i.Value);
-                    }
+                        aggregatedCounterSum = session.Query<_AggregatedCounter>().Where(i => i.Key == key)
+                            .Sum(i => i.Value);
 
                     return counterSum + aggregatedCounterSum;
                 });
@@ -415,18 +429,20 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
             if (keyValuePairs == null) throw new ArgumentNullException(nameof(keyValuePairs));
-
-            Storage.UseStatelessSessionInTransaction(session =>
+            using (FluentNHibernateDistributedLock.Acquire(Storage, HashDistributedLockName, TimeSpan.FromSeconds(10)))
             {
-                foreach (var keyValuePair in keyValuePairs)
-                    session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
-                        i => { i.Value = keyValuePair.Value; },
-                        i =>
-                        {
-                            i.Key = key;
-                            i.Field = keyValuePair.Key;
-                        });
-            });
+                Storage.UseStatelessSessionInTransaction(session =>
+                {
+                    foreach (var keyValuePair in keyValuePairs)
+                        session.UpsertEntity<_Hash>(i => i.Key == key && i.Field == keyValuePair.Key,
+                            i => { i.Value = keyValuePair.Value; },
+                            i =>
+                            {
+                                i.Key = key;
+                                i.Field = keyValuePair.Key;
+                            });
+                });
+            }
         }
 
         public override Dictionary<string, string> GetAllEntriesFromHash(string key)

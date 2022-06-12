@@ -2,6 +2,6 @@
 {
     public interface IJobChild
     {
-        _Job Job { get;  }
+        _Job Job { get; }
     }
 }

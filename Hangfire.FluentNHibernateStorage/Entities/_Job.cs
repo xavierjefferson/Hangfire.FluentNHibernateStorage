@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using Hangfire.FluentNHibernateStorage.Maps;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _Job : IExpirableWithId, ICreatedAt, IExpireAtNullable
+    public class _Job : IExpirableWithId, ICreatedAt, IExpirable
     {
         public _Job()
         {

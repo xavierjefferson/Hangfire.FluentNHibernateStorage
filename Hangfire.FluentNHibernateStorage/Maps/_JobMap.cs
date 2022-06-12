@@ -1,5 +1,5 @@
 using Hangfire.FluentNHibernateStorage.Entities;
-using NHibernate.Type;
+using Hangfire.FluentNHibernateStorage.Extensions;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
@@ -7,10 +7,8 @@ namespace Hangfire.FluentNHibernateStorage.Maps
     {
         public _JobMap()
         {
-            Table("Job");
-            LazyLoad();
-            Map(i => i.LastStateChangedAt).Column("`LastStateChangedAt`").Nullable();
-            Map(i => i.StateData).Column("`StateData`").Length(Constants.StateDataLength).Nullable();
+            Map(i => i.LastStateChangedAt).Column("LastStateChangedAt".WrapObjectName()).Nullable();
+            Map(i => i.StateData).Column("StateData".WrapObjectName()).Length(Constants.StateDataLength).Nullable();
             Map(i => i.InvocationData)
                 .Column("InvocationData".WrapObjectName())
                 .Length(Constants.VarcharMaxLength)
@@ -31,5 +29,7 @@ namespace Hangfire.FluentNHibernateStorage.Maps
                 .Length(Constants.StateReasonLength)
                 .Nullable();
         }
+
+        public override string Tablename => "Job";
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.Logging;
 using Hangfire.Server;
 using Hangfire.Storage;
@@ -164,7 +165,7 @@ namespace Hangfire.FluentNHibernateStorage
 
         private void WithLock(DeletionArgs args, string subKey, Func<long> func)
         {
-            while (!args.CancellationToken.IsCancellationRequested)
+            while (true)
             {
                 try
                 {
@@ -182,7 +183,7 @@ namespace Hangfire.FluentNHibernateStorage
                     Logger.Debug("Distributed lock acquisition timeout was exceeded");
                 }
 
-                args.CancellationToken.Wait(DelayBetweenPasses);
+                args.CancellationToken.PollForCancellation(DelayBetweenPasses);
             }
         }
 

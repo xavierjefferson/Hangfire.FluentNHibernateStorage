@@ -1,16 +1,17 @@
 using Hangfire.FluentNHibernateStorage.Entities;
-using NHibernate.Type;
+using Hangfire.FluentNHibernateStorage.Extensions;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    public class _DistributedLockMap : Int32IdMapBase<_DistributedLock>
+    internal class _DistributedLockMap : Int32IdMapBase<_DistributedLock>
     {
         public _DistributedLockMap()
         {
-            Table("DistributedLock");
             Map(i => i.Resource).Column("Resource".WrapObjectName()).Length(100).Not.Nullable().Unique();
             this.MapCreatedAt();
-            Map(i => i.ExpireAtAsLong).Column("`ExpireAtAsLong`").Not.Nullable();
+            Map(i => i.ExpireAtAsLong).Column("ExpireAtAsLong".WrapObjectName()).Not.Nullable();
         }
+
+        public override string Tablename => "DistributedLock";
     }
 }

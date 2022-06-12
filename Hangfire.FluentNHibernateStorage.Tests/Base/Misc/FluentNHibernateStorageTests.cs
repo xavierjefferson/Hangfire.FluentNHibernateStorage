@@ -1,12 +1,13 @@
 using System;
 using System.Linq;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
     public abstract class FluentNHibernateStorageTests : TestBase
     {
-        public FluentNHibernateStorageTests(TestDatabaseFixture fixture) : base(fixture)
+        public FluentNHibernateStorageTests(DatabaseFixtureBase fixture) : base(fixture)
         {
         }
 
@@ -35,6 +36,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
             var components = storage.GetBackgroundProcesses();
             Assert.True(components.OfType<ExpirationManager>().Any());
+            Assert.True(components.OfType<ServerTimeSyncManager>().Any());
+            Assert.True(components.OfType<CountersAggregator>().Any());
         }
 
 

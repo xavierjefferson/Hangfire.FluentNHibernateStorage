@@ -2,16 +2,28 @@
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    internal class _AggregatedCounterMap : KeyValueTypeMapBase<_AggregatedCounter, int>
+    internal class _AggregatedCounterMap : _CounterBaseMap<_AggregatedCounter>
     {
-        public override IndexTypeEnum KeyColumnIndexType => IndexTypeEnum.Unique;
+        public override string Tablename => "AggregatedCounter";
 
-        protected override string KeyColumnIndexName => "IX_CounterAggregated_Key";
-
-        protected override string TableName => "AggregatedCounter";
-
-        protected override bool ValueNullable => false;
-
-        protected override int? ValueLength => null;
+        public override bool KeyIsUnique => true;
     }
+
+    /*
+     *
+     CREATE TABLE [HangFire].[AggregatedCounter] (
+        [Id] [int] IDENTITY(1,1) NOT NULL,
+        [Key] [nvarchar](100) NOT NULL,
+        [Value] [bigint] NOT NULL,
+        [ExpireAt] [datetime] NULL,
+
+        CONSTRAINT [PK_HangFire_CounterAggregated] PRIMARY KEY CLUSTERED ([Id] ASC)
+    );
+    PRINT 'Created table [HangFire].[AggregatedCounter]';
+
+    CREATE UNIQUE NONCLUSTERED INDEX [UX_HangFire_CounterAggregated_Key] ON [HangFire].[AggregatedCounter] (
+        [Key] ASC
+    ) INCLUDE ([Value]);
+
+     */
 }

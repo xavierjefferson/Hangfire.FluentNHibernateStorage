@@ -19,13 +19,17 @@ namespace Hangfire.FluentNHibernateStorage
 
         public FluentNHibernateJobStorage Storage { get; }
 
+        public void Flush()
+        {
+            _session.GetSessionImplementation().Flush();
+        }
         public void Dispose()
         {
             if (_session != null)
             {
                 if (!_flushed)
                 {
-                    _session.GetSessionImplementation().Flush();
+                    Flush();
                     _flushed = true;
                 }
 
@@ -51,16 +55,19 @@ namespace Hangfire.FluentNHibernateStorage
         public void Insert<T>(IEnumerable<T> entities) where T : class
         {
             foreach (var item in entities) _session.Insert(item);
+            Flush();
         }
 
         public void Insert(object entity)
         {
             _session.Insert(entity);
+            Flush();
         }
 
         public void Update(object entity)
         {
             _session.Update(entity);
+            Flush();
         }
     }
 }

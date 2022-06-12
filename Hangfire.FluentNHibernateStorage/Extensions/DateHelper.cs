@@ -1,15 +1,16 @@
 using System;
 
-namespace Hangfire.FluentNHibernateStorage
+namespace Hangfire.FluentNHibernateStorage.Extensions
 {
-    internal static class DateHelper
+    public static class DateHelper
     {
-        private static readonly DateTime Horizon = new DateTime(1970, 1, 1);
+        private static readonly DateTime Horizon = DateTime.SpecifyKind(new DateTime(1970, 1, 1), DateTimeKind.Utc);
 
         public static long ToEpochDate(this DateTime dateTime)
         {
             return Convert.ToInt64(dateTime.Subtract(Horizon).TotalMilliseconds);
         }
+
         public static DateTime FromEpochDate(this long dateTime)
         {
             return Horizon.AddMilliseconds(dateTime);

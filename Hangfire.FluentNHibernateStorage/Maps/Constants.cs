@@ -1,5 +1,9 @@
 ﻿namespace Hangfire.FluentNHibernateStorage.Maps
 {
+    public class Defaults
+    {
+        public const int DistributedLockPollIntervalSeconds = 15;
+    }
     internal class Constants
     {
         //exceeding 4000 will break sqlce
@@ -15,6 +19,8 @@
             public static readonly string Id = "Id";
             public static readonly string Data = "Data";
             public static readonly string CreatedAt = "CreatedAt";
+            public static readonly string Key = "Key";
+            public static readonly string Value = "Value";
         }
     }
 }

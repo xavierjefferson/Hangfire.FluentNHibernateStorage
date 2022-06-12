@@ -1,11 +1,12 @@
 ﻿using System.Data.SQLite;
 using System.IO;
 using System.Threading;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Snork.FluentNHibernateTools;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures
 {
-    public class SqliteTestDatabaseFixture : TestDatabaseFixture, IDatabaseFixture
+    public class SqliteTestDatabaseFixture : DatabaseFixtureBase, IDatabaseFixture
     {
         private static readonly object GlobalLock = new object();
         private static DirectoryInfo _testFolder;
@@ -28,7 +29,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 connectionString);
         }
 
-        public void Cleanup()
+        public override void Cleanup()
         {
             try
 
@@ -44,11 +45,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests
         {
             Monitor.Exit(GlobalLock);
             Cleanup();
-        }
-
-        public override IDatabaseFixture GetProvider()
-        {
-            return this;
         }
 
         public override void CreateDatabase()

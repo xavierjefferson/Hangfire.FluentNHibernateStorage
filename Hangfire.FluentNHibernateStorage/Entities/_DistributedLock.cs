@@ -1,5 +1,5 @@
 using System;
-using Hangfire.FluentNHibernateStorage.Maps;
+using Hangfire.FluentNHibernateStorage.Extensions;
 
 namespace Hangfire.FluentNHibernateStorage.Entities
 {

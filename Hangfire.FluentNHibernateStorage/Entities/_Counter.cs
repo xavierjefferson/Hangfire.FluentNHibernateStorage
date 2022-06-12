@@ -1,6 +1,6 @@
 ﻿namespace Hangfire.FluentNHibernateStorage.Entities
 {
-    public class _Counter : KeyValueTypeBase<int>
+    public class _Counter : CounterBase
     {
     }
 }

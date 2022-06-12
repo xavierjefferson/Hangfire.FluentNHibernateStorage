@@ -1,11 +1,12 @@
 ﻿using System.Data.SqlServerCe;
 using System.IO;
 using System.Threading;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Snork.FluentNHibernateTools;
 
-namespace Hangfire.FluentNHibernateStorage.Tests
+namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures
 {
-    public class SqlCeTestDatabaseFixture : TestDatabaseFixture, IDatabaseFixture
+    public class SqlCeTestDatabaseFixture : DatabaseFixtureBase, IDatabaseFixture
     {
         private static readonly object GlobalLock = new object();
 
@@ -29,7 +30,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
                 connectionString);
         }
 
-        public void Cleanup()
+        public override void Cleanup()
         {
             try
 
@@ -47,10 +48,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests
             Cleanup();
         }
 
-        public override IDatabaseFixture GetProvider()
-        {
-            return this;
-        }
+      
 
 
         public override void CreateDatabase()

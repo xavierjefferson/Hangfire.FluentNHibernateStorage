@@ -1,14 +1,19 @@
 using FluentNHibernate.Mapping;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 
 namespace Hangfire.FluentNHibernateStorage.Maps
 {
-    public class _DualMap : ClassMap<_Dual>
+    internal class _DualMap : ClassMapBase<_Dual>
     {
         public _DualMap()
         {
-            Table("Dual");
             Id(i => i.Id).Column(Constants.ColumnNames.Id.WrapObjectName()).GeneratedBy.Assigned();
+        }
+
+        public override string Tablename
+        {
+            get { return "Dual"; }
         }
     }
 }

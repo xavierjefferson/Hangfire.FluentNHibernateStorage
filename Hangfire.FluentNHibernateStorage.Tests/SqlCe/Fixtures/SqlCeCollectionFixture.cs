@@ -1,6 +1,7 @@
-﻿using Xunit;
+﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
+using Xunit;
 
-namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
+namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures
 {
     [CollectionDefinition(Constants.SqlCeFixtureCollectionName)]
     public class SqlCeCollectionFixture : ICollectionFixture<SqlCeTestDatabaseFixture>

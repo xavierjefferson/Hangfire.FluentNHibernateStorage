@@ -1,24 +1,25 @@
 ﻿using System;
 using FluentNHibernate.Cfg.Db;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Moq;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base
 {
     public abstract class TestBase : IDisposable
     {
-        private readonly IDatabaseFixture _provider;
+ 
 
 
         private bool _disposedValue;
         private FluentNHibernateJobStorage _storage;
 
-        protected TestBase(TestDatabaseFixture fixture)
+        protected TestBase(DatabaseFixtureBase fixture)
         {
             Fixture = fixture;
-            _provider = fixture.GetProvider();
+            
         }
 
-        protected TestDatabaseFixture Fixture { get; }
+        protected DatabaseFixtureBase Fixture { get; }
 
         // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
         // ~TestBase()
@@ -34,17 +35,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             GC.SuppressFinalize(this);
         }
 
-        protected Mock<FluentNHibernateJobStorage> CreateMock(IPersistenceConfigurer configurer)
-        {
-            return new Mock<FluentNHibernateJobStorage>(configurer, new FluentNHibernateStorageOptions());
-        }
+    
 
 
-        public FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
+        public virtual FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
             if (_storage == null)
             {
-                _storage = _provider.GetStorage(options);
+                _storage = Fixture.GetStorage(options);
 
                 return _storage;
             }
@@ -52,18 +50,15 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             return _storage;
         }
 
-        public IPersistenceConfigurer GetPersistenceConfigurer()
-        {
-            return _provider.GetPersistenceConfigurer();
-        }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposedValue)
             {
                 if (disposing)
-                    CleanTables(GetStorage());
-                // TODO: dispose managed state (managed objects)
+                {
+                    // CleanTables(GetStorage());}
+                    // TODO: dispose managed state (managed objects)
+                }
 
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
@@ -72,34 +67,31 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             }
         }
 
-        private void CleanTables(FluentNHibernateJobStorage storage)
+
+        protected void UseJobStorageConnectionWithSession(
+            Action<StatelessSessionWrapper, FluentNHibernateJobStorageConnection> action)
         {
-            using (var session = storage.GetStatelessSession())
+            UseJobStorageConnection(jobStorageConnection =>
             {
-                CleanTables(session);
+                jobStorageConnection.Storage.UseStatelessSession(s => action(s, jobStorageConnection));
+            });
+        }
+
+        protected void UseJobStorageConnection(Action<FluentNHibernateJobStorageConnection> action,
+            bool cleanTables = true, FluentNHibernateStorageOptions options = null)
+        {
+            var fluentNHibernateJobStorage = GetStorage(options);
+            if (cleanTables)
+                Fixture.CleanTables(fluentNHibernateJobStorage.GetStatelessSession());
+            using (var jobStorage = new FluentNHibernateJobStorageConnection(fluentNHibernateJobStorage))
+            {
+                action(jobStorage);
             }
         }
 
-        private void CleanTables(StatelessSessionWrapper session)
+        protected Mock<FluentNHibernateJobStorage> GetStorageMock(FluentNHibernateStorageOptions options = null)
         {
-            Fixture.CleanTables(session);
-        }
-
-
-        public void UseSession(FluentNHibernateJobStorage storage,
-            Action<StatelessSessionWrapper> action)
-        {
-            action(storage.GetStatelessSession());
-        }
-
-        public void UseNewSession(Action<StatelessSessionWrapper> action,
-            Action<FluentNHibernateJobStorage> beforeAction = null)
-        {
-            //don't wrap in 'using' because we don't want to dispose yet
-            var storage = GetStorage();
-
-            beforeAction?.Invoke(storage);
-            action(storage.GetStatelessSession());
+            return Fixture.GetStorageMock(options);
         }
     }
 }

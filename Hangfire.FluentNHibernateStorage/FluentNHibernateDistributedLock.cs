@@ -2,8 +2,8 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.Logging;
 using Hangfire.Storage;
 using NHibernate.Linq;
@@ -55,13 +55,16 @@ namespace Hangfire.FluentNHibernateStorage
             TimeSpan timeout,
             CancellationToken? cancellationToken = null)
         {
+            if (string.IsNullOrWhiteSpace(resource)) throw new ArgumentNullException(nameof(resource));
+
             var tmp = new FluentNHibernateDistributedLock(storage, resource, timeout, cancellationToken);
             tmp.Initialize();
             return tmp;
         }
 
-        private T TryLock<T>(Func<T> funcTaken, Func<T> notTaken)
+        private T TryMutex<T>(Func<T> funcTaken, Func<T> notTaken)
         {
+            return funcTaken();
             var timeout = _options.QueuePollInterval;
             var lockTaken = false;
 
@@ -86,64 +89,72 @@ namespace Hangfire.FluentNHibernateStorage
 
             do
             {
-                if (SqlUtil.WrapForTransaction(() => SqlUtil.WrapForDeadlock(_cancellationToken, () =>
+                var acquired = SqlUtil.WrapForTransaction(() => SqlUtil.WrapForDeadlock(_cancellationToken, () =>
                 {
-                    var done = TryLock(() =>
+                    var done = TryMutex(() =>
                     {
-                        var result = false;
-                        _storage.UseStatelessSessionInTransaction(session =>
-                        {
-                            var distributedLock = session.Query<_DistributedLock>()
-                                .FirstOrDefault(i => i.Resource == _resource);
-
-                            var utcNow = session.Storage.UtcNow;
-                            var expireAtAsLong = utcNow.Add(_timeout).ToEpochDate();
-                            if (distributedLock == null)
-                            {
-                                distributedLock = new _DistributedLock
-                                {
-                                    CreatedAt = utcNow,
-                                    Resource = _resource,
-                                    ExpireAtAsLong = expireAtAsLong
-                                };
-                                session.Insert(distributedLock);
-
-                                _lockId = distributedLock.Id;
-                                result = true;
-                                if (Logger.IsDebugEnabled())
-                                    Logger.Debug($"Inserted row for distributed lock '{_resource}'");
-                            }
-                            else if (distributedLock.ExpireAtAsLong < utcNow.ToEpochDate())
-                            {
-                                distributedLock.CreatedAt = utcNow;
-                                distributedLock.ExpireAtAsLong = expireAtAsLong;
-                                session.Update(distributedLock);
-                                if (Logger.IsDebugEnabled())
-                                    Logger.Debug($"Re-used row for distributed lock '{_resource}'");
-                                _lockId = distributedLock.Id;
-                                result = true;
-                            }
-                        });
+                        var result = _storage.UseStatelessSessionInTransaction(TryAcquireWithEntity);
                         return result;
                     }, () => false);
+
+
                     return done;
-                }, _options)))
+                }, _options));
+
+                if (acquired)
                 {
                     if (Logger.IsDebugEnabled())
                         Logger.DebugFormat("Granted distributed lock '{0}'", _resource);
                     return;
                 }
 
-                if (started.Elapsed > _timeout) break;
+                if (started.Elapsed > _options.DistributedLockWaitTimeout) break;
                 if (Logger.IsDebugEnabled())
                     Logger.Debug(
                         $"Will poll for distributed lock '{_resource}' in {_options.DistributedLockPollInterval}.");
-                _cancellationToken.Wait(_options.DistributedLockPollInterval);
-                _cancellationToken.ThrowIfCancellationRequested();
+                _cancellationToken.PollForCancellation(_options.DistributedLockPollInterval);
             } while (true);
 
             //dont change this.  Hangfire looks for resource name in exception properties
             throw new DistributedLockTimeoutException(_resource);
+        }
+
+        private bool TryAcquireWithEntity(StatelessSessionWrapper session)
+        {
+            var distributedLock = session.Query<_DistributedLock>()
+                .FirstOrDefault(i => i.Resource == _resource);
+
+            var utcNow = session.Storage.UtcNow;
+            var expireAtAsLong = utcNow.Add(_timeout).ToEpochDate();
+            if (distributedLock == null)
+            {
+                distributedLock = new _DistributedLock
+                {
+                    CreatedAt = utcNow,
+                    Resource = _resource,
+                    ExpireAtAsLong = expireAtAsLong
+                };
+                session.Insert(distributedLock);
+
+                _lockId = distributedLock.Id;
+
+                if (Logger.IsDebugEnabled())
+                    Logger.Debug($"Inserted row for distributed lock '{_resource}'");
+                return true;
+            }
+
+            if (distributedLock.ExpireAtAsLong < utcNow.ToEpochDate())
+            {
+                distributedLock.CreatedAt = utcNow;
+                distributedLock.ExpireAtAsLong = expireAtAsLong;
+                session.Update(distributedLock);
+                if (Logger.IsDebugEnabled())
+                    Logger.Debug($"Re-used row for distributed lock '{_resource}'");
+                _lockId = distributedLock.Id;
+                return true;
+            }
+
+            return false;
         }
 
 

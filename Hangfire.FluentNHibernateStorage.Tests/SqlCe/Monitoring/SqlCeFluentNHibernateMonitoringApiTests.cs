@@ -1,5 +1,6 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
 using Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring;
+using Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Monitoring
 {

@@ -5,6 +5,7 @@ using System.Linq.Expressions;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.FluentNHibernateStorage.Maps;
 using Hangfire.Logging;
 using NHibernate;
@@ -200,7 +201,6 @@ namespace Hangfire.FluentNHibernateStorage
         {
             while (true)
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     return safeAction();
@@ -210,7 +210,7 @@ namespace Hangfire.FluentNHibernateStorage
                     if (ex.Message.IndexOf("deadlock", StringComparison.InvariantCultureIgnoreCase) < 0)
                         throw;
 
-                    cancellationToken.Wait(options.DeadlockRetryInterval);
+                    cancellationToken.PollForCancellation(options.DeadlockRetryInterval);
                 }
             }
         }

@@ -1,4 +1,6 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
+using Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures;
+using Xunit.Abstractions;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Misc
 {
@@ -6,7 +8,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Misc
     public class
         SqlCeFluentNHibernateStorageConnectionTests : FluentNHibernateStorageConnectionTestsBase
     {
-        public SqlCeFluentNHibernateStorageConnectionTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
+        public SqlCeFluentNHibernateStorageConnectionTests(SqlCeTestDatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture, testOutputHelper)
         {
         }
     }

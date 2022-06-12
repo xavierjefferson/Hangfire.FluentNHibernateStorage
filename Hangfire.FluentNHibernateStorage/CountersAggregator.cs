@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.Logging;
 using Hangfire.Server;
 
@@ -73,8 +74,7 @@ namespace Hangfire.FluentNHibernateStorage
                 });
                 if (removedCount >= NumberOfRecordsInSinglePass)
                 {
-                    cancellationToken.Wait(DelayBetweenPasses);
-                    cancellationToken.ThrowIfCancellationRequested();
+                    cancellationToken.PollForCancellation(DelayBetweenPasses);
                 }
             } while (removedCount >= NumberOfRecordsInSinglePass);
 

@@ -1,5 +1,6 @@
 using System;
 using System.Transactions;
+using Hangfire.FluentNHibernateStorage.Maps;
 using Newtonsoft.Json;
 using Snork.FluentNHibernateTools;
 
@@ -33,7 +34,7 @@ namespace Hangfire.FluentNHibernateStorage
             TransactionTimeout = TimeSpan.FromMinutes(1);
             InvisibilityTimeout = TimeSpan.FromMinutes(15);
             JobQueueDistributedLockTimeout = TimeSpan.FromMinutes(1);
-            DistributedLockPollInterval = TimeSpan.FromSeconds(15);
+            DistributedLockPollInterval = TimeSpan.FromSeconds(Defaults.DistributedLockPollIntervalSeconds);
             DeadlockRetryInterval = TimeSpan.FromSeconds(1);
 #pragma warning disable 618
             DbmsTimeSyncInterval = TimeSpan.FromMinutes(5);
@@ -65,6 +66,21 @@ namespace Hangfire.FluentNHibernateStorage
             {
                 ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof(DeadlockRetryInterval));
                 _deadlockRetryInterval = value;
+            }
+        }
+
+        private TimeSpan _distributedLockTimeout = TimeSpan.FromSeconds(50);
+
+        /// <summary>
+        ///     How long to wait to get a distributed lock before throwing an exception.  Must be a positive timespan.
+        /// </summary>
+        public TimeSpan DistributedLockWaitTimeout
+        {
+            get => _distributedLockTimeout;
+            set
+            {
+                ArgumentHelper.ThrowIfValueIsNotPositive(value, nameof( DistributedLockWaitTimeout));
+                _distributedLockTimeout = value;
             }
         }
 

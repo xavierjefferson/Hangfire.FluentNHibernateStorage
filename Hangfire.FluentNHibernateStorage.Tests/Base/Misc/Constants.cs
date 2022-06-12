@@ -4,5 +4,6 @@
     {
         public const string SqlCeFixtureCollectionName = "SqlCe collection";
         public const string SqliteFixtureCollectionName = "Sqlite collection";
+        public const string SqlServerFixtureCollectionName = "SqlServer collection";
     }
 }

@@ -4,19 +4,24 @@ using System.Linq;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.FluentNHibernateStorage.JobQueue;
+using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Hangfire.Server;
 using Hangfire.Storage;
 using Moq;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
     public abstract class FluentNHibernateStorageConnectionTestsBase : TestBase
 
     {
-        public FluentNHibernateStorageConnectionTestsBase(TestDatabaseFixture fixture) : base(fixture)
+        public FluentNHibernateStorageConnectionTestsBase(DatabaseFixtureBase fixture,
+            ITestOutputHelper testOutputHelper) : base(fixture)
         {
+            this.testOutputHelper = testOutputHelper;
             _queue = new Mock<IPersistentJobQueue>();
 
             var provider = new Mock<IPersistentJobQueueProvider>();
@@ -26,34 +31,26 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
             _providers = new PersistentJobQueueProviderCollection(provider.Object);
         }
 
+        private readonly ITestOutputHelper testOutputHelper;
+
         private readonly PersistentJobQueueProviderCollection _providers;
         private readonly Mock<IPersistentJobQueue> _queue;
 
-        private void UseJobStorageConnectionWithSession(
-            Action<StatelessSessionWrapper, FluentNHibernateJobStorageConnection> action)
-        {
-            UseJobStorageConnection(jobsto => { jobsto.Storage.UseStatelessSession(s => action(s, jobsto)); });
-        }
+        private Mock<FluentNHibernateJobStorage> _storageMock;
 
-        private void UseJobStorageConnection(Action<FluentNHibernateJobStorageConnection> action)
+        public override FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
-            var storage = ConfigureStorageMock();
-            var fluentNHibernateJobStorage = storage.Object;
-            Fixture.CleanTables(fluentNHibernateJobStorage.GetStatelessSession());
-            using (var jobStorage = new FluentNHibernateJobStorageConnection(fluentNHibernateJobStorage))
+            if (_storageMock == null)
             {
-                action(jobStorage);
+                
+                var storageMock = GetStorageMock(  options);
+                storageMock.Setup(x => x.QueueProviders).Returns(_providers);
+                _storageMock = storageMock;
             }
+
+            return _storageMock.Object;
         }
 
-
-        private Mock<FluentNHibernateJobStorage> ConfigureStorageMock()
-        {
-            var persistenceConfigurer = GetPersistenceConfigurer();
-            var storageMock = CreateMock(persistenceConfigurer);
-            storageMock.Setup(x => x.QueueProviders).Returns(_providers);
-            return storageMock;
-        }
 
         /// <summary>
         ///     don't delete this method.  It's needed as a sample method for scheduling
@@ -63,12 +60,207 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
         }
 
+        private void CreateExpiredJobByCount(int count, bool withNullValue)
+        {
+            UseJobStorageConnectionWithSession((statelessSessionWrapper, connection) =>
+            {
+                var createdAt = DateTime.SpecifyKind(new DateTime(2012, 12, 12), DateTimeKind.Utc);
+                var items = new Dictionary<string, string>();
+                for (var i = 1; i < count + 1; i++) items[$"Key{i}"] = withNullValue ? null : $"Value{i}";
+
+                var jobId = connection.CreateExpiredJob(
+                    Job.FromExpression(() => SampleMethod("Hello")),
+                    items,
+                    createdAt,
+                    TimeSpan.FromDays(1));
+
+                var jobParameters = statelessSessionWrapper
+                    .Query<_JobParameter>().Where(i => i.Job.Id == Convert.ToInt32(jobId)).ToList();
+                var parameters = jobParameters
+                    .ToDictionary(x => x.Name, x => x.Value);
+
+                Assert.Equal(count, parameters.Count);
+                if (withNullValue)
+                    for (var i = 1; i < count + 1; i++)
+                        Assert.Null(parameters[$"Key{i}"]);
+                else
+                    for (var i = 1; i < count + 1; i++)
+                        Assert.Equal($"Value{i}", parameters[$"Key{i}"]);
+            });
+        }
+
+        private class AcquireLockRequest
+        {
+            public bool cleanDatabase { get; set; }
+            public int seconds { get; set; }
+            public int instance { get; set; }
+            public Action InnerAction { get; set; }
+            public object mutex { get; set; }
+            public FluentNHibernateStorageOptions Options { get; set; }
+        }
+
+        private void AcquireLock(AcquireLockRequest request)
+        {
+            UseJobStorageConnection(connection1 =>
+            {
+                lock (request.mutex)
+                {
+                    testOutputHelper.WriteLine($"Instance {request.instance} storage connection opened");
+                    testOutputHelper.WriteLine($"Acquiring lock of {request.seconds} seconds");
+                }
+
+                using (connection1.AcquireDistributedLock("exclusive",
+                    TimeSpan.FromSeconds(request.seconds)))
+                {
+                    lock (request.mutex)
+                    {
+                        testOutputHelper.WriteLine($"Instance {request.instance} distributed lock acquired");
+                    }
+
+                    if (request.InnerAction != null)
+                        request.InnerAction();
+                    lock (request.mutex)
+                    {
+                        testOutputHelper.WriteLine($"Instance {request.instance} called inner code");
+                    }
+                }
+            }, request.cleanDatabase, request.Options);
+        }
+
+        [Fact]
+        public void AcquireDistributedLock_AcquiresExclusiveApplicationLock_OnSession()
+        {
+            UseJobStorageConnectionWithSession((session, connection) =>
+            {
+                const string resource = "hello";
+                using (connection.AcquireDistributedLock(resource, TimeSpan.FromMinutes(5)))
+                {
+                    var now = session.Storage.UtcNow;
+                    var distributedLock =
+                        session.Query<_DistributedLock>().SingleOrDefault(i => i.Resource == resource);
+                    Assert.NotNull(distributedLock);
+                    Assert.Equal(resource, distributedLock.Resource);
+                    Assert.InRange(distributedLock.ExpireAtAsLong.FromEpochDate().Subtract(now).TotalMinutes, 4, 5);
+                }
+            });
+        }
+
+        [Fact]
+        public void AcquireDistributedLock_Dispose_ReleasesExclusiveApplicationLock()
+        {
+            UseJobStorageConnectionWithSession((statelessSessionWrapper, connection) =>
+            {
+                var distributedLock = connection.AcquireDistributedLock("hello", TimeSpan.FromMinutes(5));
+                distributedLock.Dispose();
+
+                var tmp = statelessSessionWrapper.Query<_DistributedLock>().Count(i => i.Resource == "hello");
+                Assert.Equal(0, tmp);
+            });
+        }
+
+        [Fact]
+        public void AcquireDistributedLock_IsReentrant_FromTheSameConnection_OnTheSameResource()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                using (connection.AcquireDistributedLock("hello", TimeSpan.FromSeconds(15)))
+                using (connection.AcquireDistributedLock("hello", TimeSpan.FromSeconds(5)))
+                {
+                    Assert.True(true);
+                }
+            }, options: new FluentNHibernateStorageOptions {DistributedLockPollInterval = TimeSpan.FromSeconds(1)});
+        }
+
+        [Fact]
+        public void AcquireDistributedLock_ThrowsAnException_IfLockCanNotBeGranted()
+        {
+            var mutex = new object();
+            var releaseLock = new ManualResetEventSlim(false);
+            var lockAcquired = new ManualResetEventSlim(false);
+
+            var options = new FluentNHibernateStorageOptions
+            {
+                DistributedLockWaitTimeout = TimeSpan.FromSeconds(10),
+                DistributedLockPollInterval = TimeSpan.FromSeconds(1)
+            };
+            var thread = new Thread(
+                () =>
+                {
+                    var request = new AcquireLockRequest
+                    {
+                        cleanDatabase = true, InnerAction = () =>
+                        {
+                            lockAcquired.Set();
+                            lock (mutex)
+                            {
+                                testOutputHelper.WriteLine($"{nameof(lockAcquired)} set");
+                            }
+
+                            releaseLock.Wait();
+                            lock (mutex)
+                            {
+                                testOutputHelper.WriteLine($"{nameof(releaseLock)} awaited");
+                            }
+                        },
+                        instance = 1, mutex = mutex, seconds = 60,
+                        Options = options
+                    };
+                    AcquireLock(request);
+                });
+            thread.Start();
+            lock (mutex)
+            {
+                testOutputHelper.WriteLine("Internal thread started");
+            }
+
+            lockAcquired.Wait();
+            lock (mutex)
+            {
+                testOutputHelper.WriteLine($"{nameof(lockAcquired)} awaited");
+            }
+
+            Assert.Throws<DistributedLockTimeoutException>(
+                () =>
+                {
+                    var request = new AcquireLockRequest
+                    {
+                        cleanDatabase = false, instance = 2,
+                        mutex = mutex, seconds = 5,
+                        Options = options
+                    };
+                    AcquireLock(request);
+                });
+            releaseLock.Set();
+            lock (mutex)
+            {
+                testOutputHelper.WriteLine($"{nameof(releaseLock)} set");
+            }
+
+            thread.Join();
+            lock (mutex)
+            {
+                testOutputHelper.WriteLine("thread has been joined");
+            }
+        }
+
+        [Fact]
+        public void AcquireDistributedLock_ThrowsAnException_WhenResourceIsNullOrEmpty()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                var exception = Assert.Throws<ArgumentNullException>(
+                    () => connection.AcquireDistributedLock("", TimeSpan.FromMinutes(5)));
+
+                Assert.Equal("resource", exception.ParamName);
+            });
+        }
+
         [Fact]
         public void AcquireLock_ReturnsNonNullInstance()
         {
-            UseJobStorageConnection(jobStorage =>
+            UseJobStorageConnection(connection =>
             {
-                var @lock = jobStorage.AcquireDistributedLock("1", TimeSpan.FromSeconds(1));
+                var @lock = connection.AcquireDistributedLock("1", TimeSpan.FromSeconds(1));
                 Assert.NotNull(@lock);
             });
         }
@@ -76,7 +268,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         [Fact]
         public void AnnounceServer_CreatesOrUpdatesARecord()
         {
-            UseJobStorageConnectionWithSession((session, jobStorage) =>
+            UseJobStorageConnectionWithSession((session, connection) =>
             {
                 var queues = new[] {"critical", "default"};
                 var context1 = new ServerContext
@@ -84,7 +276,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                     Queues = queues,
                     WorkerCount = 4
                 };
-                jobStorage.AnnounceServer("server", context1);
+                connection.AnnounceServer("server", context1);
 
                 var server = session.Query<_Server>().Single();
                 Assert.Equal("server", server.Id);
@@ -99,7 +291,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                     Queues = new[] {"default"},
                     WorkerCount = 1000
                 };
-                jobStorage.AnnounceServer("server", context2);
+                connection.AnnounceServer("server", context2);
 
                 var sameServer = session.Query<_Server>().Single();
                 Assert.Equal("server", sameServer.Id);
@@ -131,6 +323,72 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
                 Assert.Equal("serverId", exception.ParamName);
             });
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateFourParametersWithNonNullValues()
+        {
+            CreateExpiredJobByCount(4, false);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateFourParametersWithNullValues()
+        {
+            CreateExpiredJobByCount(4, true);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateJobWithoutParameters()
+        {
+            CreateExpiredJobByCount(0, true);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateManyParametersWithNonNullValues()
+        {
+            CreateExpiredJobByCount(5, false);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateManyParametersWithNullValues()
+        {
+            CreateExpiredJobByCount(5, true);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateParametersWithNonNullValues()
+        {
+            CreateExpiredJobByCount(1, false);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateParametersWithNullValues()
+        {
+            CreateExpiredJobByCount(1, true);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateThreeParametersWithNonNullValues()
+        {
+            CreateExpiredJobByCount(3, false);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateThreeParametersWithNullValues()
+        {
+            CreateExpiredJobByCount(3, true);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateTwoParametersWithNonNullValues()
+        {
+            CreateExpiredJobByCount(2, false);
+        }
+
+        [Fact]
+        public void CreateExpiredJob_CanCreateTwoParametersWithNullValues()
+        {
+            CreateExpiredJobByCount(2, true);
         }
 
         [Fact]
@@ -456,6 +714,48 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         }
 
         [Fact]
+        public void GetFirstByLowestScoreFromSet_ReturnsN_WhenMoreThanNExist()
+        {
+            UseJobStorageConnectionWithSession((sql, connection) =>
+            {
+                sql.Insert(new[]
+                {
+                    new _Set {Key = "key", Score = 1.0, Value = "1234"},
+                    new _Set {Key = "key", Score = -1.0, Value = "567"},
+                    new _Set {Key = "key", Score = -5.0, Value = "890"},
+                    new _Set {Key = "another-key", Score = -2.0, Value = "abcd"}
+                });
+
+
+                var result = connection.GetFirstByLowestScoreFromSet("key", -10.0, 10.0, 2);
+
+                Assert.Equal(2, result.Count);
+                Assert.Equal("890", result.ElementAt(0));
+                Assert.Equal("567", result.ElementAt(1));
+            });
+        }
+
+        [Fact]
+        public void GetFirstByLowestScoreFromSet_ReturnsN_WhenMoreThanNExist_And_RequestedCountIsGreaterThanN()
+        {
+            UseJobStorageConnectionWithSession((sql, connection) =>
+            {
+                sql.Insert(new[]
+                {
+                    new _Set {Key = "key", Score = 1.0, Value = "1234"},
+                    new _Set {Key = "key", Score = -1.0, Value = "567"},
+                    new _Set {Key = "key", Score = -5.0, Value = "890"},
+                    new _Set {Key = "another-key", Score = -2.0, Value = "abcd"}
+                });
+
+                var result = connection.GetFirstByLowestScoreFromSet("another-key", -10.0, 10.0, 5);
+
+                Assert.Single(result);
+                Assert.Equal("abcd", result.First());
+            });
+        }
+
+        [Fact]
         public void GetFirstByLowestScoreFromSet_ReturnsNull_WhenTheKeyDoesNotExist()
         {
             UseJobStorageConnection(jobStorage =>
@@ -500,6 +800,18 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                     () => jobStorage.GetFirstByLowestScoreFromSet(null, 0, 1));
 
                 Assert.Equal("Key", exception.ParamName, StringComparer.InvariantCultureIgnoreCase);
+            });
+        }
+
+        [Fact]
+        public void GetFirstByLowestScoreFromSet_ThrowsArgException_WhenRequestingLessThanZero()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                var exception = Assert.Throws<ArgumentException>(
+                    () => connection.GetFirstByLowestScoreFromSet("key", 0, 1, -1));
+
+                Assert.Equal("count", exception.ParamName);
             });
         }
 
@@ -608,6 +920,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         }
 
         [Fact]
+        public void GetJobData_ReturnsNull_WhenIdentifierCanNotBeParsedAsLong()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                var result = connection.GetJobData("some-non-long-id");
+                Assert.Null(result);
+            });
+        }
+
+        [Fact]
         public void GetJobData_ReturnsNull_WhenThereIsNoSuchJob()
         {
             UseJobStorageConnection(jobStorage =>
@@ -627,7 +949,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 {
                     InvocationData = SerializationHelper.Serialize(InvocationData.SerializeJob(job)),
                     StateName = "Succeeded",
-                    Arguments = "['Arguments']", CreatedAt = session.Storage.UtcNow
+                    Arguments = "['Arguments']",
+                    CreatedAt = session.Storage.UtcNow
                 };
                 session.Insert(newJob);
                 //does nothing
@@ -734,6 +1057,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
             {
                 Assert.Throws<ArgumentNullException>(
                     () => jobStorage.GetListTtl(null));
+            });
+        }
+
+        [Fact]
+        public void GetParameter_ReturnsNull_WhenJobIdCanNotBeParsedAsLong()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                var result = connection.GetJobParameter("some-non-long-id", "name");
+                Assert.Null(result);
             });
         }
 
@@ -1063,6 +1396,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         }
 
         [Fact]
+        public void GetStateData_ReturnsNull_WhenIdentifierCanNotBeParsedAsLong()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                var result = connection.GetStateData("some-non-long-id");
+                Assert.Null(result);
+            });
+        }
+
+        [Fact]
         public void GetStateData_ThrowsAnException_WhenJobIdIsNull()
         {
             UseJobStorageConnection(
@@ -1297,6 +1640,23 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         }
 
         [Fact]
+        public void SetRangeInHash_CanCreateFieldsWithNullValues()
+        {
+            UseJobStorageConnectionWithSession((sql, connection) =>
+            {
+                connection.SetRangeInHash("some-hash", new Dictionary<string, string>
+                {
+                    {"Key1", null}
+                });
+
+                var result = sql.Query<_Hash>().Where(i => i.Key == "some-hash")
+                    .ToDictionary(x => x.Field, x => x.Value);
+
+                Assert.Null(result["Key1"]);
+            });
+        }
+
+        [Fact]
         public void SetRangeInHash_MergesAllRecords()
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
@@ -1313,6 +1673,22 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
                 Assert.Equal("Value1", result["Key1"]);
                 Assert.Equal("Value2", result["Key2"]);
+            });
+        }
+
+        [Fact]
+        public void SetRangeInHash_ReleasesTheAcquiredLock()
+        {
+            UseJobStorageConnectionWithSession((sql, connection) =>
+            {
+                connection.SetRangeInHash("some-hash", new Dictionary<string, string>
+                {
+                    {"Key", "Value"}
+                });
+
+                var result = sql.Query<_DistributedLock>().Where(i =>
+                    i.Resource == FluentNHibernateJobStorageConnection.HashDistributedLockName);
+                Assert.Empty(result);
             });
         }
 
@@ -1337,6 +1713,27 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                     () => jobStorage.SetRangeInHash("some-hash", null));
 
                 Assert.Equal("keyValuePairs", exception.ParamName);
+            });
+        }
+
+        [Fact]
+        public void SetRangeInHash_ThrowsSqlException_WhenKeyIsTooLong()
+        {
+            UseJobStorageConnection(connection =>
+            {
+                Exception ex = null;
+                try
+                {
+                    var key = new string('a', 9999);
+                    connection.SetRangeInHash(key,
+                        new Dictionary<string, string> {{"field", "value"}});
+                    var count = connection.GetHashCount(key);
+                    Assert.Equal(1, count);
+                }
+                catch (Exception m)
+                {
+                    Assert.NotNull(m);
+                }
             });
         }
     }
