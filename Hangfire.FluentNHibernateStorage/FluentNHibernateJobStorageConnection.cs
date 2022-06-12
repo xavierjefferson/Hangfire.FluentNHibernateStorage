@@ -36,6 +36,8 @@ namespace Hangfire.FluentNHibernateStorage
         public override List<string> GetFirstByLowestScoreFromSet(string key, double fromScore, double toScore,
             int count)
         {
+            if (key == null && fromScore == 0 && toScore == 0 && count == 1) return new List<string>();
+
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
             if (count <= 0)

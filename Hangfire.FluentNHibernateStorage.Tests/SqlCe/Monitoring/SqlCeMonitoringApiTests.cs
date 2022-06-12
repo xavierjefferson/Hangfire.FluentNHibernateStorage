@@ -6,9 +6,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Monitoring
 {
     [Xunit.Collection(Constants.SqlCeFixtureCollectionName)]
     public class
-        SqlCeFluentNHibernateMonitoringApiTests : FluentNHibernateMonitoringApiTestsBase
+        SqlCeMonitoringApiTests : MonitoringApiTestsBase
     {
-        public SqlCeFluentNHibernateMonitoringApiTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
+        public SqlCeMonitoringApiTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

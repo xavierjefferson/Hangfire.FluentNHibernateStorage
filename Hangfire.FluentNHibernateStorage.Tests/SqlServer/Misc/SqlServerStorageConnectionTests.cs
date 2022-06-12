@@ -6,9 +6,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlServer.Misc
 {
     [Xunit.Collection(Constants.SqlServerFixtureCollectionName)]
     public class
-        SqlServerFluentNHibernateStorageConnectionTests : FluentNHibernateStorageConnectionTestsBase
+        SqlServerStorageConnectionTests : StorageConnectionTestsBase
     {
-        public SqlServerFluentNHibernateStorageConnectionTests(SqlServerTestDatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture, testOutputHelper)
+        public SqlServerStorageConnectionTests(SqlServerTestDatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture, testOutputHelper)
         {
         }
     }

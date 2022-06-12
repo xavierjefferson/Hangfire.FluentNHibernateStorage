@@ -8,10 +8,10 @@ using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 {
-    public abstract class FluentNHibernateJobQueueMonitoringApiTests : TestBase, IDisposable
+    public abstract class JobQueueMonitoringApiTests : TestBase, IDisposable
 
     {
-        protected FluentNHibernateJobQueueMonitoringApiTests(DatabaseFixtureBase fixture) : base(fixture)
+        protected JobQueueMonitoringApiTests(DatabaseFixtureBase fixture) : base(fixture)
         {
             _storage = GetStorage();
            
@@ -29,7 +29,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 
             UseJobStorageConnectionWithSession((session,connection) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
 
                 result = _api.GetEnqueuedAndFetchedCount(_queue);
@@ -49,7 +49,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             {
                 for (var i = 1; i <= 10; i++)
                 {
-                    var newJob = JobInsertionHelper.InsertNewJob(session);
+                    var newJob = InsertNewJob(session);
                     jobs.Add(newJob);
                     session.Insert(new _JobQueue {Job = newJob, Queue = _queue});
                 }

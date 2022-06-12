@@ -6,7 +6,7 @@ using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures
 {
-    public class SqliteTestDatabaseFixture : DatabaseFixtureBase, IDatabaseFixture
+    public class SqliteTestDatabaseFixture : DatabaseFixtureBase
     {
         private static readonly object GlobalLock = new object();
         private static DirectoryInfo _testFolder;
@@ -19,15 +19,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures
             CreateDatabase();
         }
 
-
-        public override void EnsurePersistenceConfigurer()
-        {
-            var databaseFileName = GetDatabaseFileName();
-            var connectionString = $"Data Source={databaseFileName};Version=3";
-            PersistenceConfigurer = FluentNHibernateStorageFactory.GetPersistenceConfigurer(
-                ProviderTypeEnum.SQLite,
-                connectionString);
-        }
+        public override ProviderTypeEnum ProviderType => ProviderTypeEnum.SQLite;
 
         public override void Cleanup()
         {
@@ -39,6 +31,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures
             catch
             {
             }
+        }
+
+        public override string GetConnectionString()
+        {
+            var databaseFileName = GetDatabaseFileName();
+            return $"Data Source={databaseFileName};Version=3";
         }
 
         public override void OnDispose()

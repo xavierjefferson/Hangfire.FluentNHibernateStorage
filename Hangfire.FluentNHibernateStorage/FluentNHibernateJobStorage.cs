@@ -25,10 +25,13 @@ namespace Hangfire.FluentNHibernateStorage
         private static readonly ILog Logger = LogProvider.For<FluentNHibernateJobStorage>();
 
         private CountersAggregator _countersAggregator;
+        private bool _disposedValue;
         private ExpirationManager _expirationManager;
         private ServerTimeSyncManager _serverTimeSyncManager;
         private ISessionFactory _sessionFactory;
-        private bool _disposedValue;
+
+
+        private TimeSpan _utcOffset = TimeSpan.Zero;
 
         public FluentNHibernateJobStorage(ProviderTypeEnum providerType, string nameOrConnectionString,
             FluentNHibernateStorageOptions options = null) : this(
@@ -51,17 +54,7 @@ namespace Hangfire.FluentNHibernateStorage
             Initialize(info);
         }
 
-        public void RefreshUtcOFfset()
-        {
-            using (var session = this.SessionFactoryInfo.SessionFactory.OpenSession())
-            {
-                this.UtcOffset = DateTime.UtcNow.Subtract(session.GetUtcNow(this.ProviderType));
-            }
-        }
-
         internal IDictionary<string, IClassMetadata> ClassMetadataDictionary { get; set; }
-
-        internal TimeSpan UtcOffset { get; set; }
         internal SessionFactoryInfo SessionFactoryInfo { get; set; }
 
         public FluentNHibernateStorageOptions Options { get; set; }
@@ -71,8 +64,15 @@ namespace Hangfire.FluentNHibernateStorage
 
         public ProviderTypeEnum ProviderType { get; set; } = ProviderTypeEnum.None;
 
-        public DateTime UtcNow => DateTime.UtcNow.Add(UtcOffset);
+        public DateTime UtcNow => DateTime.UtcNow.Add(_utcOffset);
 
+        public void RefreshUtcOFfset()
+        {
+            using (var session = SessionFactoryInfo.SessionFactory.OpenSession())
+            {
+                _utcOffset = session.GetUtcOffset(ProviderType);
+            }
+        }
 
         private void Initialize(SessionFactoryInfo info)
         {
@@ -133,7 +133,7 @@ namespace Hangfire.FluentNHibernateStorage
                         case 1:
                             return;
                         case 0:
-                            session.Insert(new _Dual { Id = 1 });
+                            session.Insert(new _Dual {Id = 1});
                             break;
                         default:
                             session.DeleteByInt32Id<_Dual>(
@@ -232,13 +232,13 @@ namespace Hangfire.FluentNHibernateStorage
 #pragma warning disable 618
         public List<IBackgroundProcess> GetBackgroundProcesses()
         {
-            return new List<IBackgroundProcess> { _expirationManager, _countersAggregator, _serverTimeSyncManager };
+            return new List<IBackgroundProcess> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
         }
 
         public override IEnumerable<IServerComponent> GetComponents()
 
         {
-            return new List<IServerComponent> { _expirationManager, _countersAggregator, _serverTimeSyncManager };
+            return new List<IServerComponent> {_expirationManager, _countersAggregator, _serverTimeSyncManager};
         }
 
         protected virtual void Dispose(bool disposing)

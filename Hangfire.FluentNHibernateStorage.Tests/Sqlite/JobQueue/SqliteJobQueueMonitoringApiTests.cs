@@ -5,9 +5,10 @@ using Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures;
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.JobQueue
 {
     [Xunit.Collection(Constants.SqliteFixtureCollectionName)]
-    public class SqliteFluentNHibernateFetchedJobTests : FluentNHibernateFetchedJobTestsBase
+    public class
+        SqliteJobQueueMonitoringApiTests : JobQueueMonitoringApiTests
     {
-        public SqliteFluentNHibernateFetchedJobTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        public SqliteJobQueueMonitoringApiTests(SqliteTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

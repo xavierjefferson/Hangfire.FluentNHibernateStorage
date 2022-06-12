@@ -6,10 +6,11 @@ using Xunit;
 namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.JobQueue
 {
     [Collection(Constants.SqlCeFixtureCollectionName)]
+ 
     public class
-        SqlCeFluentNHibernateFetchedJobTests : FluentNHibernateFetchedJobTestsBase
+        SqlCeFetchedJobTests : FetchedJobTestsBase
     {
-        public SqlCeFluentNHibernateFetchedJobTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
+        public SqlCeFetchedJobTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

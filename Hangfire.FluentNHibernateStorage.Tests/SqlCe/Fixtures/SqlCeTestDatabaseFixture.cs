@@ -6,7 +6,7 @@ using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures
 {
-    public class SqlCeTestDatabaseFixture : DatabaseFixtureBase, IDatabaseFixture
+    public class SqlCeTestDatabaseFixture : DatabaseFixtureBase
     {
         private static readonly object GlobalLock = new object();
 
@@ -20,15 +20,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures
             CreateDatabase();
         }
 
+        public override ProviderTypeEnum ProviderType => ProviderTypeEnum.MsSqlCe40;
 
-        public override void EnsurePersistenceConfigurer()
-        {
-            var databaseFileName = GetDatabaseFileName();
-            var connectionString = $"Data Source={databaseFileName};";
-            PersistenceConfigurer = FluentNHibernateStorageFactory.GetPersistenceConfigurer(
-                ProviderTypeEnum.MsSqlCe40,
-                connectionString);
-        }
 
         public override void Cleanup()
         {
@@ -48,16 +41,19 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Fixtures
             Cleanup();
         }
 
-      
-
+        public override string GetConnectionString()
+        {
+            var databaseFileName = GetDatabaseFileName();
+            return $"Data Source={databaseFileName};";
+        }
 
         public override void CreateDatabase()
         {
             var databaseFileName = GetDatabaseFileName();
-            var connectionString = $"Data Source={databaseFileName};";
+
             if (!File.Exists(databaseFileName))
             {
-                var engine = new SqlCeEngine(connectionString);
+                var engine = new SqlCeEngine(GetConnectionString());
                 engine.CreateDatabase();
             }
         }

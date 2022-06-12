@@ -1,5 +1,5 @@
 ﻿using System;
-using FluentNHibernate.Cfg.Db;
+using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
 using Moq;
 
@@ -7,16 +7,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
 {
     public abstract class TestBase : IDisposable
     {
- 
-
-
         private bool _disposedValue;
         private FluentNHibernateJobStorage _storage;
 
         protected TestBase(DatabaseFixtureBase fixture)
         {
             Fixture = fixture;
-            
         }
 
         protected DatabaseFixtureBase Fixture { get; }
@@ -34,8 +30,6 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-
-    
 
 
         public virtual FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
@@ -89,9 +83,25 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base
             }
         }
 
-        protected Mock<FluentNHibernateJobStorage> GetStorageMock(FluentNHibernateStorageOptions options = null)
+        protected FluentNHibernateJobStorage GetStorageMock(
+            Func<Mock<FluentNHibernateJobStorage>, FluentNHibernateJobStorage> func,
+            FluentNHibernateStorageOptions options = null)
         {
-            return Fixture.GetStorageMock(options);
+            return Fixture.GetStorageMock(func, options);
+        }
+
+        public static _Job InsertNewJob(StatelessSessionWrapper session, Action<_Job> action = null)
+        {
+            var newJob = new _Job
+            {
+                InvocationData = string.Empty,
+                Arguments = string.Empty,
+                CreatedAt = session.Storage.UtcNow
+            };
+            action?.Invoke(newJob);
+            session.Insert(newJob);
+
+            return newJob;
         }
     }
 }

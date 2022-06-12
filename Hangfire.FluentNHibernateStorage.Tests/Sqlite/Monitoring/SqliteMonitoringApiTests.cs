@@ -6,9 +6,9 @@ using Xunit;
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Monitoring
 {
     [Xunit.Collection(Constants.SqliteFixtureCollectionName)]
-    public class SqliteFluentNHibernateMonitoringApiTests : FluentNHibernateMonitoringApiTestsBase
+    public class SqliteMonitoringApiTests : MonitoringApiTestsBase
     {
-        public SqliteFluentNHibernateMonitoringApiTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        public SqliteMonitoringApiTests(SqliteTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

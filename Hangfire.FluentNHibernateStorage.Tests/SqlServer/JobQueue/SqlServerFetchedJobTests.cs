@@ -1,14 +1,15 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue;
 using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
 using Hangfire.FluentNHibernateStorage.Tests.SqlServer.Fixtures;
+using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.SqlServer.JobQueue
 {
-    [Xunit.Collection(Constants.SqlServerFixtureCollectionName)]
+    [Collection(Constants.SqlServerFixtureCollectionName)]
     public class
-        SqlServerFluentNHibernateJobQueueTests : FluentNHibernateJobQueueTestsBase
+        SqlServerFetchedJobTests : FetchedJobTestsBase
     {
-        public SqlServerFluentNHibernateJobQueueTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
+        public SqlServerFetchedJobTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

@@ -8,9 +8,9 @@ using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
 {
-    public abstract class FluentNHibernateJobQueueTestsBase : TestBase
+    public abstract class JobQueueTestsBase : TestBase
     {
-        protected FluentNHibernateJobQueueTestsBase(DatabaseFixtureBase fixture) : base(fixture)
+        protected JobQueueTestsBase(DatabaseFixtureBase fixture) : base(fixture)
         {
         }
 
@@ -52,7 +52,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             {
                 session.DeleteAll<_JobQueue>();
                 session.DeleteAll<_Job>();
-                var newjob = JobInsertionHelper.InsertNewJob(session);
+                var newjob = InsertNewJob(session);
                 session.Insert(new _JobQueue {Job = newjob, Queue = "default"});
                 //does nothing
                 var queue = CreateJobQueue(connection.Storage);
@@ -78,7 +78,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             // Arrange
             UseJobStorageConnectionWithSession((session, connection) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 var newJobQueue = new _JobQueue {Job = newJob, Queue = "default"};
                 session.Insert(newJobQueue);
 
@@ -102,7 +102,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             // Arrange
             UseJobStorageConnectionWithSession((session, connection) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 session.Insert(new _JobQueue
                 {
                     Job = newJob,
@@ -130,7 +130,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
                 var queueNames = new[] {"critical", "default"};
                 foreach (var queueName in queueNames)
                 {
-                    var newJob = JobInsertionHelper.InsertNewJob(session);
+                    var newJob = InsertNewJob(session);
                     session.Insert(new _JobQueue
                     {
                         Job = newJob,
@@ -167,7 +167,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
             {
                 session.DeleteAll<_JobQueue>();
                 session.DeleteAll<_Job>();
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 session.Insert(new _JobQueue
                 {
                     Job = newJob,
@@ -194,7 +194,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
                 session.DeleteAll<_Job>();
                 for (var i = 0; i < 2; i++)
                 {
-                    var newJob = JobInsertionHelper.InsertNewJob(session);
+                    var newJob = InsertNewJob(session);
                     session.Insert(new _JobQueue
                     {
                         Job = newJob,
@@ -284,7 +284,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
                 session.DeleteAll<_JobQueue>();
                 //does nothing
 
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
 
                 var queue = CreateJobQueue(connection.Storage);
 

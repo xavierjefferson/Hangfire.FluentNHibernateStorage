@@ -6,9 +6,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlServer.Monitoring
 {
     [Xunit.Collection(Constants.SqlServerFixtureCollectionName)]
     public class
-        SqlServerFluentNHibernateMonitoringApiTests : FluentNHibernateMonitoringApiTestsBase
+        SqlServerMonitoringApiTests : MonitoringApiTestsBase
     {
-        public SqlServerFluentNHibernateMonitoringApiTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
+        public SqlServerMonitoringApiTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

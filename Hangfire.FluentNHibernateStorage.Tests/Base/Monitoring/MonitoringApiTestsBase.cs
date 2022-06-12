@@ -10,9 +10,9 @@ using Xunit;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
 {
-    public abstract class FluentNHibernateMonitoringApiTestsBase : TestBase
+    public abstract class MonitoringApiTestsBase : TestBase
     {
-        protected FluentNHibernateMonitoringApiTestsBase(DatabaseFixtureBase fixture) : base(fixture)
+        protected MonitoringApiTestsBase(DatabaseFixtureBase fixture) : base(fixture)
         {
             _storage = GetStorage();
             _sut = new FluentNHibernateMonitoringApi(_storage);
@@ -20,7 +20,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
             _expireAt = _storage.UtcNow.AddMinutes(1);
         }
 
-        private Mock<FluentNHibernateJobStorage> _storageMock;
+        private FluentNHibernateJobStorage _storageMock;
 
         public override FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
@@ -32,13 +32,16 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var defaultProviderMock = new Mock<IPersistentJobQueueProvider>();
                 defaultProviderMock.Setup(m => m.GetJobQueueMonitoringApi())
                     .Returns(persistentJobQueueMonitoringApiMock.Object);
-                _storageMock = GetStorageMock( );
-                _storageMock
-                    .Setup(m => m.QueueProviders)
-                    .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
+                _storageMock = GetStorageMock(mock =>
+                {
+                    mock
+                        .Setup(m => m.QueueProviders)
+                        .Returns(new PersistentJobQueueProviderCollection(defaultProviderMock.Object));
+                    return mock.Object;
+                }, options);
             }
 
-            return _storageMock.Object;
+            return _storageMock;
         }
 
         private readonly string _arguments = "[\"test\"]";
@@ -252,8 +255,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 result = _sut.JobDetails(jobId.ToString());
             });
 
-            Assert.True(_createdAt.Subtract(result.CreatedAt.Value.ToUniversalTime()).TotalMinutes < 1);
-            Assert.True(_expireAt.Subtract(result.ExpireAt.Value.ToUniversalTime()).TotalMinutes < 1);
+            Assert.InRange(result.CreatedAt.Value.Subtract(_createdAt).TotalSeconds, -3, 60);
+            Assert.InRange(result.ExpireAt.Value.Subtract(_expireAt).TotalSeconds, -3, 60);
         }
 
         [Fact]

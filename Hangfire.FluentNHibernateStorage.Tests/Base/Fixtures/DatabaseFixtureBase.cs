@@ -1,35 +1,26 @@
 ﻿using System;
 using System.IO;
 using System.Reflection;
-using FluentNHibernate.Cfg.Db;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Moq;
+using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
 {
-    public abstract class DatabaseFixtureBase : IDisposable, IDatabaseFixture
+    public abstract class DatabaseFixtureBase : IDisposable
     {
         private bool _updateSchema = true; //only create schema on the first pass
-        protected IPersistenceConfigurer PersistenceConfigurer;
+
 
         protected static string Instance => Guid.NewGuid().ToString();
 
-        public abstract void EnsurePersistenceConfigurer();
-
-        public IPersistenceConfigurer GetPersistenceConfigurer()
-        {
-            EnsurePersistenceConfigurer();
-            return PersistenceConfigurer;
-        }
+        public abstract ProviderTypeEnum ProviderType { get; }
 
         public abstract void Cleanup();
 
         public FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
-            EnsurePersistenceConfigurer();
-            options = ProgressOptions(options);
-            var tmp = new FluentNHibernateJobStorage(PersistenceConfigurer, options);
-            return tmp;
+            return new FluentNHibernateJobStorage(ProviderType, GetConnectionString(), ProgressOptions(options));
         }
 
 
@@ -61,6 +52,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
             directoryInfo.Delete();
         }
 
+        public abstract string GetConnectionString();
+
+
         public void CleanTables(StatelessSessionWrapper session)
         {
             session.DeleteAll<_JobState>();
@@ -91,9 +85,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
             return options;
         }
 
-        public Mock<FluentNHibernateJobStorage> GetStorageMock(FluentNHibernateStorageOptions options = null)
+        public FluentNHibernateJobStorage GetStorageMock(
+            Func<Mock<FluentNHibernateJobStorage>, FluentNHibernateJobStorage> func,
+            FluentNHibernateStorageOptions options = null)
         {
-            return new Mock<FluentNHibernateJobStorage>(GetPersistenceConfigurer(), ProgressOptions(options));
+            var mock = new Mock<FluentNHibernateJobStorage>(ProviderType, GetConnectionString(),
+                ProgressOptions(options));
+            return func(mock);
         }
 
         public abstract void OnDispose();

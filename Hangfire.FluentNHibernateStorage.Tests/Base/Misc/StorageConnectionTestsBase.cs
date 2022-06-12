@@ -15,10 +15,10 @@ using Xunit.Abstractions;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 {
-    public abstract class FluentNHibernateStorageConnectionTestsBase : TestBase
+    public abstract class StorageConnectionTestsBase : TestBase
 
     {
-        public FluentNHibernateStorageConnectionTestsBase(DatabaseFixtureBase fixture,
+        public StorageConnectionTestsBase(DatabaseFixtureBase fixture,
             ITestOutputHelper testOutputHelper) : base(fixture)
         {
             this.testOutputHelper = testOutputHelper;
@@ -36,19 +36,23 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         private readonly PersistentJobQueueProviderCollection _providers;
         private readonly Mock<IPersistentJobQueue> _queue;
 
-        private Mock<FluentNHibernateJobStorage> _storageMock;
+        private FluentNHibernateJobStorage _storageMock;
 
         public override FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
             if (_storageMock == null)
             {
-                
-                var storageMock = GetStorageMock(  options);
-                storageMock.Setup(x => x.QueueProviders).Returns(_providers);
+                var storageMock = GetStorageMock(mock =>
+                    {
+                        mock.Setup(x => x.QueueProviders).Returns(_providers);
+                        return mock.Object;
+                    },
+                    options);
+
                 _storageMock = storageMock;
             }
 
-            return _storageMock.Object;
+            return _storageMock;
         }
 
 
@@ -140,7 +144,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                         session.Query<_DistributedLock>().SingleOrDefault(i => i.Resource == resource);
                     Assert.NotNull(distributedLock);
                     Assert.Equal(resource, distributedLock.Resource);
-                    Assert.InRange(distributedLock.ExpireAtAsLong.FromEpochDate().Subtract(now).TotalMinutes, 4, 5);
+                    Assert.InRange(distributedLock.ExpireAtAsLong.FromEpochDate().Subtract(now).TotalMinutes, 4, 6);
                 }
             });
         }
@@ -421,7 +425,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 invocationData.Arguments = sqlJob.Arguments;
 
                 var job = invocationData.DeserializeJob();
-                Assert.Equal(typeof(FluentNHibernateStorageConnectionTestsBase), job.Type);
+                Assert.Equal(typeof(StorageConnectionTestsBase), job.Type);
                 Assert.Equal(nameof(SampleMethod), job.Method.Name);
                 Assert.Equal(expectedString, job.Args[0]);
 
@@ -1085,7 +1089,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 session.Insert(new _JobParameter {Job = newJob, Name = "name", Value = "Value"});
                 //does nothing
 
@@ -1357,7 +1361,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 {
                     {"Key", "Value"}
                 };
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 session.Insert(new _JobState {Job = newJob, Name = "old-state", CreatedAt = session.Storage.UtcNow});
                 var jobState = new _JobState
                 {
@@ -1567,7 +1571,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
                 //does nothing
 
@@ -1608,7 +1612,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
                 var jobId = newJob.Id.ToString();
 
                 jobStorage.SetJobParameter(jobId, "Name", "Value");
@@ -1626,7 +1630,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnectionWithSession((session, jobStorage) =>
             {
-                var newJob = JobInsertionHelper.InsertNewJob(session);
+                var newJob = InsertNewJob(session);
 
                 var jobId = newJob.Id.ToString();
 

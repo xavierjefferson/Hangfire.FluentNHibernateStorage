@@ -6,9 +6,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlServer.JobQueue
 {
     [Xunit.Collection(Constants.SqlServerFixtureCollectionName)]
     public class
-        SqlServerFluentNHibernateJobQueueMonitoringApiTests : FluentNHibernateJobQueueMonitoringApiTests
+        SqlServerJobQueueTests : JobQueueTestsBase
     {
-        public SqlServerFluentNHibernateJobQueueMonitoringApiTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
+        public SqlServerJobQueueTests(SqlServerTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }

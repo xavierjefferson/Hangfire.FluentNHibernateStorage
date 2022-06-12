@@ -1,14 +1,15 @@
 ﻿using Hangfire.FluentNHibernateStorage.Tests.Base.Misc;
 using Hangfire.FluentNHibernateStorage.Tests.Sqlite.Fixtures;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Hangfire.FluentNHibernateStorage.Tests.Sqlite.Misc
 {
     [Collection(Constants.SqliteFixtureCollectionName)]
     public class
-        SqliteFluentNHibernateWriteOnlyTransactionTests : FluentNHibernateWriteOnlyTransactionTestsBase
+        SqliteStorageConnectionTests : StorageConnectionTestsBase
     {
-        public SqliteFluentNHibernateWriteOnlyTransactionTests(SqliteTestDatabaseFixture fixture) : base(fixture)
+        public SqliteStorageConnectionTests(SqliteTestDatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture, testOutputHelper)
         {
         }
     }

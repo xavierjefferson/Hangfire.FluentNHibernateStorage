@@ -5,9 +5,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.SqlCe.Misc
 {
     [Xunit.Collection(Constants.SqlCeFixtureCollectionName)]
     public class
-        SqlCeFluentNHibernateWriteOnlyTransactionTests : FluentNHibernateWriteOnlyTransactionTestsBase
+        SqlCeWriteOnlyTransactionTests : WriteOnlyTransactionTestsBase
     {
-        public SqlCeFluentNHibernateWriteOnlyTransactionTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
+        public SqlCeWriteOnlyTransactionTests(SqlCeTestDatabaseFixture fixture) : base(fixture)
         {
         }
     }
