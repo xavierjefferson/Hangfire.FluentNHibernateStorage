@@ -7,15 +7,17 @@
 
   <ItemGroup>
     <PackageReference Include="bogus" Version="34.0.2" />
-    <PackageReference Include="fluentnhibernate" Version="3.0.1" />
+    <PackageReference Include="fluentnhibernate" Version="3.1.0" />
     <PackageReference Include="hangfire.core" Version="1.7.17" />
-    <PackageReference Include="serilog" Version="2.10.0" />
-    <PackageReference Include="serilog.sinks.console" Version="3.1.1" />
+    <PackageReference Include="serilog" Version="2.11.0" />
+    <PackageReference Include="serilog.extensions.logging" Version="3.1.0" />
+    <PackageReference Include="serilog.sinks.console" Version="4.0.1" />
     <PackageReference Include="snork.fluentnhibernatetools" Version="1.2.1016" />
-    <PackageReference Include="system.data.sqlite" Version="1.0.113.6" />
+    <PackageReference Include="system.data.sqlite" Version="1.0.116" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Hangfire.FluentNHibernate.SampleStuff\Hangfire.FluentNHibernate.SampleStuff.csproj" />
     <ProjectReference Include="..\Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj" />
   </ItemGroup>
 

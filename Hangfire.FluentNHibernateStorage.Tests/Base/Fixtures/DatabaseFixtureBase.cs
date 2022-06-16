@@ -16,17 +16,17 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
 
         public abstract ProviderTypeEnum ProviderType { get; }
 
+
+        public void Dispose()
+        {
+            OnDispose();
+        }
+
         public abstract void Cleanup();
 
         public FluentNHibernateJobStorage GetStorage(FluentNHibernateStorageOptions options = null)
         {
             return new FluentNHibernateJobStorage(ProviderType, GetConnectionString(), ProgressOptions(options));
-        }
-
-
-        public void Dispose()
-        {
-            OnDispose();
         }
 
         protected void DeleteFolder(DirectoryInfo directoryInfo)
@@ -36,8 +36,9 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
                 {
                     fileInfo.Delete();
                 }
-                catch (Exception ex)
+                catch
                 {
+                    // ignored
                 }
 
             foreach (var info in directoryInfo.GetDirectories())
@@ -47,6 +48,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures
                 }
                 catch
                 {
+                    // ignored
                 }
 
             directoryInfo.Delete();

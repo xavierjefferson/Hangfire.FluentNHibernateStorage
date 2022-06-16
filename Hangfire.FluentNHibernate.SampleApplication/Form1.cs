@@ -1,18 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
-using System.Reflection;
-using System.Threading;
 using System.Windows.Forms;
-using Hangfire.FluentNHibernate.SampleApplication.Properties;
+using Hangfire.FluentNHibernate.SampleStuff;
 using Hangfire.FluentNHibernateStorage;
-using log4net;
-using Newtonsoft.Json;
-using Snork.FluentNHibernateTools;
-using Timer = System.Timers.Timer;
+using Microsoft.Extensions.Logging;
+using Serilog.Events;
 
-namespace Hangfire.FluentNHibernate.SampleApplication
+namespace Hangfire.FluentNHibernate.WinformsApplication
 {
     public partial class Form1 : Form
     {
@@ -23,20 +17,31 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             Started
         }
 
-        private static readonly ILog loggerNew = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private readonly object _lockObj = new object();
+
+        private readonly ILogEventEmitterService _logEventEmitterService;
+
+        private readonly ILogger<Form1> _logger;
+        private readonly ISqliteTempFileService _sqliteTempFileService;
+        private readonly IServiceProvider serviceProvider;
+
 
         private BackgroundJobServer _backgroundJobServer;
 
         private StateEnum _currentState;
 
-        private Timer _timer;
+        private FluentNHibernateJobStorage _storage;
 
-        private FluentNHibernateJobStorage storage;
-
-
-        public Form1()
+        public Form1(ILogger<Form1> logger, ILogEventEmitterService logEventEmitterService,
+            ISqliteTempFileService sqliteTempFileService, IServiceProvider serviceProvider)
         {
+            this.serviceProvider = serviceProvider;
+            _sqliteTempFileService = sqliteTempFileService;
+            _logger = logger;
+            _logEventEmitterService = logEventEmitterService;
+            _logEventEmitterService.OnEmit += LogEventEmitterServiceOnEmit;
             InitializeComponent();
+            SetupDataGridView();
         }
 
         private StateEnum State
@@ -46,32 +51,91 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             {
                 _currentState = value;
                 StartButton.Enabled = value == StateEnum.Stopped;
-                ConnectionStringTextBox.Enabled = value == StateEnum.Stopped;
+
                 StopButton.Enabled = value == StateEnum.Started;
-                HQLButton.Enabled = value == StateEnum.Started;
             }
         }
 
-        private ProviderTypeEnum ProviderType
+        public BindingList<LogEventWrapper> LoggingEvents { get; } = new BindingList<LogEventWrapper>();
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            get => (ProviderTypeEnum) DataProviderComboBox.SelectedItem;
-            set
+            _logEventEmitterService.OnEmit -= LogEventEmitterServiceOnEmit;
+
+            base.OnFormClosing(e);
+        }
+
+
+        private void SetupDataGridView()
+        {
+            LoggerDataGridView.AutoGenerateColumns = false;
+            AddColumn(nameof(LogEventWrapper.TimeStamp), "Timestamp",
+                column => { column.DefaultCellStyle.Format = "yyyy-MM-dd hh:mm:ss"; });
+            AddColumn(nameof(LogEventWrapper.ThreadName), null,
+                column => { });
+            AddColumn(nameof(LogEventWrapper.Level), null,
+                column => { });
+            AddColumn(nameof(LogEventWrapper.Message), "Message",
+                column => { });
+            AddColumn(nameof(LogEventWrapper.LoggerName), null,
+                column => { });
+            AddColumn(nameof(LogEventWrapper.Exception), null,
+                column => { });
+            LoggerDataGridView.DataSource = LoggingEvents;
+        }
+
+        public void DoAppend(LogEvent loggingEvent)
+        {
+            try
             {
-                ConnectionStringTextBox.Text = LoadProviderSetting(value).ConnectionString;
-                DataProviderComboBox.SelectedItem = value;
+                lock (_lockObj)
+                {
+                    LoggingEvents.Add(new LogEventWrapper(loggingEvent, null));
+                }
+
+                Application.DoEvents();
+            }
+            catch
+            {
+                // There is not much that can be done here, and
+                // swallowing the error is desired in my situation.
             }
         }
 
-        public static void HelloWorld(DateTime whenQueued, int interval)
+
+        private void AddColumn(string name, string headerText = null, Action<DataGridViewColumn> action = null)
         {
-            loggerNew.InfoFormat("Hello world at {2} min intervals.  Enqueued={0}, Now={1}", whenQueued, DateTime.Now,
-                interval);
+            DataGridViewColumn column = new DataGridViewTextBoxColumn();
+            column.DataPropertyName = name;
+            column.Name = name;
+            column.HeaderText = headerText ?? name;
+            LoggerDataGridView.Columns.Add(column);
+            action?.Invoke(column);
         }
 
-        public static void Display(string x)
+        public void DoRefresh()
         {
-            loggerNew.InfoFormat("Display {0}", x);
+            if (LoggerDataGridView.InvokeRequired)
+            {
+                LoggerDataGridView.Invoke(new Action(DoRefresh));
+            }
+            else
+            {
+                LoggerDataGridView.Refresh();
+                if (AutoScrollCheckBox.Checked)
+                {
+                    LoggerDataGridView.FirstDisplayedScrollingRowIndex = LoggerDataGridView.RowCount - 1;
+                    LoggerDataGridView.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.DisplayedCells);
+                }
+            }
         }
+
+        private void LogEventEmitterServiceOnEmit(LogEvent l)
+        {
+            DoAppend(l);
+            DoRefresh();
+        }
+
 
         protected override void OnClosing(CancelEventArgs e)
         {
@@ -79,69 +143,11 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             base.OnClosing(e);
         }
 
-        private Dictionary<ProviderTypeEnum, ProviderSetting> GetSettings()
-        {
-            var a = Settings.Default.ProviderSettings;
-            try
-            {
-                var tmp = JsonConvert.DeserializeObject<Dictionary<ProviderTypeEnum, ProviderSetting>>(a);
-                if (tmp != null) return tmp;
-            }
-            catch (Exception ex)
-            {
-                loggerNew.Error("Error reading settings", ex);
-            }
-
-            return new Dictionary<ProviderTypeEnum, ProviderSetting>
-            {
-                {
-                    ProviderTypeEnum.MsSql2012,
-                    new ProviderSetting
-                        {ConnectionString = "Data Source=.\\sqlexpress;Database=northwind;Trusted_Connection=True;"}
-                }
-            };
-        }
-
-        private ProviderSetting LoadProviderSetting(ProviderTypeEnum persistenceConfigurer)
-        {
-            var settings = GetSettings();
-            return settings.ContainsKey(persistenceConfigurer)
-                ? settings[persistenceConfigurer]
-                : new ProviderSetting();
-        }
 
         private void Form1_Load(object sender, EventArgs e1)
         {
-            var persistenceConfigurerEnums = Enum.GetValues(typeof(ProviderTypeEnum))
-                .Cast<ProviderTypeEnum>()
-                .Where(i => i != ProviderTypeEnum.None)
-                .OrderBy(i => i.ToString())
-                .ToList();
-            DataProviderComboBox.DataSource = persistenceConfigurerEnums;
-            DataProviderComboBox.SelectedIndexChanged += DataProviderComboBox_SelectedIndexChanged;
-
-
-            ProviderTypeEnum type;
-            ProviderType = Enum.TryParse(Settings.Default.DataSource, out type)
-                ? type
-                : ProviderTypeEnum.MsSql2012;
-            TableNamePrefixTextBox.Text = Settings.Default.TableNamePrefix;
-
-            DataGridViewAppender.ConfigureTextBoxAppender(LoggerDataGridView, AutoScrollCheckBox);
-            loggerNew.Error("This is an intentional exception", new Exception("Intentional exception object"));
+            _logger.LogError("This is an intentional exception", new Exception("Intentional exception object"));
             State = StateEnum.Stopped;
-        }
-
-        private void DataProviderComboBox_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            ConnectionStringTextBox.Text =
-                LoadProviderSetting((ProviderTypeEnum) DataProviderComboBox.SelectedItem).ConnectionString;
-        }
-
-        public static void Show(int c)
-        {
-            Console.WriteLine(c);
-            Thread.Sleep(1000 * c);
         }
 
 
@@ -149,84 +155,40 @@ namespace Hangfire.FluentNHibernate.SampleApplication
         {
             try
             {
-                var connectionString = ConnectionStringTextBox.Text;
-                if (string.IsNullOrWhiteSpace(connectionString))
-                {
-                    MessageBox.Show(this, "connection string cannot be blank");
-                    return;
-                }
-
-                var tableNamePrefix = TableNamePrefixTextBox.Text.Trim();
-                if (string.IsNullOrWhiteSpace(tableNamePrefix))
-                {
-                    MessageBox.Show(this, "Table name prefix cannot be blank");
-                    return;
-                }
-
-                SaveConnectionString(ProviderType, connectionString);
-                Settings.Default.TableNamePrefix = tableNamePrefix;
-                Settings.Default.DataSource = ProviderType.ToString();
-                Settings.Default.Save();
+                var connectionString = _sqliteTempFileService.GetConnectionString();
 
 
                 //THIS LINE GETS THE STORAGE PROVIDER
-                storage = FluentNHibernateStorageFactory.For(ProviderType, connectionString,
-                    new FluentNHibernateStorageOptions {TablePrefix = tableNamePrefix});
-                if (storage != null)
-                {
-                    State = StateEnum.Starting;
-                    //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
-                    GlobalConfiguration.Configuration.UseLog4NetLogProvider()
-                        .UseStorage(storage);
+
+                State = StateEnum.Starting;
+                //THIS LINE CONFIGURES HANGFIRE WITH THE STORAGE PROVIDER
+                GlobalConfiguration.Configuration.SetupJobStorage(_sqliteTempFileService)
+                    .SetupActivator(serviceProvider);
+                /*THIS LINE STARTS THE BACKGROUND SERVER*/
+                _storage = JobStorage.Current as FluentNHibernateJobStorage;
+                _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), _storage,
+                    _storage.GetBackgroundProcesses());
 
 
-                    /*THIS LINE STARTS THE BACKGROUND SERVER*/
-                    _backgroundJobServer = new BackgroundJobServer(new BackgroundJobServerOptions(), storage,
-                        storage.GetBackgroundProcesses());
-      
-
-                    /*ADD DUMMY CRON JOBS FOR DEMONSTRATION PURPOSES*/
-                    RecurringJob.AddOrUpdate("h2", () => HelloWorld(DateTime.Now, 2), "*/2 * * * *");
-                    RecurringJob.AddOrUpdate("h5", () => HelloWorld(DateTime.Now, 5), "*/5 * * * *");
-                    RecurringJob.AddOrUpdate("h1", () => HelloWorld(DateTime.Now, 1), "* * * * *");
-                    RecurringJob.AddOrUpdate("h7", () => HelloWorld(DateTime.Now, 7), "*/7 * * * *");
-                    loggerNew.Info("Background server started");
-                    State = StateEnum.Started;
-                }
+                JobMethods.CreateRecurringJobs(_logger);
+                _logger.LogInformation("Background server started");
+                State = StateEnum.Started;
             }
             catch (Exception ex)
             {
-                loggerNew.Error("Server start failed", ex);
+                _logger.LogError(ex, "Server start failed");
                 StopButton_Click(null, new EventArgs());
                 State = StateEnum.Stopped;
-                storage?.Dispose();
-                storage = null;
+                _storage?.Dispose();
+                _storage = null;
             }
         }
 
-        public static void ThrowException()
-        {
-            throw new Exception("Intentional exception");
-        }
-
-        private void SaveConnectionString(ProviderTypeEnum providerType, string connectionString)
-        {
-            var dictionary = GetSettings();
-            dictionary[providerType] = new ProviderSetting {ConnectionString = connectionString};
-            Settings.Default.ProviderSettings = JsonConvert.SerializeObject(dictionary);
-            Settings.Default.Save();
-        }
 
         private void StopButton_Click(object sender, EventArgs e)
         {
             try
             {
-                if (_timer != null)
-                {
-                    _timer.Stop();
-                    _timer = null;
-                }
-
                 if (_backgroundJobServer != null)
                 {
                     _backgroundJobServer.SendStop();
@@ -238,19 +200,8 @@ namespace Hangfire.FluentNHibernate.SampleApplication
             }
             catch (Exception ex)
             {
-                loggerNew.Error("Error during stop", ex);
+                _logger.LogInformation("Error during stop", ex);
             }
-        }
-
-        private void HQLButton_Click(object sender, EventArgs e)
-        {
-            var f = new HQLForm(storage);
-            f.ShowDialog(this);
-        }
-
-        public class ProviderSetting
-        {
-            public string ConnectionString { get; set; }
         }
     }
 }

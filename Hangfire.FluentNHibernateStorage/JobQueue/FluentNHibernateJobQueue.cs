@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
+using Hangfire.FluentNHibernateStorage.Extensions;
 using Hangfire.Logging;
 using Hangfire.Storage;
 
@@ -85,9 +86,7 @@ namespace Hangfire.FluentNHibernateStorage.JobQueue
                     Logger.Debug("Distributed lock acquisition timeout was exceeded");
                 }
 
-
-                cancellationToken.Wait(_storage.Options.QueuePollInterval);
-                cancellationToken.ThrowIfCancellationRequested();
+                cancellationToken.PollForCancellation(_storage.Options.QueuePollInterval);
             } while (fetchedJob == null);
 
             return fetchedJob;

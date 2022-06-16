@@ -1,8 +1,6 @@
-using System;
 using System.Threading;
 using Hangfire.Common;
 using Hangfire.Server;
-using Snork.FluentNHibernateTools;
 
 namespace Hangfire.FluentNHibernateStorage
 {

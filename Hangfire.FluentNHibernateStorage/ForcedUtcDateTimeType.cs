@@ -24,6 +24,7 @@ namespace Hangfire.FluentNHibernateStorage
         /// <param name="st">The IDbCommand to add the Type's value to.</param>
         /// <param name="value">The value of the Type.</param>
         /// <param name="index">The index of the IDataParameter in the IDbCommand.</param>
+        /// <param name="session"></param>
         /// <remarks>
         ///     No null values will be written to the IDbCommand for this Type.
         ///     The <see cref="DateTime.Kind" /> must be <see cref="DateTimeKind.Utc" />.
@@ -32,7 +33,7 @@ namespace Hangfire.FluentNHibernateStorage
         {
             if (value == null)
             {
-                base.Set(st, value, index, session);
+                base.Set(st, null, index, session);
                 return;
             }
 

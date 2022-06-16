@@ -21,7 +21,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         public StorageConnectionTestsBase(DatabaseFixtureBase fixture,
             ITestOutputHelper testOutputHelper) : base(fixture)
         {
-            this.testOutputHelper = testOutputHelper;
+            this._testOutputHelper = testOutputHelper;
             _queue = new Mock<IPersistentJobQueue>();
 
             var provider = new Mock<IPersistentJobQueueProvider>();
@@ -31,7 +31,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
             _providers = new PersistentJobQueueProviderCollection(provider.Object);
         }
 
-        private readonly ITestOutputHelper testOutputHelper;
+        private readonly ITestOutputHelper _testOutputHelper;
 
         private readonly PersistentJobQueueProviderCollection _providers;
         private readonly Mock<IPersistentJobQueue> _queue;
@@ -95,11 +95,11 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
 
         private class AcquireLockRequest
         {
-            public bool cleanDatabase { get; set; }
+            public bool CleanDatabase { get; set; }
             public int seconds { get; set; }
-            public int instance { get; set; }
+            public int Instance { get; set; }
             public Action InnerAction { get; set; }
-            public object mutex { get; set; }
+            public object Mutex { get; set; }
             public FluentNHibernateStorageOptions Options { get; set; }
         }
 
@@ -107,28 +107,27 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnection(connection1 =>
             {
-                lock (request.mutex)
+                lock (request.Mutex)
                 {
-                    testOutputHelper.WriteLine($"Instance {request.instance} storage connection opened");
-                    testOutputHelper.WriteLine($"Acquiring lock of {request.seconds} seconds");
+                    _testOutputHelper.WriteLine($"Instance {request.Instance} storage connection opened");
+                    _testOutputHelper.WriteLine($"Acquiring lock of {request.seconds} seconds");
                 }
 
                 using (connection1.AcquireDistributedLock("exclusive",
                     TimeSpan.FromSeconds(request.seconds)))
                 {
-                    lock (request.mutex)
+                    lock (request.Mutex)
                     {
-                        testOutputHelper.WriteLine($"Instance {request.instance} distributed lock acquired");
+                        _testOutputHelper.WriteLine($"Instance {request.Instance} distributed lock acquired");
                     }
 
-                    if (request.InnerAction != null)
-                        request.InnerAction();
-                    lock (request.mutex)
+                    request.InnerAction?.Invoke();
+                    lock (request.Mutex)
                     {
-                        testOutputHelper.WriteLine($"Instance {request.instance} called inner code");
+                        _testOutputHelper.WriteLine($"Instance {request.Instance} called inner code");
                     }
                 }
-            }, request.cleanDatabase, request.Options);
+            }, request.CleanDatabase, request.Options);
         }
 
         [Fact]
@@ -192,21 +191,21 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 {
                     var request = new AcquireLockRequest
                     {
-                        cleanDatabase = true, InnerAction = () =>
+                        CleanDatabase = true, InnerAction = () =>
                         {
                             lockAcquired.Set();
                             lock (mutex)
                             {
-                                testOutputHelper.WriteLine($"{nameof(lockAcquired)} set");
+                                _testOutputHelper.WriteLine($"{nameof(lockAcquired)} set");
                             }
 
                             releaseLock.Wait();
                             lock (mutex)
                             {
-                                testOutputHelper.WriteLine($"{nameof(releaseLock)} awaited");
+                                _testOutputHelper.WriteLine($"{nameof(releaseLock)} awaited");
                             }
                         },
-                        instance = 1, mutex = mutex, seconds = 60,
+                        Instance = 1, Mutex = mutex, seconds = 60,
                         Options = options
                     };
                     AcquireLock(request);
@@ -214,13 +213,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
             thread.Start();
             lock (mutex)
             {
-                testOutputHelper.WriteLine("Internal thread started");
+                _testOutputHelper.WriteLine("Internal thread started");
             }
 
             lockAcquired.Wait();
             lock (mutex)
             {
-                testOutputHelper.WriteLine($"{nameof(lockAcquired)} awaited");
+                _testOutputHelper.WriteLine($"{nameof(lockAcquired)} awaited");
             }
 
             Assert.Throws<DistributedLockTimeoutException>(
@@ -228,8 +227,8 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 {
                     var request = new AcquireLockRequest
                     {
-                        cleanDatabase = false, instance = 2,
-                        mutex = mutex, seconds = 5,
+                        CleanDatabase = false, Instance = 2,
+                        Mutex = mutex, seconds = 5,
                         Options = options
                     };
                     AcquireLock(request);
@@ -237,13 +236,13 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
             releaseLock.Set();
             lock (mutex)
             {
-                testOutputHelper.WriteLine($"{nameof(releaseLock)} set");
+                _testOutputHelper.WriteLine($"{nameof(releaseLock)} set");
             }
 
             thread.Join();
             lock (mutex)
             {
-                testOutputHelper.WriteLine("thread has been joined");
+                _testOutputHelper.WriteLine("thread has been joined");
             }
         }
 
@@ -1725,7 +1724,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
         {
             UseJobStorageConnection(connection =>
             {
-                Exception ex = null;
+              
                 try
                 {
                     var key = new string('a', 9999);

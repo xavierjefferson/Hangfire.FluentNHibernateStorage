@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="bogus" Version="34.0.2" />
+    <PackageReference Include="hangfire.core" Version="1.7.17" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
+    <PackageReference Include="serilog" Version="2.11.0" />
+    <PackageReference Include="system.data.sqlite" Version="1.0.116" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hangfire.FluentNHibernateStorage\Hangfire.FluentNHibernateStorage.csproj" />
+  </ItemGroup>
+
+</Project>

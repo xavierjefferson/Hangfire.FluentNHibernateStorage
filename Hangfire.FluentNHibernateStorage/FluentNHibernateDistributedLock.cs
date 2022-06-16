@@ -64,7 +64,6 @@ namespace Hangfire.FluentNHibernateStorage
 
         private T TryMutex<T>(Func<T> funcTaken, Func<T> notTaken)
         {
-            return funcTaken();
             var timeout = _options.QueuePollInterval;
             var lockTaken = false;
 

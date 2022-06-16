@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Transactions;
 using Hangfire.Annotations;
 using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
@@ -82,9 +80,9 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
             if (!converter.Valid) return null;
 
             //wrap in transaction so we only read serialized data
-            using ( _storage.CreateTransaction())
+            using (_storage.CreateTransaction())
 
-            //this will not use a stateless session because it has to use the references between job and parameters.
+                //this will not use a stateless session because it has to use the references between job and parameters.
             using (var session = _storage.SessionFactoryInfo.SessionFactory.OpenSession())
             {
                 var job = session.Query<_Job>().SingleOrDefault(i => i.Id == converter.Value);
@@ -117,7 +115,6 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
 
         public StatisticsDto GetStatistics()
         {
-
             var statistics =
                 _storage.UseStatelessSessionInTransaction(session =>
                 {
@@ -182,7 +179,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
-                @from, count,
+                from, count,
                 ProcessingState.StateName,
                 (sqlJob, job, stateData) => new ProcessingJobDto
                 {
@@ -196,7 +193,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
-                @from, count,
+                from, count,
                 ScheduledState.StateName,
                 (sqlJob, job, stateData) => new ScheduledJobDto
                 {
@@ -210,7 +207,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
-                @from,
+                from,
                 count,
                 SucceededState.StateName,
                 (sqlJob, job, stateData) => new SucceededJobDto
@@ -229,7 +226,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
-                @from,
+                from,
                 count,
                 FailedState.StateName,
                 (sqlJob, job, stateData) => new FailedJobDto
@@ -247,7 +244,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
         {
             return _storage.UseStatelessSessionInTransaction(session => GetJobs(
                 session,
-                @from,
+                from,
                 count,
                 DeletedState.StateName,
                 (sqlJob, job, stateData) => new DeletedJobDto
@@ -410,7 +407,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 endDate = endDate.AddDays(-1);
             }
 
-            var keyMaps = dates.ToDictionary(x => string.Format("stats:{0}:{1}", type, x.ToString("yyyy-MM-dd")),
+            var keyMaps = dates.ToDictionary(x => string.Format("stats:{0}:{1:yyyy-MM-dd}", type, x),
                 x => x);
 
             return GetTimelineStats(session, keyMaps);
@@ -497,7 +494,7 @@ namespace Hangfire.FluentNHibernateStorage.Monitoring
                 endDate = endDate.AddHours(-1);
             }
 
-            var keyMaps = dates.ToDictionary(x => string.Format("stats:{0}:{1}", type, x.ToString("yyyy-MM-dd-HH")),
+            var keyMaps = dates.ToDictionary(x => string.Format("stats:{0}:{1:yyyy-MM-dd-HH}", type, x),
                 x => x);
 
             return GetTimelineStats(session, keyMaps);

@@ -13,13 +13,12 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.JobQueue
     {
         protected JobQueueMonitoringApiTests(DatabaseFixtureBase fixture) : base(fixture)
         {
-            _storage = GetStorage();
-           
-            _api = new FluentNHibernateJobQueueMonitoringApi(_storage);
+            var storage = GetStorage();
+
+            _api = new FluentNHibernateJobQueueMonitoringApi(storage);
         }
 
         private readonly string _queue = "default";
-        private readonly FluentNHibernateJobStorage _storage;
         private readonly FluentNHibernateJobQueueMonitoringApi _api;
 
         [Fact]

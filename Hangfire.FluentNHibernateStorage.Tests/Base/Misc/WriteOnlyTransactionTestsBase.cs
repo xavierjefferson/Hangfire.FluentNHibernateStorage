@@ -87,7 +87,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 Assert.Equal(jobId, jobState.Job.Id);
                 Assert.Equal("State", jobState.Name);
                 Assert.Equal("Reason", jobState.Reason);
-                Assert.InRange(connection.Storage.UtcNow.Subtract(jobState.CreatedAt).TotalSeconds, 0, 10);
+                Assert.InRange(connection.Storage.UtcNow.Subtract(jobState.CreatedAt).TotalSeconds, -3, 10);
                 Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
             });
         }
@@ -844,7 +844,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Misc
                 Assert.Equal(insertTwoResult.JobId1, jobState.Job.Id.ToString());
                 Assert.Equal(expected, jobState.Name);
                 Assert.Equal(reason, jobState.Reason);
-                Assert.InRange(connection.Storage.UtcNow.Subtract(jobState.CreatedAt).TotalSeconds, 0, 10);
+                Assert.InRange(connection.Storage.UtcNow.Subtract(jobState.CreatedAt).TotalSeconds, -3, 10);
                 Assert.Equal("{\"Name\":\"Value\"}", jobState.Data);
             });
         }

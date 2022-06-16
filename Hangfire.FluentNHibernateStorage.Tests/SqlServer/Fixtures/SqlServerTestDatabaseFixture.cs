@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Data.Common;
 using System.Data.SqlClient;
 using System.Threading;
 using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using Hangfire.Common;
 using Hangfire.FluentNHibernateStorage.Entities;
 using Hangfire.FluentNHibernateStorage.JobQueue;
 using Hangfire.FluentNHibernateStorage.Monitoring;
 using Hangfire.FluentNHibernateStorage.Tests.Base.Fixtures;
+using Hangfire.Storage;
 using Hangfire.Storage.Monitoring;
 using Moq;
 using Xunit;
@@ -15,7 +17,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
         protected MonitoringApiTestsBase(DatabaseFixtureBase fixture) : base(fixture)
         {
             _storage = GetStorage();
-            _sut = new FluentNHibernateMonitoringApi(_storage);
+            _api = new FluentNHibernateMonitoringApi(_storage);
             _createdAt = _storage.UtcNow;
             _expireAt = _storage.UtcNow.AddMinutes(1);
         }
@@ -49,14 +51,14 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
         private readonly DateTime _createdAt;
         private readonly DateTime _expireAt;
 
-        private readonly string _invocationData =
-            "{\"Type\":\"System.Console, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"," +
-            "\"Method\":\"WriteLine\"," +
-            "\"ParameterTypes\":\"[\\\"System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\\\"]\"," +
-            "\"Arguments\":\"[\\\"\\\"test\\\"\\\"]\"}";
+        private static readonly string InvocationData = SerializationHelper.Serialize(
+            new InvocationData(typeof(Console).AssemblyQualifiedName, nameof(Console.WriteLine),
+                SerializationHelper.Serialize(new[] {typeof(string).AssemblyQualifiedName}),
+                SerializationHelper.Serialize(new[] {"test"})));
+
 
         private readonly FluentNHibernateJobStorage _storage;
-        private readonly FluentNHibernateMonitoringApi _sut;
+        private readonly FluentNHibernateMonitoringApi _api;
 
         [Fact]
         public void GetStatistics_ShouldReturnDeletedCount()
@@ -70,7 +72,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 session.Insert(new _Counter {Key = "stats:deleted", Value = 1});
                 session.Insert(new _Counter {Key = "stats:deleted", Value = 1});
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedStatsDeletedCount, result.Deleted);
@@ -92,7 +94,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                     CreatedAt = session.Storage.UtcNow
                 });
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedEnqueuedCount, result.Enqueued);
@@ -117,7 +119,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
 
                 //does nothing
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedFailedCount, result.Failed);
@@ -140,7 +142,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 });
                 //does nothing
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedProcessingCount, result.Processing);
@@ -166,7 +168,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
             {
                 session.Insert(new _Set {Key = "recurring-jobs", Value = "test", Score = 0});
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedRecurringCount, result.Recurring);
@@ -192,7 +194,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 //does nothing
                 session.Flush();
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedScheduledCount, result.Scheduled);
@@ -210,7 +212,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
 
                 //does nothing
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedServersCount, result.Servers);
@@ -228,7 +230,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 session.Insert(new _AggregatedCounter {Key = "stats:succeeded", Value = 10});
                 //does nothing
 
-                result = _sut.GetStatistics();
+                result = _api.GetStatistics();
             });
 
             Assert.Equal(expectedStatsSucceededCount, result.Succeeded);
@@ -244,7 +246,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var newJob = new _Job
                 {
                     CreatedAt = _createdAt,
-                    InvocationData = _invocationData,
+                    InvocationData = InvocationData,
                     Arguments = _arguments,
                     ExpireAt = _expireAt
                 };
@@ -252,7 +254,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 //does nothing
                 var jobId = newJob.Id;
 
-                result = _sut.JobDetails(jobId.ToString());
+                result = _api.JobDetails(jobId.ToString());
             });
 
             Assert.InRange(result.CreatedAt.Value.Subtract(_createdAt).TotalSeconds, -3, 60);
@@ -273,7 +275,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var newJob = new _Job
                 {
                     CreatedAt = _createdAt,
-                    InvocationData = _invocationData,
+                    InvocationData = InvocationData,
                     Arguments = _arguments,
                     ExpireAt = _expireAt
                 };
@@ -288,7 +290,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 //does nothing
                 var jobId = newJob.Id;
 
-                result = _sut.JobDetails(jobId.ToString());
+                result = _api.JobDetails(jobId.ToString());
             });
 
             Assert.Equal(1, result.History.Count);
@@ -304,7 +306,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var newJob = new _Job
                 {
                     CreatedAt = _createdAt,
-                    InvocationData = _invocationData,
+                    InvocationData = InvocationData,
                     Arguments = _arguments,
                     ExpireAt = _expireAt
                 };
@@ -313,7 +315,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var jobId = newJob.Id;
 
 
-                result = _sut.JobDetails(jobId.ToString());
+                result = _api.JobDetails(jobId.ToString());
             });
 
             Assert.NotNull(result.Job);
@@ -335,7 +337,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 var newJob = new _Job
                 {
                     CreatedAt = _createdAt,
-                    InvocationData = _invocationData,
+                    InvocationData = InvocationData,
                     Arguments = _arguments,
                     ExpireAt = _expireAt
                 };
@@ -347,7 +349,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.Base.Monitoring
                 //does nothing
                 var jobId = newJob.Id;
 
-                result = _sut.JobDetails(jobId.ToString());
+                result = _api.JobDetails(jobId.ToString());
             });
 
             Assert.Equal(properties, result.Properties);

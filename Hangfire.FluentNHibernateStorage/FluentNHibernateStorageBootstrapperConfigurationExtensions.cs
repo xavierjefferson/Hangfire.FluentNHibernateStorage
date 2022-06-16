@@ -13,14 +13,14 @@ namespace Hangfire.FluentNHibernateStorage
         /// <param name="nameOrConnectionString">Connection string or its name</param>
         /// <param name="providerType">Provider type from enumeration</param>
         /// <param name="options">Advanced options</param>
-        public static FluentNHibernateJobStorage UseFluentNHibernateJobStorage(
+        public static IGlobalConfiguration UseFluentNHibernateJobStorage(
             this IGlobalConfiguration configuration,
             string nameOrConnectionString, ProviderTypeEnum providerType, FluentNHibernateStorageOptions options = null)
         {
             var storage = FluentNHibernateStorageFactory.For(providerType, nameOrConnectionString,
                 options ?? new FluentNHibernateStorageOptions());
             configuration.UseStorage(storage);
-            return storage;
+            return configuration;
         }
     }
 }

@@ -50,6 +50,7 @@ namespace Hangfire.FluentNHibernateStorage.Tests.MySql.Fixtures
             }
             catch
             {
+                // ignored
             }
         }
 
