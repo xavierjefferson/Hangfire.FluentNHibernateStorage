@@ -17,26 +17,10 @@
 		<copyright>Copyright © 2017-2022 Xavier Jefferson</copyright>
 		<tags>hangfire storage provider mssql mysql oracle postgresql firebird db2 sqlite</tags>
 		<dependencies>
-			<group targetFramework=".NETFramework4.6.1">
-				<dependency id="FluentNHibernate" version="3.1.0" />
-				<dependency id="Hangfire.Core" version="1.7.30" />
-				<dependency id="Newtonsoft.Json" version="11.0.1" />
-				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
-			</group>
-			<group targetFramework=".NETCoreApp2.0">
-				<dependency id="FluentNHibernate" version="3.1.0" />
-				<dependency id="Hangfire.Core" version="1.7.30" />
-				<dependency id="Newtonsoft.Json" version="11.0.1" />
-				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
-			</group>
-			<group targetFramework=".NETStandard2.1">
-				<dependency id="FluentNHibernate" version="3.1.0" />
-				<dependency id="Hangfire.Core" version="1.7.30" />
-				<dependency id="Newtonsoft.Json" version="11.0.1" />
-				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
-			</group>
-
-
+			<dependency id="FluentNHibernate" version="3.1.0" />
+			<dependency id="Hangfire.Core" version="1.7.30" />
+			<dependency id="Newtonsoft.Json" version="11.0.1" />
+			<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
 		</dependencies>
 
 
