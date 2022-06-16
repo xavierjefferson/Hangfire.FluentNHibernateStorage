@@ -6,11 +6,11 @@
 
   <ItemGroup>
     <PackageReference Include="bogus" Version="34.0.2" />
-    <PackageReference Include="hangfire.aspnetcore" Version="1.7.17" />
-    <PackageReference Include="hangfire.core" Version="1.7.17" />
+    <PackageReference Include="hangfire" Version="1.7.30" />
     <PackageReference Include="serilog" Version="2.11.0" />
     <PackageReference Include="serilog.aspnetcore" Version="5.0.0" />
     <PackageReference Include="serilog.sinks.debug" Version="2.0.0" />
+    <PackageReference Include="snork.fluentnhibernatetools" Version="2.0.2" />
     <PackageReference Include="system.data.sqlite" Version="1.0.116" />
   </ItemGroup>
 

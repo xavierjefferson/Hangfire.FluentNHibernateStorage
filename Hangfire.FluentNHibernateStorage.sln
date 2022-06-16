@@ -18,13 +18,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernateSt
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernate.ConsoleApplication", "Hangfire.FluentNHibernate.ConsoleApplication\Hangfire.FluentNHibernate.ConsoleApplication.csproj", "{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Snork.FluentNHibernateTools", "..\Snork.FluentNHibernateTools\src\Snork.FluentNHibernateTools\Snork.FluentNHibernateTools.csproj", "{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernateStorage.Tests", "Hangfire.FluentNHibernateStorage.Tests\Hangfire.FluentNHibernateStorage.Tests.csproj", "{6DFFA275-C483-4501-823A-741AC9EC0846}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernateStorage.WebApplication", "Hangfire.FluentNHibernateStorage.WebApplication\Hangfire.FluentNHibernateStorage.WebApplication.csproj", "{39B6756A-BC7D-40E5-8340-AD26BA6B7EC1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.SampleStuff", "Hangfire.FluentNHibernate.SampleStuff\Hangfire.FluentNHibernate.SampleStuff.csproj", "{A577A64E-E5D8-436C-B8CF-8029738B2A72}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Hangfire.FluentNHibernate.SampleStuff", "Hangfire.FluentNHibernate.SampleStuff\Hangfire.FluentNHibernate.SampleStuff.csproj", "{A577A64E-E5D8-436C-B8CF-8029738B2A72}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{5F60D5C3-60CC-4AFD-8E5B-A9864FBBAE5E}"
 EndProject
@@ -60,14 +58,6 @@ Global
 		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Release|x86.ActiveCfg = Release|Any CPU
 		{DAFD270B-EFFE-4C41-8D50-E8D800E3D332}.Release|x86.Build.0 = Release|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Debug|x86.Build.0 = Debug|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Release|x86.ActiveCfg = Release|Any CPU
-		{C3A3C91F-71AE-4A9F-88BF-7662B2C60F95}.Release|x86.Build.0 = Release|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DFFA275-C483-4501-823A-741AC9EC0846}.Debug|x86.ActiveCfg = Debug|x86

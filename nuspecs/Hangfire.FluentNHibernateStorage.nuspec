@@ -1,52 +1,49 @@
 ﻿<?xml version="1.0"?>
 
 <package>
-  <metadata>
-    <id>Hangfire.FluentNHibernateStorage</id>
-    <version>1.2.1060</version>
-    <authors>Xavier Jefferson</authors>
-    <owners>XavierJefferson</owners>
-    <licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
-    <projectUrl>https://github.com/xavierjefferson/Hangfire.FluentNHibernateStorage</projectUrl>
-    <!--<iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>-->
-    <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
-    <releaseNotes>
-       Fix bug related to internal use of NHibernate stateless session
-    </releaseNotes>
-    <copyright>Copyright © 2017-2020 Xavier Jefferson</copyright>
-    <tags>hangfire storage provider mssql mysql oracle postgresql firebird db2</tags>
-    <dependencies>
-      <group targetFramework=".NETFramework4.6.1">
-        <dependency id="FluentNHibernate" version="3.1.0" />
-        <dependency id="Hangfire.Core" version="1.7.28" />
-
-        <dependency id="Newtonsoft.Json" version="11.0.1" />
-        <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
-      </group>
-      <group targetFramework=".NETCoreApp2.0">
-        <dependency id="FluentNHibernate" version="3.1.0" />
-        <dependency id="Hangfire.Core" version="1.7.28" />
-
-        <dependency id="Newtonsoft.Json" version="11.0.1" />
-        <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
-      </group>
-      <group targetFramework=".NETStandard2.1">
-        <dependency id="FluentNHibernate" version="3.1.0" />
-        <dependency id="Hangfire.Core" version="1.7.28" />
-
-        <dependency id="Newtonsoft.Json" version="11.0.1" />
-        <dependency id="Snork.FluentNHibernateTools" version="1.2.1018" />
-      </group>
+	<metadata>
+		<id>Hangfire.FluentNHibernateStorage</id>
+		<version>1.7.30</version>
+		<authors>Xavier Jefferson</authors>
+		<owners>XavierJefferson</owners>
+		<licenseUrl>https://www.gnu.org/licenses/lgpl-3.0.en.html</licenseUrl>
+		<projectUrl>https://github.com/xavierjefferson/Hangfire.FluentNHibernateStorage</projectUrl>
+		<!--<iconUrl>http://ICON_URL_HERE_OR_DELETE_THIS_LINE</iconUrl>-->
+		<requireLicenseAcceptance>false</requireLicenseAcceptance>
+		<description>A Hangfire storage provider for SQL Server, MySQL, Oracle, DB/2, PostgreSQL, and Firebird</description>
+		<releaseNotes>
+			Update to Hangfire 1.7.30 which includes update to FluentNHibernate 3.1.0 / NHibernate 5.3.3, improved session flush feature, and other optimizations.  More unit tests.
+		</releaseNotes>
+		<copyright>Copyright © 2017-2022 Xavier Jefferson</copyright>
+		<tags>hangfire storage provider mssql mysql oracle postgresql firebird db2 sqlite</tags>
+		<dependencies>
+			<group targetFramework=".NETFramework4.6.1">
+				<dependency id="FluentNHibernate" version="3.1.0" />
+				<dependency id="Hangfire.Core" version="1.7.30" />
+				<dependency id="Newtonsoft.Json" version="11.0.1" />
+				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
+			</group>
+			<group targetFramework=".NETCoreApp2.0">
+				<dependency id="FluentNHibernate" version="3.1.0" />
+				<dependency id="Hangfire.Core" version="1.7.30" />
+				<dependency id="Newtonsoft.Json" version="11.0.1" />
+				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
+			</group>
+			<group targetFramework=".NETStandard2.1">
+				<dependency id="FluentNHibernate" version="3.1.0" />
+				<dependency id="Hangfire.Core" version="1.7.30" />
+				<dependency id="Newtonsoft.Json" version="11.0.1" />
+				<dependency id="Snork.FluentNHibernateTools" version="2.0.2" />
+			</group>
 
 
-    </dependencies>
+		</dependencies>
 
 
-  </metadata>
-  <files>
-    <file src="..\Hangfire.FluentNHibernateStorage\bin\release\netstandard2.0\Hangfire.FluentNHibernateStorage.dll"
-          target="lib\netstandard2.0" />
-    <file src="..\Hangfire.FluentNHibernateStorage\**\*.cs;" target="src" exclude="**\obj*\**\*.cs" />
-  </files>
+	</metadata>
+	<files>
+		<file src="..\Hangfire.FluentNHibernateStorage\bin\release\netstandard2.0\Hangfire.FluentNHibernateStorage.dll"
+		      target="lib\netstandard2.0" />
+		<file src="..\Hangfire.FluentNHibernateStorage\**\*.cs;" target="src" exclude="**\obj*\**\*.cs" />
+	</files>
 </package>

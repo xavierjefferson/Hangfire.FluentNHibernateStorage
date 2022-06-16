@@ -13,16 +13,13 @@
 
   <ItemGroup>
     <PackageReference Include="fluentnhibernate" Version="3.1.0" />
-    <PackageReference Include="hangfire" Version="1.7.17" />
+    <PackageReference Include="hangfire.core" Version="1.7.30" />
     <PackageReference Include="newtonsoft.json" Version="11.0.1" />
+    <PackageReference Include="snork.fluentnhibernatetools" Version="2.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Properties\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\Snork.FluentNHibernateTools\src\Snork.FluentNHibernateTools\Snork.FluentNHibernateTools.csproj" />
   </ItemGroup>
 
 </Project>
