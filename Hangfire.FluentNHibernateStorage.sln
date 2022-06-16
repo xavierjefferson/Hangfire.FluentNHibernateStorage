@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29905.134
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.WinformsApplication", "Hangfire.FluentNHibernate.SampleApplication\Hangfire.FluentNHibernate.WinformsApplication.csproj", "{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hangfire.FluentNHibernate.WinformsApplication", "Hangfire.FluentNHibernate.WinformsApplication\Hangfire.FluentNHibernate.WinformsApplication.csproj", "{7BF347BC-A06B-431E-9234-E3BBD6AF10DD}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documents", "Documents", "{1180E1D6-1D07-4325-A742-ABA4E16722C1}"
 	ProjectSection(SolutionItems) = preProject
